@@ -19,7 +19,17 @@ mobile/.render-check/
 .env
 .env.*
 !.env.example
+# Service account keys. Google names these things after the project and a
+# hash — kahiniscope-production-firebase-adminsdk-a1b2c3.json — so matching
+# one exact filename is not enough, least of all in a public repository.
 serviceAccountKey.json
+key.json
+*-key.json
+*service-account*.json
+*serviceaccount*.json
+*firebase-adminsdk*.json
+gcp-*.json
+secrets/
 google-services.json
 GoogleService-Info.plist
 .secret.local
