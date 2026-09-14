@@ -86,7 +86,7 @@ jobs:
         run: npx firebase deploy --only firestore:rules,firestore:indexes --project "$FIREBASE_PROJECT" --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-          FIREBASE_PROJECT: ${{ vars.FIREBASE_PROJECT_ID || 'kahiniscope-production' }}
+          FIREBASE_PROJECT: ${{ vars.FIREBASE_PROJECT_ID || 'kahiniscope-5c9ee' }}
 
       # --force answers the "delete functions that are no longer in the
       # codebase?" prompt with yes. That is what makes the repository the
@@ -96,7 +96,7 @@ jobs:
         run: npx firebase deploy --only functions --project "$FIREBASE_PROJECT" --non-interactive --force
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-          FIREBASE_PROJECT: ${{ vars.FIREBASE_PROJECT_ID || 'kahiniscope-production' }}
+          FIREBASE_PROJECT: ${{ vars.FIREBASE_PROJECT_ID || 'kahiniscope-5c9ee' }}
 
       - name: Remove the key
         if: always()

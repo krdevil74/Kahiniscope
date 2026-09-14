@@ -7,7 +7,7 @@
  *
  *   Emulator:    npm run seed
  *   Production:  GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json \
- *                FIREBASE_PROJECT=kahiniscope-production npm run seed
+ *                FIREBASE_PROJECT=kahiniscope-5c9ee npm run seed
  */
 
 import { initializeApp } from "firebase-admin/app";
@@ -16,7 +16,7 @@ import { getFirestore } from "firebase-admin/firestore";
 const projectId =
   process.env.FIREBASE_PROJECT ??
   process.env.GCLOUD_PROJECT ??
-  "kahiniscope-production";
+  "kahiniscope-5c9ee";
 
 if (process.env.FIRESTORE_EMULATOR_HOST) {
   console.log(`Seeding the emulator at ${process.env.FIRESTORE_EMULATOR_HOST}`);

@@ -27,13 +27,17 @@ see [Verifying](#verifying).
 
 ## 1. Create the project
 
-1. <https://console.firebase.google.com> → **Add project** → name it
-   `kahiniscope-production`. Google Analytics is not needed.
+1. <https://console.firebase.google.com> → **Add project**. The display name
+   is "Kahiniscope"; the **project id** Firebase actually assigned is
+   `kahiniscope-5c9ee`, because the plain name was taken. Everything
+   addresses the id, never the display name — `.firebaserc`, the deploy
+   workflow and the app config all use `kahiniscope-5c9ee`.
 2. **Upgrade to the Blaze plan.** Cloud Functions and the scheduled escalation
    job both require it. At a dozen tasks a day the bill is zero; set a budget
    alert at a few dollars anyway.
-3. Put the project id in `.firebaserc` if it differs from
-   `kahiniscope-production`.
+3. `.firebaserc` holds the project id. If you ever point this at a different
+   project, change it there and set the `FIREBASE_PROJECT_ID` repository
+   variable to match (`gh variable set FIREBASE_PROJECT_ID`).
 
 ## 2. Firestore
 
@@ -87,7 +91,7 @@ deploy again. Nothing else changes; sign-in costs one extra round trip.
 
 ```bash
 GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json \
-FIREBASE_PROJECT=kahiniscope-production npm run seed
+FIREBASE_PROJECT=kahiniscope-5c9ee npm run seed
 ```
 
 Creates `settings/global` with `plan: [7, 4, 3, 2, 1]`, quiet hours 22:00–08:00

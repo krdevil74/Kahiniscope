@@ -58,8 +58,10 @@ a red build.
      functions needs
 2. Create a JSON key for it and download it.
 3. `gh secret set FIREBASE_SERVICE_ACCOUNT < that-file.json`
-4. Optionally `gh variable set FIREBASE_PROJECT_ID --body kahiniscope-production`
-   if the project id ever differs from the default.
+4. Optionally `gh variable set FIREBASE_PROJECT_ID --body kahiniscope-5c9ee`
+   if the project id ever differs from the default. The project's display
+   name is "Kahiniscope"; its id is `kahiniscope-5c9ee`, and only the id is
+   ever addressable.
 5. Delete the downloaded file.
 
 A long-lived JSON key is the pragmatic choice for a project this size.
@@ -98,7 +100,7 @@ result appears on expo.dev.
 gh secret set EXPO_TOKEN                  # expo.dev → Account → Access tokens
 gh secret set GOOGLE_SERVICES_JSON < mobile/google-services.json
 gh secret set EXPO_PUBLIC_FIREBASE_API_KEY
-gh variable set EXPO_PUBLIC_FIREBASE_PROJECT_ID --body kahiniscope-production
+gh variable set EXPO_PUBLIC_FIREBASE_PROJECT_ID --body kahiniscope-5c9ee
 # …and the remaining EXPO_PUBLIC_* values from mobile/.env.example
 ```
 
