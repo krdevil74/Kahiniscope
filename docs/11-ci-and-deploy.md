@@ -36,6 +36,28 @@ The whole thing was verified by cloning the repository into a clean directory
 and running each job's steps: `npm ci` in all three packages, the builds, and
 the suites. 75 app tests and 27 rules tests from a fresh clone, green.
 
+## The APIs that have to be on
+
+Enable these on the Firebase project before the first deploy. `firebaserules`
+and `identitytoolkit` are the two that are easy to miss — the first is needed
+to deploy security rules at all, the second by the Identity Platform blocking
+functions:
+
+```bash
+gcloud services enable \
+  firestore.googleapis.com firebaserules.googleapis.com \
+  cloudfunctions.googleapis.com run.googleapis.com \
+  cloudbuild.googleapis.com artifactregistry.googleapis.com \
+  eventarc.googleapis.com pubsub.googleapis.com \
+  cloudscheduler.googleapis.com secretmanager.googleapis.com \
+  identitytoolkit.googleapis.com cloudresourcemanager.googleapis.com \
+  iam.googleapis.com --project kahiniscope-5c9ee
+```
+
+All of them require **billing enabled** on the project. Blaze is a
+prerequisite for scheduling, not a bill: the usage here sits inside the free
+allowances that remain under it.
+
 ## Deploy
 
 Deploys `firestore:rules`, `firestore:indexes` and `functions` — the whole
@@ -50,12 +72,22 @@ a red build.
 
 ### Setting it up
 
-1. In the Google Cloud console for the Firebase project, create a service
+**Create the service account inside the Firebase project itself**, not in
+another project you happen to own. When a service account from project A acts
+on project B, Google attributes API-enablement checks to A — so the deploy
+fails complaining that an API is disabled in a project you were not deploying
+to. Cross-project access does work, but it makes every such error read as a
+puzzle.
+
+1. In the Google Cloud console **for `kahiniscope-5c9ee`**, create a service
    account — `github-deploy` — and give it:
    - **Firebase Admin** (or, more tightly: *Cloud Datastore Index Admin*,
      *Firebase Rules Admin*, *Cloud Functions Admin*, *Service Account User*)
    - **Cloud Build Editor** and **Artifact Registry Writer**, which deploying
      functions needs
+   - **Service Usage Viewer**, so the CLI can see which APIs are on. Without
+     it the CLI reads "enabled" as "missing", tries to enable it, and fails on
+     permissions — an error that points at the wrong problem
 2. Create a JSON key for it and download it.
 3. `gh secret set FIREBASE_SERVICE_ACCOUNT < that-file.json`
 4. Optionally `gh variable set FIREBASE_PROJECT_ID --body kahiniscope-5c9ee`
