@@ -8,13 +8,14 @@
  */
 
 import { doc, updateDoc } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
 
-import { app, db } from "./firebase";
+import { appFunctions } from "./region.ts";
+
+import { db } from "./firebase";
 import type { TeamMember } from "./model";
 
 /** Functions live in the same region as Firestore. */
-const functions = getFunctions(app, "asia-south1");
 
 export async function approveRegistration(member: TeamMember): Promise<void> {
   await updateDoc(doc(db, "users", member.uid), { status: "approved" });
@@ -40,7 +41,7 @@ export async function setPreferredChannel(
 }
 
 export async function declineRegistration(member: TeamMember): Promise<void> {
-  const call = httpsCallable<{ uid: string }, { name: string }>(functions, "declineRegistration");
+  const call = httpsCallable<{ uid: string }, { name: string }>(appFunctions(), "declineRegistration");
   await call({ uid: member.uid });
 }
 

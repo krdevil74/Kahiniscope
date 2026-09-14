@@ -38,7 +38,7 @@ see [Verifying](#verifying).
 ## 2. Firestore
 
 **Build → Firestore Database → Create database**, production mode, region
-**`asia-south1` (Mumbai)**.
+**`asia-south2` (Delhi)** — the region the database was actually created in.
 
 The region cannot be changed afterwards, and `REGION` in
 `functions/src/config.ts` must match it — Firestore triggers have to run in the

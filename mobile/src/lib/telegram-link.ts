@@ -8,14 +8,14 @@
  */
 
 import { Linking } from "react-native";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
 
-import { app } from "./firebase";
+import { appFunctions } from "./region.ts";
 
-const functions = getFunctions(app, "asia-south1");
+
 
 export async function connectTelegram(): Promise<void> {
-  const call = httpsCallable<Record<string, never>, { url: string }>(functions, "linkTelegram");
+  const call = httpsCallable<Record<string, never>, { url: string }>(appFunctions(), "linkTelegram");
   const { data } = await call({});
   const opened = await Linking.canOpenURL(data.url);
   if (!opened) throw new Error("Telegram is not installed on this phone.");

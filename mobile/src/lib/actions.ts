@@ -12,12 +12,13 @@ import {
   collection,
   Timestamp,
 } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
 
-import { app, db } from "./firebase";
+import { appFunctions } from "./region.ts";
+
+import { db } from "./firebase";
 import { firstName } from "./format.ts";
 
-const functions = getFunctions(app, "asia-south1");
 import type { ChannelId, Task } from "./model";
 
 /**
@@ -35,7 +36,7 @@ import type { ChannelId, Task } from "./model";
  */
 export async function nudgeTask(task: Task): Promise<{ name: string; channel: string | null }> {
   const call = httpsCallable<{ taskId: string }, { name: string; channel: string | null }>(
-    functions,
+    appFunctions(),
     "nudgeTask"
   );
   const { data } = await call({ taskId: task.id });
@@ -47,7 +48,7 @@ export async function nudgeAllOpen(
   uid: string
 ): Promise<{ name: string; channel: string | null; count: number }> {
   const call = httpsCallable<{ uid: string }, { name: string; channel: string | null; count: number }>(
-    functions,
+    appFunctions(),
     "nudgeAllOpen"
   );
   const { data } = await call({ uid });

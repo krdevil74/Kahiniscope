@@ -20,20 +20,33 @@
 export const OWNER_EMAILS: readonly string[] = ["owner@kahiniscope.example"];
 
 /**
- * Firestore, and therefore every Firestore trigger, lives in asia-south1
- * (Mumbai) — the closest region to Dhaka.
+ * Where Firestore is, and therefore where every Firestore trigger must be.
+ *
+ * asia-south2 is Delhi. The database was created there, and a Firestore
+ * database's location is fixed at creation — it cannot be moved afterwards,
+ * so this follows the database rather than the other way round.
+ *
+ * Changing this means changing FUNCTIONS_REGION in mobile/src/lib/region.ts
+ * to match: callables are addressed by region, and a client calling the wrong
+ * one gets a not-found rather than anything useful.
  */
-export const REGION = "asia-south1";
+export const REGION = "asia-south2";
 
 /**
  * Region for the Identity Platform blocking functions (beforeUserCreated /
- * beforeUserSignedIn). These run on the sign-in path, so they want to be near
- * the user, but Identity Platform only accepts blocking functions in the
- * regions it supports. If `firebase deploy` rejects this value with an
- * unsupported-region error, set it to "us-central1" — sign-in then costs one
- * extra round trip and nothing else changes.
+ * beforeUserSignedIn).
+ *
+ * Deliberately a separate constant from REGION. Firestore triggers have no
+ * choice — they must sit with the database — but blocking functions do, and
+ * Identity Platform supports a shorter list of regions than Firestore does.
+ * asia-south2 is a newer, thinner region than asia-south1.
+ *
+ * If `firebase deploy` rejects this with an unsupported-region error, set it
+ * to "us-central1". Sign-in then costs one extra round trip and nothing else
+ * changes — these two functions touch no Firestore data beyond one document
+ * read and write.
  */
-export const BLOCKING_REGION = "asia-south1";
+export const BLOCKING_REGION = "asia-south2";
 
 /** Default escalation ladder written into settings/global on first run. */
 export const DEFAULT_PLAN = [7, 4, 3, 2, 1];

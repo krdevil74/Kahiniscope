@@ -28,7 +28,7 @@ To view the prototype: open `design/Kahiniscope Production.dc.html` in a browser
 | --- | --- |
 | App | React Native via Expo (managed workflow, EAS Build) |
 | Auth | Firebase Authentication, Google provider only |
-| Database | Firestore, region `asia-south1` |
+| Database | Firestore, region `asia-south2` |
 | Server logic | Cloud Functions for Firebase (Node), one scheduled job |
 | Push | Firebase Cloud Messaging |
 | Messaging | Telegram Bot API, WhatsApp Cloud API, Textbelt SMS |

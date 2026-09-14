@@ -42,7 +42,7 @@ advertising and no analytics.
 ## Where it is stored
 
 In Google Firebase (Cloud Firestore and Firebase Authentication), in Google's
-`asia-south1` region in Mumbai, India. Google processes it on our behalf as our
+`asia-south2` region in Delhi, India. Google processes it on our behalf as our
 hosting provider.
 
 ## Services that receive your data in order to deliver a reminder

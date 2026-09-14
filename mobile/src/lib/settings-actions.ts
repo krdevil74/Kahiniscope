@@ -8,12 +8,13 @@
  */
 
 import { doc, setDoc } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
 
-import { app, db } from "./firebase";
+import { appFunctions } from "./region.ts";
+
+import { db } from "./firebase";
 import type { ChannelId, QuietHours } from "./model";
 
-const functions = getFunctions(app, "asia-south1");
 const settingsRef = () => doc(db, "settings", "global");
 
 /** The escalation ladder. Every countdown in the app recalculates from it. */
@@ -31,7 +32,7 @@ export async function saveQuietHours(quietHours: Partial<QuietHours>): Promise<v
 
 export async function setMemberRole(uid: string, role: "admin" | "member"): Promise<string> {
   const call = httpsCallable<{ uid: string; role: string }, { name: string }>(
-    functions,
+    appFunctions(),
     "setMemberRole"
   );
   const result = await call({ uid, role });

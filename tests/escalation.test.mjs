@@ -45,7 +45,7 @@ const RUN_KEY = process.env.ESCALATION_RUN_KEY ?? "test-run-key";
 const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1:9099";
 const [fsHost, fsPort] = (process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080").split(":");
 const projectId = process.env.GCLOUD_PROJECT ?? "kahiniscope-demo";
-const RUN_URL = `http://${fsHost}:5001/${projectId}/asia-south1/runEscalationNow`;
+const RUN_URL = `http://${fsHost}:5001/${projectId}/asia-south2/runEscalationNow`;
 
 const apps = [];
 const day = 86_400_000;
