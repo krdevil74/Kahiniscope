@@ -20,6 +20,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 
 import { REGION } from "./config";
+import { readSecret } from "./messaging/configured";
 import { parseCallbackData, telegramCall, TELEGRAM_BOT_TOKEN } from "./messaging/telegram";
 
 /** Sent by Telegram as X-Telegram-Bot-Api-Secret-Token on every update. */
@@ -41,7 +42,7 @@ interface TelegramUpdate {
 export const telegramWebhook = onRequest(
   { region: REGION, secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET] },
   async (request, response) => {
-    const expected = TELEGRAM_WEBHOOK_SECRET.value() || process.env.TELEGRAM_WEBHOOK_SECRET;
+    const expected = readSecret(TELEGRAM_WEBHOOK_SECRET, "TELEGRAM_WEBHOOK_SECRET");
     if (expected && request.get("x-telegram-bot-api-secret-token") !== expected) {
       logger.warn("Rejected a webhook call with a bad secret");
       response.status(403).send("no");

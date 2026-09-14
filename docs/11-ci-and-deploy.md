@@ -119,6 +119,34 @@ firebase functions:secrets:set ESCALATION_RUN_KEY
 They are deliberately not in the repository or in GitHub Actions. A deploy
 binds functions to them by name; it never sees their values.
 
+**Every declared secret must exist before the functions will deploy.** There
+is no such thing as an optional one: the CLI looks each up and stops if it is
+missing. So a project that has not set up WhatsApp still needs a
+`WHATSAPP_TOKEN` to exist, and what goes in it is the literal string `unset` —
+which the code reads as *not configured*, exactly as if it were empty, rather
+than trying to use it as a credential.
+
+Creating all six on a fresh project, with real values for the two that are
+just shared secrets we choose:
+
+```bash
+PROJECT=kahiniscope-5c9ee
+
+# Generated now — these are ours to pick.
+printf '%s' "$(openssl rand -hex 24)" | \
+  gcloud secrets create ESCALATION_RUN_KEY --data-file=- --project $PROJECT
+printf '%s' "$(openssl rand -hex 24)" | \
+  gcloud secrets create TELEGRAM_WEBHOOK_SECRET --data-file=- --project $PROJECT
+
+# Placeholders until the accounts exist.
+for S in TELEGRAM_BOT_TOKEN WHATSAPP_TOKEN WHATSAPP_PHONE_ID TEXTBELT_KEY; do
+  printf 'unset' | gcloud secrets create $S --data-file=- --project $PROJECT
+done
+```
+
+Replacing one later is `firebase functions:secrets:set NAME` followed by a
+redeploy, which is what binds the new version.
+
 ## Android build
 
 Manual, from the Actions tab, with a choice of `preview` (an APK you can

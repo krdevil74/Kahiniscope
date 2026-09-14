@@ -14,6 +14,7 @@ import { DEFAULT_PLAN, DEFAULT_QUIET_HOURS, REGION } from "../config";
 import { TELEGRAM_BOT_TOKEN } from "../messaging/telegram";
 import { TEXTBELT_KEY, WHATSAPP_PHONE_ID, WHATSAPP_TOKEN } from "../messaging/pending-channels";
 import { defineSecret } from "firebase-functions/params";
+import { readSecret } from "../messaging/configured";
 
 /** Shared secret for the manual run endpoint below. */
 export const ESCALATION_RUN_KEY = defineSecret("ESCALATION_RUN_KEY");
@@ -153,14 +154,7 @@ export async function runEscalation(now: Date = new Date()): Promise<RunSummary>
 
 const SECRETS = [TELEGRAM_BOT_TOKEN, WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, TEXTBELT_KEY];
 
-/** Reading an unbound secret throws; an unset one is simply not set. */
-function readSecret(secret: { value: () => string }): string {
-  try {
-    return secret.value();
-  } catch {
-    return "";
-  }
-}
+
 
 /** 09:00 every day, Dhaka time. */
 export const escalateDaily = onSchedule(
@@ -193,7 +187,7 @@ export const runEscalationNow = onRequest(
   { region: REGION, secrets: [...SECRETS, ESCALATION_RUN_KEY] },
   async (request, response) => {
     // The declared secret in production; the plain variable in the emulator.
-    const key = readSecret(ESCALATION_RUN_KEY) || process.env.ESCALATION_RUN_KEY;
+    const key = readSecret(ESCALATION_RUN_KEY, "ESCALATION_RUN_KEY");
 
     if (!key) {
       response.status(503).send("ESCALATION_RUN_KEY is not set on this deployment.");

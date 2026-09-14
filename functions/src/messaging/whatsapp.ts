@@ -17,6 +17,7 @@
 
 import type { ChannelAdapter, Recipient, ReminderMessage, SendOutcome } from "./types";
 import { WHATSAPP_PHONE_ID, WHATSAPP_TOKEN } from "./pending-channels";
+import { readSecret } from "./configured";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -24,13 +25,7 @@ const GRAPH = "https://graph.facebook.com/v21.0";
 export const TEMPLATE_NAME = process.env.WHATSAPP_TEMPLATE_NAME || "task_overdue";
 export const TEMPLATE_LANGUAGE = process.env.WHATSAPP_TEMPLATE_LANGUAGE || "en";
 
-function secret(param: { value: () => string }, envName: string): string {
-  try {
-    return param.value() || process.env[envName] || "";
-  } catch {
-    return process.env[envName] || "";
-  }
-}
+
 
 /** E.164 without the plus, which is what the Graph API wants. */
 export function toWhatsAppNumber(phone: string): string {
@@ -57,12 +52,12 @@ export const whatsappAdapter: ChannelAdapter = {
 
   canReach: (to: Recipient) =>
     Boolean(to.phone) &&
-    Boolean(secret(WHATSAPP_TOKEN, "WHATSAPP_TOKEN")) &&
-    Boolean(secret(WHATSAPP_PHONE_ID, "WHATSAPP_PHONE_ID")),
+    Boolean(readSecret(WHATSAPP_TOKEN, "WHATSAPP_TOKEN")) &&
+    Boolean(readSecret(WHATSAPP_PHONE_ID, "WHATSAPP_PHONE_ID")),
 
   async send(to: Recipient, message: ReminderMessage): Promise<SendOutcome> {
-    const token = secret(WHATSAPP_TOKEN, "WHATSAPP_TOKEN");
-    const phoneId = secret(WHATSAPP_PHONE_ID, "WHATSAPP_PHONE_ID");
+    const token = readSecret(WHATSAPP_TOKEN, "WHATSAPP_TOKEN");
+    const phoneId = readSecret(WHATSAPP_PHONE_ID, "WHATSAPP_PHONE_ID");
 
     if (!token || !phoneId || !to.phone) {
       return { result: "skipped", channel: "whatsapp", error: "not configured" };

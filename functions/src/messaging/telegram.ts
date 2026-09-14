@@ -10,6 +10,8 @@
 
 import { defineSecret } from "firebase-functions/params";
 
+import { readSecret } from "./configured";
+
 import type { ChannelAdapter, Recipient, ReminderMessage, SendOutcome } from "./types";
 
 /**
@@ -21,7 +23,7 @@ export const TELEGRAM_BOT_TOKEN = defineSecret("TELEGRAM_BOT_TOKEN");
 const API = "https://api.telegram.org";
 
 export function botToken(): string {
-  return TELEGRAM_BOT_TOKEN.value() || process.env.TELEGRAM_BOT_TOKEN || "";
+  return readSecret(TELEGRAM_BOT_TOKEN, "TELEGRAM_BOT_TOKEN");
 }
 
 export async function telegramCall(
@@ -55,7 +57,8 @@ export function parseCallbackData(data: string): { action: "done"; taskId: strin
 export const telegramAdapter: ChannelAdapter = {
   id: "telegram",
 
-  canReach: (to: Recipient) => Boolean(to.telegramChatId),
+  // A chat id is no use without a bot to send from.
+  canReach: (to: Recipient) => Boolean(to.telegramChatId) && Boolean(botToken()),
 
   async send(to: Recipient, message: ReminderMessage): Promise<SendOutcome> {
     const replyMarkup = message.actionableTaskId

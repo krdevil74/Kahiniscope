@@ -16,6 +16,7 @@ import { logger } from "firebase-functions/v2";
 
 import type { ChannelAdapter, Recipient, ReminderMessage, SendOutcome } from "./types";
 import { TEXTBELT_KEY } from "./pending-channels";
+import { readSecret } from "./configured";
 
 const TEXTBELT = "https://textbelt.com/text";
 
@@ -29,11 +30,7 @@ export function smsText(message: ReminderMessage): string {
 }
 
 function key(): string {
-  try {
-    return TEXTBELT_KEY.value() || process.env.TEXTBELT_KEY || "";
-  } catch {
-    return process.env.TEXTBELT_KEY || "";
-  }
+  return readSecret(TEXTBELT_KEY, "TEXTBELT_KEY");
 }
 
 export const smsAdapter: ChannelAdapter = {
