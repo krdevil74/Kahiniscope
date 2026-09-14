@@ -1,0 +1,110 @@
+name: CI
+
+# Every push and every pull request. The emulator suites are the ones that
+# matter here: they are what stop a security rule from being loosened by
+# accident, and they run headlessly, so there is no reason not to.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# A second push to the same branch cancels the first — there is no value in
+# finishing a run for a commit that has already been replaced.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend — rules, functions, emulators
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          # The tests run TypeScript directly through node --test, which needs
+          # Node 23 or newer. The functions themselves deploy to nodejs20.
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+
+      - name: Java for the Firestore emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache the emulator jars
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-v1
+
+      - run: npm ci
+      - run: npm ci --prefix functions
+
+      - name: Build functions
+        run: npm --prefix functions run build
+
+      - name: Unit tests — the owner rule, the ladder, the channel chain
+        run: npm run test:functions
+
+      - name: Security rules
+        run: npm run test:rules
+
+      - name: Identity — owner claim, pending accounts
+        run: npm run test:auth
+
+      - name: Approval flow, both sides
+        run: npm run test:approval
+
+      - name: Promotion, demotion, owner-only settings
+        run: npm run test:roles
+
+      - name: Escalation engine
+        run: npm run test:escalation
+        env:
+          ESCALATION_RUN_KEY: test-run-key
+
+  app:
+    name: App — types, unit tests, render
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - run: npm ci
+        working-directory: mobile
+
+      - name: Type check
+        run: npm run typecheck
+        working-directory: mobile
+
+      - name: Unit tests
+        run: npm test
+        working-directory: mobile
+
+      # Mounts every route through react-native-web and writes the HTML out.
+      # A bad hook, a missing provider or an unresolvable import fails here —
+      # none of which a type check would catch.
+      - name: Render every screen
+        run: npm run verify:render
+        working-directory: mobile

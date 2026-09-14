@@ -1,0 +1,93 @@
+name: Android build
+
+# On demand, never on push.
+#
+# EAS Build's free tier is a small number of builds a month, and an AAB
+# produced for every commit is an artifact nobody asked for burning a quota
+# somebody will want later. Builds happen when a release is actually wanted.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Which eas.json profile to build
+        required: true
+        default: preview
+        type: choice
+        options: [preview, production]
+
+concurrency:
+  group: android-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: eas build --platform android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for credentials
+        id: creds
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$EXPO_TOKEN" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::EXPO_TOKEN is not set — skipping. See docs/11-ci-and-deploy.md."
+          fi
+          # The secrets context is not available in a step's `if:`, so the
+          # answer is resolved here and read back as an output.
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "google_services=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "google_services=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::GOOGLE_SERVICES_JSON is not set — the build will fail without it."
+          fi
+
+      - name: Use Node
+        if: steps.creds.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Set up EAS
+        if: steps.creds.outputs.ready == 'true'
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install
+        if: steps.creds.outputs.ready == 'true'
+        run: npm ci
+        working-directory: mobile
+
+      - name: Write google-services.json
+        if: steps.creds.outputs.ready == 'true' && steps.creds.outputs.google_services == 'true'
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
+        working-directory: mobile
+
+      # --no-wait returns as soon as the build is queued. The result lands in
+      # expo.dev; a runner sitting idle for twenty minutes waiting for a
+      # remote builder is minutes spent on nothing.
+      - name: Build
+        if: steps.creds.outputs.ready == 'true'
+        run: npx eas build --platform android --profile "${{ inputs.profile }}" --non-interactive --no-wait
+        working-directory: mobile
+        env:
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ vars.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ vars.EXPO_PUBLIC_FIREBASE_APP_ID }}
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}

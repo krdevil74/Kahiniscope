@@ -1,0 +1,103 @@
+name: Deploy
+
+# Only from main, and only after CI has gone green on that same commit.
+# Security rules and a scheduled job that chases people are not things to
+# push on a red build.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  # For a rollback, or the first deploy before CI has ever run.
+  workflow_dispatch:
+
+# One deploy at a time, and never cancelled halfway: firebase deploy is not
+# something to interrupt.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  firebase:
+    name: Firestore rules, indexes and functions
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # workflow_run fires whatever the result was, so the result is checked
+    # here. A manual dispatch is taken at its word.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Deploy exactly the commit CI passed on, not whatever main has
+          # drifted to since.
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - name: Check for credentials
+        id: creds
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$SERVICE_ACCOUNT" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::FIREBASE_SERVICE_ACCOUNT is not set — skipping. See docs/11-ci-and-deploy.md."
+          fi
+
+      - name: Use Node
+        if: steps.creds.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+
+      - name: Install
+        if: steps.creds.outputs.ready == 'true'
+        run: |
+          npm ci
+          npm ci --prefix functions
+
+      - name: Build functions
+        if: steps.creds.outputs.ready == 'true'
+        run: npm --prefix functions run build
+
+      - name: Write the service account key
+        if: steps.creds.outputs.ready == 'true'
+        # Through the environment, never interpolated into the command: a
+        # secret pasted into a shell line is a quoting bug away from being
+        # executed rather than written.
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          chmod 600 "$RUNNER_TEMP/sa.json"
+          # Fail loudly here rather than with an opaque CLI error later.
+          node -e "JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP + '/sa.json','utf8'))"
+
+      - name: Deploy rules and indexes
+        if: steps.creds.outputs.ready == 'true'
+        run: npx firebase deploy --only firestore:rules,firestore:indexes --project "$FIREBASE_PROJECT" --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          FIREBASE_PROJECT: ${{ vars.FIREBASE_PROJECT_ID || 'kahiniscope-production' }}
+
+      # --force answers the "delete functions that are no longer in the
+      # codebase?" prompt with yes. That is what makes the repository the
+      # source of truth; without it a renamed function stops the deploy dead.
+      - name: Deploy functions
+        if: steps.creds.outputs.ready == 'true'
+        run: npx firebase deploy --only functions --project "$FIREBASE_PROJECT" --non-interactive --force
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          FIREBASE_PROJECT: ${{ vars.FIREBASE_PROJECT_ID || 'kahiniscope-production' }}
+
+      - name: Remove the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
