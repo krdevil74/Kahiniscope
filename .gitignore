@@ -29,6 +29,9 @@ key.json
 *serviceaccount*.json
 *firebase-adminsdk*.json
 gcp-*.json
+# The plain GCP form: <project>-<12 hex>.json, which is what the console
+# actually hands you — kahiniscope-production-24176f04eb24.json.
+*-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].json
 secrets/
 google-services.json
 GoogleService-Info.plist
