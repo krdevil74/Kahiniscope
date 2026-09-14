@@ -30,7 +30,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Deploy exactly the commit CI passed on, not whatever main has
           # drifted to since.
@@ -50,7 +50,7 @@ jobs:
 
       - name: Use Node
         if: steps.creds.outputs.ready == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
