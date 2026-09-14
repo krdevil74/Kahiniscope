@@ -28,9 +28,14 @@ Two jobs, in parallel:
   check.
 
 Node 24 on the runner, because the tests run TypeScript directly through
-`node --test`, which needs Node 23 or newer. The functions themselves still
-deploy to the `nodejs20` runtime — that is set in `functions/package.json` and
-is unaffected.
+`node --test`, which needs Node 23 or newer. The functions themselves
+deploy to the `nodejs22` runtime — set in `functions/package.json` and
+`firebase.json`, and independent of the runner's version.
+
+Google decommissions a Cloud Functions runtime roughly two years after
+release, and refuses deploys on a decommissioned one. `nodejs20` was
+decommissioned on 2026-10-30. When a deploy log starts warning about the
+runtime, that is the notice — it is a hard deadline, not advice.
 
 The whole thing was verified by cloning the repository into a clean directory
 and running each job's steps: `npm ci` in all three packages, the builds, and
