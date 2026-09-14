@@ -1,0 +1,14 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedLocals": true,
+    // app.config.ts and the *.test.ts files run under Node, not Metro.
+    "types": ["node", "react"],
+    // Test files import their subject with an explicit .ts extension, which
+    // is what `node --test` needs to resolve TypeScript.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  "exclude": ["node_modules"]
+}

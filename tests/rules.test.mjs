@@ -1,0 +1,426 @@
+/**
+ * Firestore security rules, exercised against the emulator.
+ *
+ * This is the acceptance test for build-order step 1: a second Google account
+ * lands pending and can read nothing. Run with:
+ *
+ *   npm run test:rules
+ *
+ * which starts the Firestore emulator, runs this file and shuts down again.
+ */
+
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import test, { after, before, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  initializeTestEnvironment,
+  assertFails,
+  assertSucceeds,
+} from "@firebase/rules-unit-testing";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+  Timestamp,
+} from "firebase/firestore";
+
+const rulesPath = fileURLToPath(new URL("../firestore.rules", import.meta.url));
+const [host, port] = (process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080").split(":");
+
+/** uids used throughout. */
+const OWNER = "uid-owner";
+const ADMIN = "uid-admin";
+const MEMBER = "uid-rizu";
+const OTHER_MEMBER = "uid-tanvir";
+const PENDING = "uid-newcomer";
+
+let env;
+
+/** Contexts carry exactly the claims the auth triggers mint. */
+const asOwner = () => env.authenticatedContext(OWNER, { role: "owner", status: "approved" }).firestore();
+const asAdmin = () => env.authenticatedContext(ADMIN, { role: "admin", status: "approved" }).firestore();
+const asMember = () => env.authenticatedContext(MEMBER, { role: "member", status: "approved" }).firestore();
+const asOtherMember = () => env.authenticatedContext(OTHER_MEMBER, { role: "member", status: "approved" }).firestore();
+/** A brand-new Google sign-in: the claims onBeforeCreate gives a stranger. */
+const asPending = () => env.authenticatedContext(PENDING, { role: "member", status: "pending" }).firestore();
+/** A token minted before claims existed carries nothing at all. */
+const asClaimless = () => env.authenticatedContext("uid-claimless", {}).firestore();
+const asAnon = () => env.unauthenticatedContext().firestore();
+
+before(async () => {
+  env = await initializeTestEnvironment({
+    projectId: "kahiniscope-rules-test",
+    firestore: { rules: readFileSync(rulesPath, "utf8"), host, port: Number(port) },
+  });
+});
+
+after(async () => {
+  await env?.cleanup();
+});
+
+beforeEach(async () => {
+  await env.clearFirestore();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+
+    await setDoc(doc(db, "users", OWNER), user({ name: "Kahiniscope", email: "owner@kahiniscope.example", role: "owner", status: "approved" }));
+    await setDoc(doc(db, "users", ADMIN), user({ name: "Admin", email: "admin@gmail.com", role: "admin", status: "approved" }));
+    await setDoc(doc(db, "users", MEMBER), user({ name: "Rizu Ahmed", email: "rizu@gmail.com", craft: "Voice" }));
+    await setDoc(doc(db, "users", OTHER_MEMBER), user({ name: "Tanvir", email: "tanvir@gmail.com", craft: "Editing" }));
+    await setDoc(doc(db, "users", PENDING), user({ name: "Newcomer", email: "newcomer@gmail.com", status: "pending", craft: null }));
+
+    await setDoc(doc(db, "episodes", "ep41"), {
+      code: "EP-41",
+      title: "রক্তমুখী নীলা",
+      airDate: Timestamp.now(),
+      status: "production",
+    });
+
+    await setDoc(doc(db, "tasks", "t-mine"), task({ assigneeUid: MEMBER, type: "Voice recording" }));
+    await setDoc(doc(db, "tasks", "t-theirs"), task({ assigneeUid: OTHER_MEMBER, type: "Editing" }));
+
+    await setDoc(doc(db, "reminderLog", "log1"), {
+      taskId: doc(db, "tasks", "t-mine"),
+      uid: MEMBER,
+      channel: "telegram",
+      sentAt: Timestamp.now(),
+      result: "delivered",
+      error: null,
+    });
+
+    await setDoc(doc(db, "settings", "global"), {
+      plan: [7, 4, 3, 2, 1],
+      quietHours: { enabled: true, from: 22, to: 8, sendQueuedAt: 9 },
+      channels: { push: true, telegram: true, whatsapp: true, sms: false, email: false },
+    });
+  });
+});
+
+function user(overrides) {
+  return {
+    name: "Someone",
+    email: "someone@gmail.com",
+    phone: "+8801712344192",
+    telegramChatId: null,
+    craft: "Script",
+    status: "approved",
+    role: "member",
+    fcmTokens: [],
+    note: null,
+    createdAt: Timestamp.now(),
+    ...overrides,
+  };
+}
+
+function task(overrides) {
+  return {
+    episodeId: "ep41",
+    assigneeUid: MEMBER,
+    type: "Voice recording",
+    dueDate: Timestamp.now(),
+    done: false,
+    doneAt: null,
+    remindersSent: 0,
+    lastReminderAt: null,
+    assignedAt: Timestamp.now(),
+    preferredChannel: null,
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// A pending registration — the step 1 acceptance criterion
+// ---------------------------------------------------------------------------
+
+test("pending: reads its own user document, and that is all", async () => {
+  const db = asPending();
+  await assertSucceeds(getDoc(doc(db, "users", PENDING)));
+
+  await assertFails(getDoc(doc(db, "users", MEMBER)));
+  await assertFails(getDocs(collection(db, "users")));
+  await assertFails(getDoc(doc(db, "episodes", "ep41")));
+  await assertFails(getDocs(collection(db, "episodes")));
+  await assertFails(getDoc(doc(db, "tasks", "t-mine")));
+  await assertFails(getDocs(collection(db, "tasks")));
+  await assertFails(getDocs(query(collection(db, "tasks"), where("assigneeUid", "==", PENDING))));
+  await assertFails(getDoc(doc(db, "settings", "global")));
+  await assertFails(getDocs(collection(db, "reminderLog")));
+});
+
+test("pending: completes its own registration form", async () => {
+  const db = asPending();
+  await assertSucceeds(
+    updateDoc(doc(db, "users", PENDING), {
+      name: "Newcomer Ahmed",
+      phone: "+8801712344192",
+      craft: "Script",
+      note: "I have done three episodes of narration before.",
+    })
+  );
+});
+
+test("pending: cannot approve or promote itself", async () => {
+  const db = asPending();
+  await assertFails(updateDoc(doc(db, "users", PENDING), { status: "approved" }));
+  await assertFails(updateDoc(doc(db, "users", PENDING), { role: "admin" }));
+  await assertFails(updateDoc(doc(db, "users", PENDING), { role: "owner", status: "approved" }));
+  await assertFails(updateDoc(doc(db, "users", PENDING), { craft: "Script", status: "approved" }));
+});
+
+test("pending: cannot touch anyone else, or create work", async () => {
+  const db = asPending();
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { status: "pending" }));
+  await assertFails(setDoc(doc(db, "tasks", "t-new"), task({ assigneeUid: PENDING })));
+  await assertFails(setDoc(doc(db, "episodes", "ep99"), { code: "EP-99" }));
+  await assertFails(deleteDoc(doc(db, "users", MEMBER)));
+});
+
+test("pending: an invalid craft is rejected", async () => {
+  const db = asPending();
+  await assertFails(updateDoc(doc(db, "users", PENDING), { craft: "Executive Producer" }));
+  await assertFails(updateDoc(doc(db, "users", PENDING), { note: "x".repeat(501) }));
+});
+
+test("a token with no claims at all is treated as pending", async () => {
+  const db = asClaimless();
+  await assertFails(getDoc(doc(db, "episodes", "ep41")));
+  await assertFails(getDoc(doc(db, "settings", "global")));
+  await assertFails(getDocs(collection(db, "users")));
+});
+
+test("signed out: nothing", async () => {
+  const db = asAnon();
+  await assertFails(getDoc(doc(db, "users", MEMBER)));
+  await assertFails(getDoc(doc(db, "episodes", "ep41")));
+  await assertFails(getDoc(doc(db, "settings", "global")));
+  await assertFails(getDoc(doc(db, "tasks", "t-mine")));
+});
+
+// ---------------------------------------------------------------------------
+// Approved member
+// ---------------------------------------------------------------------------
+
+test("member: reads its own tasks and no one else's", async () => {
+  const db = asMember();
+  await assertSucceeds(getDoc(doc(db, "tasks", "t-mine")));
+  await assertSucceeds(getDocs(query(collection(db, "tasks"), where("assigneeUid", "==", MEMBER))));
+
+  await assertFails(getDoc(doc(db, "tasks", "t-theirs")));
+  await assertFails(getDocs(collection(db, "tasks")));
+  await assertFails(getDocs(query(collection(db, "tasks"), where("assigneeUid", "==", OTHER_MEMBER))));
+});
+
+test("member: reads episodes and the ladder, so countdowns compute", async () => {
+  const db = asMember();
+  await assertSucceeds(getDoc(doc(db, "episodes", "ep41")));
+  await assertSucceeds(getDocs(collection(db, "episodes")));
+  await assertSucceeds(getDoc(doc(db, "settings", "global")));
+});
+
+test("member: marks its own task done, and nothing more", async () => {
+  const db = asMember();
+  await assertSucceeds(updateDoc(doc(db, "tasks", "t-mine"), { done: true, doneAt: Timestamp.now() }));
+  await assertSucceeds(updateDoc(doc(db, "tasks", "t-mine"), { done: false, doneAt: null }));
+
+  // Values that genuinely differ from the seeded document: the rule works off
+  // diff().affectedKeys(), so rewriting a field with the value it already has
+  // is not a change and is correctly allowed through as a no-op.
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { remindersSent: 3 }));
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { lastReminderAt: Timestamp.now() }));
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { dueDate: Timestamp.fromMillis(0) }));
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { done: true, remindersSent: 5 }));
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { assigneeUid: OTHER_MEMBER }));
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { done: "yes" }));
+});
+
+test("member: cannot tick someone else's task, or hand one to itself", async () => {
+  const db = asMember();
+  await assertFails(updateDoc(doc(db, "tasks", "t-theirs"), { done: true }));
+  await assertFails(updateDoc(doc(db, "tasks", "t-theirs"), { assigneeUid: MEMBER }));
+  await assertFails(setDoc(doc(db, "tasks", "t-new"), task({})));
+  await assertFails(deleteDoc(doc(db, "tasks", "t-mine")));
+});
+
+test("member: cannot see the team, the log, or edit episodes and settings", async () => {
+  const db = asMember();
+  await assertFails(getDoc(doc(db, "users", OTHER_MEMBER)));
+  await assertFails(getDocs(collection(db, "users")));
+  await assertFails(getDocs(collection(db, "reminderLog")));
+  await assertFails(setDoc(doc(db, "episodes", "ep41"), { code: "EP-41" }));
+  await assertFails(updateDoc(doc(db, "settings", "global"), { plan: [1, 1, 1, 1, 1] }));
+});
+
+test("member: keeps its own FCM tokens, but not its status", async () => {
+  const db = asMember();
+  await assertSucceeds(updateDoc(doc(db, "users", MEMBER), { fcmTokens: ["token-a"] }));
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { role: "admin" }));
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { status: "pending" }));
+  await assertFails(updateDoc(doc(db, "users", OTHER_MEMBER), { fcmTokens: ["token-b"] }));
+});
+
+// ---------------------------------------------------------------------------
+// Admin
+// ---------------------------------------------------------------------------
+
+test("admin: works the queue — approve, revoke, decline", async () => {
+  const db = asAdmin();
+  await assertSucceeds(getDocs(collection(db, "users")));
+  await assertSucceeds(updateDoc(doc(db, "users", PENDING), { status: "approved" }));
+  await assertSucceeds(updateDoc(doc(db, "users", MEMBER), { status: "pending" }));
+  await assertSucceeds(deleteDoc(doc(db, "users", PENDING)));
+});
+
+test("admin: chooses which channel a person is reminded on", async () => {
+  const db = asAdmin();
+  await assertSucceeds(updateDoc(doc(db, "users", MEMBER), { preferredChannel: "telegram" }));
+  await assertSucceeds(updateDoc(doc(db, "users", MEMBER), { preferredChannel: null }));
+  // Approving and pinning a channel in one write is fine.
+  await assertSucceeds(
+    updateDoc(doc(db, "users", PENDING), { status: "approved", preferredChannel: "whatsapp" })
+  );
+
+  // But only a real channel.
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { preferredChannel: "carrier-pigeon" }));
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { preferredChannel: 4 }));
+  // And still nothing else on somebody else's record.
+  await assertFails(
+    updateDoc(doc(db, "users", MEMBER), { preferredChannel: "sms", role: "admin" })
+  );
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { phone: "+8800000000000" }));
+});
+
+test("a member cannot choose their own channel — that is the admin's call", async () => {
+  await assertFails(updateDoc(doc(asMember(), "users", MEMBER), { preferredChannel: "sms" }));
+  await assertFails(updateDoc(doc(asPending(), "users", PENDING), { preferredChannel: "sms" }));
+});
+
+test("admin: cannot promote anyone, itself included", async () => {
+  const db = asAdmin();
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { role: "admin" }));
+  await assertFails(updateDoc(doc(db, "users", ADMIN), { role: "owner" }));
+  await assertFails(updateDoc(doc(db, "users", PENDING), { status: "approved", role: "admin" }));
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { craft: "Script" }));
+  await assertFails(updateDoc(doc(db, "users", PENDING), { status: "banned" }));
+});
+
+test("admin: runs the board — episodes and tasks", async () => {
+  const db = asAdmin();
+  await assertSucceeds(setDoc(doc(db, "episodes", "ep44"), { code: "EP-44", title: "নতুন", status: "production", airDate: Timestamp.now() }));
+  await assertSucceeds(setDoc(doc(db, "tasks", "t-new"), task({ assigneeUid: OTHER_MEMBER })));
+  await assertSucceeds(getDocs(collection(db, "tasks")));
+  await assertSucceeds(updateDoc(doc(db, "tasks", "t-theirs"), { done: true, doneAt: Timestamp.now() }));
+  await assertSucceeds(deleteDoc(doc(db, "tasks", "t-theirs")));
+});
+
+test("admin: assigns a task exactly the way the Assign form writes one", async () => {
+  const db = asAdmin();
+  // A document reference for episodeId, as the data model specifies, and the
+  // server's clock for assignedAt — that field starts the 7-day countdown.
+  const created = await assertSucceeds(
+    addDoc(collection(db, "tasks"), {
+      episodeId: doc(db, "episodes", "ep41"),
+      assigneeUid: MEMBER,
+      type: "Upload & SEO",
+      dueDate: Timestamp.now(),
+      done: false,
+      doneAt: null,
+      remindersSent: 0,
+      lastReminderAt: null,
+      assignedAt: serverTimestamp(),
+      preferredChannel: "telegram",
+    })
+  );
+
+  const back = await getDoc(doc(db, "tasks", created.id));
+  assert.equal(back.data().episodeId.id, "ep41");
+  assert.equal(back.data().assignedAt instanceof Timestamp, true);
+
+  // And the member it was given to can see it, and tick it.
+  const mine = asMember();
+  await assertSucceeds(getDoc(doc(mine, "tasks", created.id)));
+  await assertSucceeds(updateDoc(doc(mine, "tasks", created.id), { done: true, doneAt: Timestamp.now() }));
+});
+
+test("a member cannot assign work, to themselves or anyone", async () => {
+  const db = asMember();
+  await assertFails(
+    addDoc(collection(db, "tasks"), {
+      episodeId: doc(db, "episodes", "ep41"),
+      assigneeUid: MEMBER,
+      type: "Upload & SEO",
+      dueDate: Timestamp.now(),
+      done: false,
+      remindersSent: 0,
+      assignedAt: serverTimestamp(),
+    })
+  );
+});
+
+test("admin: creates an episode the way the Assign form does", async () => {
+  const db = asAdmin();
+  const created = await assertSucceeds(
+    addDoc(collection(db, "episodes"), {
+      code: "EP-44",
+      title: "নতুন গল্প",
+      airDate: Timestamp.now(),
+      status: "production",
+    })
+  );
+  const back = await getDoc(doc(db, "episodes", created.id));
+  assert.equal(back.data().title, "নতুন গল্প");
+
+  await assertFails(
+    addDoc(collection(asMember(), "episodes"), { code: "EP-45", title: "x", status: "production" })
+  );
+});
+
+test("admin: reads the reminder feed but never writes it", async () => {
+  const db = asAdmin();
+  await assertSucceeds(getDocs(collection(db, "reminderLog")));
+  await assertFails(setDoc(doc(db, "reminderLog", "forged"), { channel: "sms", result: "delivered" }));
+  await assertFails(deleteDoc(doc(db, "reminderLog", "log1")));
+});
+
+test("admin: cannot edit the escalation ladder", async () => {
+  const db = asAdmin();
+  await assertSucceeds(getDoc(doc(db, "settings", "global")));
+  await assertFails(updateDoc(doc(db, "settings", "global"), { plan: [1, 1, 1, 1, 1] }));
+});
+
+// ---------------------------------------------------------------------------
+// Owner
+// ---------------------------------------------------------------------------
+
+test("owner: promotes, demotes and edits the ladder", async () => {
+  const db = asOwner();
+  await assertSucceeds(updateDoc(doc(db, "users", MEMBER), { role: "admin" }));
+  await assertSucceeds(updateDoc(doc(db, "users", ADMIN), { role: "member" }));
+  await assertSucceeds(updateDoc(doc(db, "settings", "global"), { plan: [7, 4, 3, 2, 1] }));
+  await assertSucceeds(updateDoc(doc(db, "settings", "global"), { quietHours: { enabled: false, from: 22, to: 8, sendQueuedAt: 9 } }));
+});
+
+test("owner: still cannot forge the reminder log", async () => {
+  const db = asOwner();
+  await assertFails(setDoc(doc(db, "reminderLog", "forged"), { channel: "sms", result: "delivered" }));
+});
+
+test("nobody creates a user document from a client", async () => {
+  await assertFails(setDoc(doc(asOwner(), "users", "uid-injected"), user({})));
+  await assertFails(setDoc(doc(asAdmin(), "users", "uid-injected"), user({})));
+  await assertFails(setDoc(doc(asPending(), "users", "uid-injected"), user({})));
+});
+
+test("unknown collections are closed", async () => {
+  await assertFails(getDocs(collection(asOwner(), "secrets")));
+  await assertFails(setDoc(doc(asOwner(), "secrets", "x"), { a: 1 }));
+});

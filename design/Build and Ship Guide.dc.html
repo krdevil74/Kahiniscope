@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"><script src="./doc-page.js"></script><style>doc-page:not(:defined){visibility:hidden}a{color:#8a6400}a:hover{color:#b57f00}</style></helmet>
+
+<doc-page margin="0.8in">
+
+<h1 style="font:700 30px/1.2 'Space Grotesk',sans-serif;color:#1b1a17;margin:0 0 10px;letter-spacing:-.01em">Kahiniscope Production — build and ship guide</h1>
+<p style="font:400 13px/1.5 'IBM Plex Mono',monospace;color:rgba(27,26,23,.5);margin:0 0 26px">From design prototype to a live Play Store app · 14 September 2026</p>
+
+<h2 style="font:600 17px/1.3 'Space Grotesk',sans-serif;color:#1b1a17;margin:30px 0 10px">Where the project actually stands</h2>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px">The design is complete and behaves correctly: registration approval, episode-wise segmentation, per-member status, completion percentages, the 7 → 4 → 3 → 2 → 1 escalation ladder, and the master-admin rule bound to <strong>owner@kahiniscope.example</strong>. Everything it does, it does in the browser with sample data.</p>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px">It is not yet an app. Five things are missing, and they are the whole remaining job: a database, sign-in, a server that runs on a schedule, real message delivery, and an Android package. Expect roughly three to five weeks of part-time work, most of it in weeks one and two.</p>
+
+<div style="background:#fff8e3;border:1px solid #f0dda4;border-radius:10px;padding:15px 17px;margin:18px 0 0;break-inside:avoid;orphans:3;widows:3">
+<p style="font:600 12px/1.4 'IBM Plex Mono',monospace;color:#8a6400;margin:0 0 7px;letter-spacing:.06em;text-transform:uppercase">Plan the calendar backwards</p>
+<p style="font:400 13.5px/1.6 'Space Grotesk',sans-serif;color:#4a3c14;margin:0">If your Play Console account is new, a mandatory 14-day closed test with 12 testers stands between you and a public listing. Open the developer account and start recruiting testers in week one, in parallel with the build — not after it.</p>
+</div>
+
+<h2 style="font:600 17px/1.3 'Space Grotesk',sans-serif;color:#1b1a17;margin:34px 0 10px">The stack I would use</h2>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 14px">You are one admin and under a dozen contributors. Nothing here needs a server you maintain. Pick the boring option at every layer.</p>
+
+<table style="width:100%;border-collapse:collapse;font:400 13px/1.5 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 8px">
+<thead>
+<tr>
+<th style="text-align:left;padding:8px 10px;border-bottom:1.5px solid #1b1a17;font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:#1b1a17">Layer</th>
+<th style="text-align:left;padding:8px 10px;border-bottom:1.5px solid #1b1a17;font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:#1b1a17">Choice</th>
+<th style="text-align:left;padding:8px 10px;border-bottom:1.5px solid #1b1a17;font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:#1b1a17">Why</th>
+</tr>
+</thead>
+<tbody>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #eae4d8;font-weight:500">App shell</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">React Native via Expo</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">One codebase, managed Android builds, push notifications built in</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #eae4d8;font-weight:500">Auth</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">Firebase Authentication (Google sign-in)</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">Gives you a verified Gmail address, which is what the admin rule keys on</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #eae4d8;font-weight:500">Database</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">Firestore</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">Live updates, so a member marking done clears your board instantly</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #eae4d8;font-weight:500">Scheduler</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">Cloud Functions, scheduled daily</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">The escalation ladder has to run whether or not anyone opens the app</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #eae4d8;font-weight:500">Messaging</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">FCM push, Telegram bot, WhatsApp Cloud API, Textbelt</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">Tried in order; each one free or nearly free at your volume</td></tr>
+</tbody>
+</table>
+<p style="font:400 12.5px/1.6 'Space Grotesk',sans-serif;color:rgba(27,26,23,.6);margin:0">If you would rather not learn React Native, the alternative is to keep the UI as a web app and wrap it with Capacitor. It ships to Play the same way. Push notifications are slightly more fiddly.</p>
+
+<h2 style="font:600 17px/1.3 'Space Grotesk',sans-serif;color:#1b1a17;margin:34px 0 10px">Step 1 — Firebase project and data shape</h2>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px">Create a Firebase project, enable Authentication with the Google provider, and create a Firestore database in the region closest to you (asia-south1 for Bangladesh). Four collections carry everything:</p>
+<ul style="font:400 14px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px;padding-left:22px">
+<li style="margin-bottom:7px"><strong>users</strong> — uid, name, email, phone, telegramChatId, craft, status (pending / approved), role (owner / admin / member), fcmToken</li>
+<li style="margin-bottom:7px"><strong>episodes</strong> — code, title, airDate, status</li>
+<li style="margin-bottom:7px"><strong>tasks</strong> — episodeId, assigneeUid, type, dueDate, done, doneAt, remindersSent, lastReminderAt</li>
+<li><strong>reminderLog</strong> — taskId, channel, sentAt, result. This is what feeds the reminder feed on the board, and what you check when someone claims they never got a message.</li>
+</ul>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0">Episode completion percentage is not stored. Count done tasks against total tasks for that episode at read time. Same for the slate figure.</p>
+
+<h2 style="font:600 17px/1.3 'Space Grotesk',sans-serif;color:#1b1a17;margin:34px 0 10px">Step 2 — Admin by verified email</h2>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px">Anyone can install the app and sign in with Google. What they see afterwards is decided entirely on the server, never in the app UI.</p>
+<ol style="font:400 14px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px;padding-left:22px">
+<li style="margin-bottom:7px">Hard-code the owner address in a Cloud Function, not in the app bundle: <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">const OWNER = "owner@kahiniscope.example"</code></li>
+<li style="margin-bottom:7px">On first sign-in, a function checks the token. If <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">email === OWNER</code> and <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">email_verified === true</code>, it sets a custom claim <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">role: "owner"</code> and status approved.</li>
+<li style="margin-bottom:7px">Every other sign-in is written as status <em>pending</em>, role <em>member</em>. They get the holding screen until you approve them.</li>
+<li>The owner can promote an approved member to <em>admin</em> from the Notify screen. Promotion is itself a Cloud Function that refuses to run unless the caller's claim is <em>owner</em>.</li>
+</ol>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px">Then write Firestore security rules to match, because the UI is not security. Members may read only tasks where <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">assigneeUid == request.auth.uid</code> and may write only the <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">done</code> field on those. Admins may read and write everything. Pending users may read nothing.</p>
+<div style="background:#f9f7f2;border-left:3px solid #1b1a17;padding:13px 16px;margin:0;break-inside:avoid;orphans:3;widows:3">
+<p style="font:400 13.5px/1.6 'Space Grotesk',sans-serif;color:#2c2a25;margin:0">One caution on Gmail as the owner address: if you ever lose that account you lose admin access. Keep two-factor authentication on it and add a second address as a co-owner in the same constant once the app is stable.</p>
+</div>
+
+<h2 style="font:600 17px/1.3 'Space Grotesk',sans-serif;color:#1b1a17;margin:34px 0 10px">Step 3 — The escalation engine</h2>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px">This is the heart of the app and it is about forty lines of code. One scheduled Cloud Function, running once a day at 9am Dhaka time:</p>
+<pre style="font:400 12.5px/1.7 'IBM Plex Mono',monospace;color:#2c2a25;background:#f9f7f2;border:1px solid #eae4d8;border-radius:8px;padding:14px 16px;margin:0 0 12px;white-space:pre-wrap;break-inside:avoid">GAPS = [7, 4, 3, 2, 1]   // then daily
+
+for each task where done == false:
+    step = min(task.remindersSent, 4)
+    gap  = GAPS[step]
+    since = daysBetween(task.lastReminderAt ?? task.assignedAt, today)
+    if since >= gap:
+        send(task)                       // channel chain, step 4
+        task.remindersSent += 1
+        task.lastReminderAt = now
+        log(taskId, channel, result)</pre>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px">Two rules keep it from being annoying: skip sends during quiet hours and queue them for 9am, and stop the moment <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">done</code> flips true. Because the gaps are read from a settings document rather than the code, the ladder stays editable from the Notify screen exactly as designed.</p>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0">Deploy with <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">firebase deploy --only functions</code>. Scheduled functions need the Blaze (pay-as-you-go) plan, but a daily job over a dozen tasks stays inside the free allowance — expect a bill of zero.</p>
+
+<h2 style="font:600 17px/1.3 'Space Grotesk',sans-serif;color:#1b1a17;margin:34px 0 10px">Step 4 — Notification channels, in order</h2>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 14px">Send down a chain and stop at the first success. Log every attempt.</p>
+
+<div style="break-inside:avoid;orphans:3;widows:3;margin:0 0 13px">
+<p style="font:600 14px/1.4 'Space Grotesk',sans-serif;color:#1b1a17;margin:0 0 5px">1. Push notification — free, do this first</p>
+<p style="font:400 14px/1.6 'Space Grotesk',sans-serif;color:#2c2a25;margin:0">Firebase Cloud Messaging. Store each device's token on the user record at sign-in, send to it from the function. Unlimited and free. It fails only when the app is uninstalled or the token is stale, which is exactly when you want a fallback.</p>
+</div>
+
+<div style="break-inside:avoid;orphans:3;widows:3;margin:0 0 13px">
+<p style="font:600 14px/1.4 'Space Grotesk',sans-serif;color:#1b1a17;margin:0 0 5px">2. Telegram bot — free and unlimited, easiest to set up</p>
+<p style="font:400 14px/1.6 'Space Grotesk',sans-serif;color:#2c2a25;margin:0">Message @BotFather, run /newbot, keep the token. Each member opens your bot once and presses Start; your webhook captures their <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">chat_id</code> and saves it to their user record. After that, sending is a single POST to <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">api.telegram.org/bot&lt;token&gt;/sendMessage</code>. No approval process, no per-message cost. Add inline buttons and people can mark a task done straight from the chat.</p>
+</div>
+
+<div style="break-inside:avoid;orphans:3;widows:3;margin:0 0 13px">
+<p style="font:600 14px/1.4 'Space Grotesk',sans-serif;color:#1b1a17;margin:0 0 5px">3. WhatsApp Cloud API — where your team already lives</p>
+<p style="font:400 14px/1.6 'Space Grotesk',sans-serif;color:#2c2a25;margin:0">Create a Meta developer app, add the WhatsApp product, register a phone number, and get a permanent system-user token. Business-initiated messages must use a pre-approved template, so submit one like <code style="font:400 12.5px/1.5 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">Reminder: &#123;&#123;1&#125;&#125; for &#123;&#123;2&#125;&#125; is &#123;&#123;3&#125;&#125; days overdue.</code> and wait for approval. Budget for setup friction here — number verification and template review are the slow parts. Meta has repeatedly changed its pricing and free-tier terms, so check the current rates for Bangladesh before you rely on it; treat WhatsApp as the nice-to-have and Telegram as the workhorse.</p>
+</div>
+
+<div style="break-inside:avoid;orphans:3;widows:3;margin:0 0 13px">
+<p style="font:600 14px/1.4 'Space Grotesk',sans-serif;color:#1b1a17;margin:0 0 5px">4. SMS — last resort only</p>
+<p style="font:400 14px/1.6 'Space Grotesk',sans-serif;color:#2c2a25;margin:0">Textbelt's free key allows one message per day, which is fine as a genuine last resort for a badly overdue task, and useless as a general channel. If SMS matters to you, a local Bangladeshi gateway bought in bulk will cost less and deliver better than any international free tier. Reserve SMS for tasks that have already passed the daily-reminder stage.</p>
+</div>
+
+<h2 style="font:600 17px/1.3 'Space Grotesk',sans-serif;color:#1b1a17;margin:34px 0 10px">Step 5 — Build the Android app</h2>
+<ol style="font:400 14px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px;padding-left:22px">
+<li style="margin-bottom:7px">Scaffold with <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">npx create-expo-app</code>, then port the screens from the prototype. The layouts, spacing and colour logic transfer nearly one-to-one.</li>
+<li style="margin-bottom:7px">Set the app identity: package name such as <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">com.kahiniscope.production</code>, the yellow logo as the launcher icon, and a splash screen.</li>
+<li style="margin-bottom:7px">Wire Google sign-in, Firestore listeners, and FCM. Test on a real phone with <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">eas build --profile development</code>.</li>
+<li style="margin-bottom:7px">Target the API level Play currently requires — it moves every year, and Play Console tells you the number when you upload.</li>
+<li>Produce the release bundle: <code style="font:400 12.5px/1 'IBM Plex Mono',monospace;background:#f4f1ea;padding:2px 5px;border-radius:3px">eas build --platform android --profile production</code>. Let Expo manage the signing key, and keep a backup of it.</li>
+</ol>
+
+<h2 style="font:600 17px/1.3 'Space Grotesk',sans-serif;color:#1b1a17;margin:34px 0 10px">Step 6 — Publish on Google Play</h2>
+<ol style="font:400 14px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px;padding-left:22px">
+<li style="margin-bottom:7px"><strong>Open a developer account.</strong> One-time 25 USD fee, plus identity verification with a government ID and address. Verification can take a few days, so do it first.</li>
+<li style="margin-bottom:7px"><strong>Create the app entry</strong> in Play Console: name, default language, free, app not a game.</li>
+<li style="margin-bottom:7px"><strong>Fill the store listing.</strong> Short and full description, the logo as a 512×512 icon, a 1024×500 feature graphic, and at least two phone screenshots. Screens from the prototype work fine.</li>
+<li style="margin-bottom:7px"><strong>Complete the policy forms.</strong> Content rating questionnaire, target audience, data safety declaration (you collect names, email, phone numbers — declare them), and a privacy policy at a public URL. A short honest page is enough; Play will reject a missing one.</li>
+<li style="margin-bottom:7px"><strong>Run closed testing.</strong> Upload the bundle to a closed track and invite testers by email or link. <em>If your personal developer account was created after 13 November 2023, you must keep at least 12 testers opted in continuously for 14 days before you can apply for production access.</em> Recruit 15 to absorb dropouts, and check engagement in Console from day one rather than day thirteen. Organisation accounts and older personal accounts are exempt.</li>
+<li style="margin-bottom:7px"><strong>Apply for production access</strong> once the 14 days are complete. You answer a short questionnaire about your testing and readiness.</li>
+<li><strong>Release.</strong> Promote the bundle to production. Review typically takes a few days for a first submission. Use a staged rollout if you want a safety margin.</li>
+</ol>
+<div style="background:#f9f7f2;border-left:3px solid #1b1a17;padding:13px 16px;margin:0;break-inside:avoid;orphans:3;widows:3">
+<p style="font:400 13.5px/1.6 'Space Grotesk',sans-serif;color:#2c2a25;margin:0">Your twelve testers can be the production team itself, plus friends. They need real Android devices, real Google accounts, and they have to actually open the app. Emulators and duplicate accounts do not count.</p>
+</div>
+
+<h2 style="font:600 17px/1.3 'Space Grotesk',sans-serif;color:#1b1a17;margin:34px 0 10px">A sensible order of work</h2>
+<table style="width:100%;border-collapse:collapse;font:400 13px/1.5 'Space Grotesk',sans-serif;color:#2c2a25;margin:0 0 12px">
+<thead>
+<tr>
+<th style="text-align:left;padding:8px 10px;border-bottom:1.5px solid #1b1a17;font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:#1b1a17;width:24%">Week</th>
+<th style="text-align:left;padding:8px 10px;border-bottom:1.5px solid #1b1a17;font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:#1b1a17">Do this</th>
+</tr>
+</thead>
+<tbody>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #eae4d8;font-weight:500">1</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">Firebase project, data shape, Google sign-in, the owner-email rule and security rules. Open the Play developer account and begin identity verification.</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #eae4d8;font-weight:500">2</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">Port the screens, wire live data, build the escalation function, connect push and the Telegram bot end to end.</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #eae4d8;font-weight:500">3</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">Store listing, privacy policy, data safety forms. Upload to closed testing and start the 14-day clock with 15 testers.</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #eae4d8;font-weight:500">4–5</td><td style="padding:9px 10px;border-bottom:1px solid #eae4d8">Run one real episode through the app while testing runs. Add WhatsApp templates. Apply for production access and release.</td></tr>
+</tbody>
+</table>
+<p style="font:400 14.5px/1.65 'Space Grotesk',sans-serif;color:#2c2a25;margin:0">One shortcut worth considering: for the first month, skip the Play Store entirely. Deploy the same screens as a web app on a free host, have the team add it to their home screen, and drive reminders through the Telegram bot. You would find out within one episode whether the escalation rhythm is right, and the two weeks of closed testing would then be spent on a design you had already proved.</p>
+
+</doc-page>
+</x-dc>
+</body>
+</html>

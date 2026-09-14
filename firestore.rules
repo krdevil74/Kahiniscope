@@ -1,0 +1,191 @@
+rules_version = '2';
+
+// Kahiniscope Production — Firestore security rules.
+//
+// The UI is not the security boundary. Every role decision below reads custom
+// claims minted by Cloud Functions (functions/src/auth.ts), never client data:
+//
+//   request.auth.token.role    "owner" | "admin" | "member"
+//   request.auth.token.status  "pending" | "approved"
+//
+// Claims are set by the blocking auth triggers on sign-up / sign-in and
+// re-synced by syncClaimsOnUserWrite whenever users/{uid}.role or .status
+// changes, so an approval or promotion reaches the token without a new
+// sign-in (the client calls getIdToken(true) on the snapshot).
+//
+// Tokens minted before any claim existed default to the least privilege:
+// role "member", status "pending".
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- identity helpers -------------------------------------------------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function role() {
+      return signedIn() ? request.auth.token.get('role', 'member') : 'member';
+    }
+
+    function accountStatus() {
+      return signedIn() ? request.auth.token.get('status', 'pending') : 'pending';
+    }
+
+    function isOwner() {
+      return role() == 'owner' && accountStatus() == 'approved';
+    }
+
+    // Owner is a superset of admin everywhere except role edits and settings.
+    function isAdmin() {
+      return (role() == 'admin' || role() == 'owner') && accountStatus() == 'approved';
+    }
+
+    // Any approved account: member, admin or owner.
+    function isApproved() {
+      return signedIn() && accountStatus() == 'approved';
+    }
+
+    // ---- write-shape helpers ----------------------------------------------
+
+    // What an admin may set on somebody else's record.
+    function validAdminEdit() {
+      return (!('status' in request.resource.data)
+              || request.resource.data.status in ['pending', 'approved'])
+        && (!('preferredChannel' in request.resource.data)
+            || request.resource.data.preferredChannel == null
+            || request.resource.data.preferredChannel in
+                 ['push', 'telegram', 'whatsapp', 'sms']);
+    }
+
+    // Crafts as listed in the handoff. telegramChatId is absent on purpose:
+    // it is captured by the Telegram webhook, never typed by a client.
+    function validProfile() {
+      return (!('name' in request.resource.data)
+              || (request.resource.data.name is string
+                  && request.resource.data.name.size() <= 80))
+        && (!('phone' in request.resource.data)
+            || request.resource.data.phone == null
+            || (request.resource.data.phone is string
+                && request.resource.data.phone.size() <= 20))
+        && (!('note' in request.resource.data)
+            || request.resource.data.note == null
+            || (request.resource.data.note is string
+                && request.resource.data.note.size() <= 500))
+        && (!('craft' in request.resource.data)
+            || request.resource.data.craft == null
+            || request.resource.data.craft in [
+                 'Script', 'Translation', 'Voice', 'Post / mix',
+                 'Graphics', 'Proofreading', 'Editing'
+               ])
+        && (!('fcmTokens' in request.resource.data)
+            || request.resource.data.fcmTokens is list);
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function onlyChanged(keys) {
+      return changedKeys().hasOnly(keys);
+    }
+
+    // ---- users ------------------------------------------------------------
+    //
+    // A pending account can read exactly one document: its own user record.
+    // The member app's holding screen is driven by users/{uid}.status, so
+    // without this it could never learn it had been approved. Everything else
+    // in the database is closed to it.
+
+    match /users/{userId} {
+      allow get: if signedIn() && (userId == uid() || isAdmin());
+      allow list: if isAdmin();
+
+      // Created only by the blocking auth trigger (admin SDK, bypasses rules).
+      allow create: if false;
+
+      allow update: if
+        // Owner may edit anything, including role. The promoteToAdmin /
+        // demoteToMember callables are the supported path — they also mint the
+        // matching custom claim — but the rule stays open so the owner is
+        // never locked out of their own data.
+        isOwner()
+        // Admins approve and revoke registrations, and choose which channel
+        // a person is reminded on. Those two fields only: an admin cannot
+        // promote itself or anyone else.
+        || (isAdmin() && onlyChanged(['status', 'preferredChannel'])
+            && validAdminEdit())
+        // Registration. A pending applicant fills in their own profile —
+        // this is the single write a pending account may make, and it cannot
+        // touch role or status, so nobody approves or promotes themselves.
+        // The same rule lets an approved account maintain its FCM tokens.
+        || (signedIn() && userId == uid()
+            && onlyChanged(['name', 'phone', 'craft', 'note', 'fcmTokens'])
+            && validProfile());
+
+      // Decline. The declineRegistration callable also deletes the auth user;
+      // this rule exists so the admin console flow is not blocked on it.
+      allow delete: if isAdmin();
+    }
+
+    // ---- episodes ---------------------------------------------------------
+
+    match /episodes/{episodeId} {
+      allow read: if isApproved();
+      allow write: if isAdmin();
+    }
+
+    // ---- tasks ------------------------------------------------------------
+
+    match /tasks/{taskId} {
+      // Covers get and list. On a list, Firestore requires the query to
+      // guarantee the condition, so a member must ask for their own slice —
+      // where('assigneeUid', '==', uid) — or the query is rejected outright.
+      allow read: if isAdmin()
+        || (isApproved() && resource.data.assigneeUid == uid());
+
+      allow create, delete: if isAdmin();
+
+      allow update: if isAdmin()
+        // A member may tick or untick their own task, and touch nothing else.
+        // remindersSent, lastReminderAt and dueDate stay server-owned.
+        || (isApproved()
+            && resource.data.assigneeUid == uid()
+            && request.resource.data.assigneeUid == uid()
+            && onlyChanged(['done', 'doneAt'])
+            && request.resource.data.done is bool);
+    }
+
+    // ---- reminderLog ------------------------------------------------------
+    //
+    // Written by Cloud Functions only. Feeds the Board's reminder feed and is
+    // the record of what was actually delivered, so clients never touch it.
+
+    match /reminderLog/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ---- settings ---------------------------------------------------------
+    //
+    // settings/global carries the escalation ladder, quiet hours and channel
+    // switches. Every countdown in the app is computed from plan, so every
+    // approved account reads it; only the owner edits it.
+
+    match /settings/{docId} {
+      allow read: if isApproved();
+      allow write: if isOwner();
+    }
+
+    // ---- default deny -----------------------------------------------------
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

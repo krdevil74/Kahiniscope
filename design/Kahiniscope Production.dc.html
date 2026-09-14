@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>body{margin:0;background:#f4f1ea;font-family:"Space Grotesk",system-ui,sans-serif}a{color:#1b1a17}a:hover{color:#b57f00}*{box-sizing:border-box}::-webkit-scrollbar{width:0}</style></helmet>
+
+<div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start;padding:48px 52px 64px">
+
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;background:#1b1a17;color:#ffc20a;padding:5px 8px;border-radius:4px">Admin</span>
+<span style="font:400 12px/1 'Space Grotesk',sans-serif;color:rgba(27,26,23,.5)">Assign, chase, escalate</span>
+</div>
+
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#f7f5f0">
+
+<div style="flex-shrink:0;padding:60px 20px 14px;background:#1b1a17;display:flex;align-items:center;gap:12px">
+<img src="uploads/Asset%2028-photoaidcom-cropped.png" alt="Kahiniscope" style="width:40px;height:40px;border-radius:50%;flex-shrink:0" />
+<div style="flex:1;min-width:0">
+<div style="font:600 16px/1.15 'Space Grotesk',sans-serif;color:#fff">{{ headerTitle }}</div>
+<div style="font:400 11px/1.3 'IBM Plex Mono',monospace;color:rgba(255,255,255,.5);margin-top:3px">{{ headerSub }}</div>
+</div>
+<sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ goBack }}" style="font:500 11px/1 'Space Grotesk',sans-serif;color:#ffc20a;border:1px solid rgba(255,194,10,.4);padding:7px 10px;border-radius:99px;cursor:pointer" style-hover="background:rgba(255,194,10,.14)">Back</div>
+</sc-if>
+</div>
+
+<div style="flex:1;overflow:auto;padding:0 0 {{ scrollPad }}">
+
+<sc-if value="{{ isToday }}" hint-placeholder-val="{{ true }}">
+<div>
+<div style="display:flex;gap:1px;background:#e6e1d6;margin-bottom:8px">
+<div style="flex:1;background:#fff;padding:14px 12px">
+<div style="font:600 26px/1 'IBM Plex Mono',monospace;color:#a3210f">{{ statOverdue }}</div>
+<div style="font:400 10px/1.3 'Space Grotesk',sans-serif;color:rgba(27,26,23,.55);margin-top:5px">Overdue</div>
+</div>
+<div style="flex:1;background:#fff;padding:14px 12px">
+<div style="font:600 26px/1 'IBM Plex Mono',monospace;color:#1b1a17">{{ statActive }}</div>
+<div style="font:400 10px/1.3 'Space Grotesk',sans-serif;color:rgba(27,26,23,.55);margin-top:5px">Open tasks</div>
+</div>
+<div style="flex:1;background:#fff;padding:14px 12px">
+<div style="font:600 26px/1 'IBM Plex Mono',monospace;color:#1b1a17">{{ statDone }}</div>
+<div style="font:400 10px/1.3 'Space Grotesk',sans-serif;color:rgba(27,26,23,.55);margin-top:5px">Done</div>
+</div>
+</div>
+
+<sc-if value="{{ hasRequests }}" hint-placeholder-val="{{ true }}">
+<div onClick="{{ goRequests }}" style="margin:8px 14px 0;background:#1b1a17;border-radius:12px;padding:13px 14px;display:flex;align-items:center;gap:11px;cursor:pointer" style-hover="background:#332f28">
+<div style="width:28px;height:28px;border-radius:50%;background:#ffc20a;color:#1b1a17;display:flex;align-items:center;justify-content:center;font:600 12px/1 'IBM Plex Mono',monospace;flex-shrink:0">{{ requestCount }}</div>
+<div style="flex:1;min-width:0">
+<div style="font:600 12.5px/1.2 'Space Grotesk',sans-serif;color:#fff">Registrations awaiting approval</div>
+<div style="font:400 10px/1.35 'IBM Plex Mono',monospace;color:rgba(255,255,255,.5);margin-top:3px">{{ requestNames }}</div>
+</div>
+<div style="font:400 16px/1 'Space Grotesk',sans-serif;color:#ffc20a;flex-shrink:0">→</div>
+</div>
+</sc-if>
+
+<div style="padding:14px 16px 8px;display:flex;align-items:baseline;justify-content:space-between">
+<div style="font:600 13px/1 'Space Grotesk',sans-serif;color:#1b1a17">Needs chasing</div>
+<div style="font:400 10px/1 'IBM Plex Mono',monospace;color:rgba(27,26,23,.45)">7 → 4 → 3 → 2 → 1 days</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;padding:0 14px">
+<sc-for list="{{ chaseList }}" as="t" hint-placeholder-count="4">
+<div style="background:#fff;border:1px solid #e8e3d8;border-radius:12px;overflow:hidden">
+<div style="height:3px;background:#e8e3d8;display:flex">
+<div style="background:#1b1a17;width:{{ t.heatPct }}"></div>
+</div>
+<div style="padding:12px 13px 11px;display:flex;flex-direction:column;gap:9px" onClick="{{ t.open }}">
+<div style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+<div style="width:32px;height:32px;border-radius:50%;background:#1b1a17;color:#ffc20a;display:flex;align-items:center;justify-content:center;font:600 11px/1 'IBM Plex Mono',monospace;flex-shrink:0">{{ t.initials }}</div>
+<div style="flex:1;min-width:0">
+<div style="font:600 13.5px/1.25 'Space Grotesk',sans-serif;color:#1b1a17">{{ t.typeLabel }}</div>
+<div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:rgba(27,26,23,.5);margin-top:3px">{{ t.meta }}</div>
+</div>
+<div style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:5px 7px;border-radius:4px;flex-shrink:0;background:{{ t.heatBg }};color:{{ t.heatFg }}">{{ t.heatLabel }}</div>
+</div>
+<div style="display:flex;align-items:center;gap:8px">
+<sc-if value="{{ showCountdown }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;display:flex;align-items:center;gap:7px;background:#f7f5f0;border-radius:8px;padding:7px 9px;min-width:0">
+<div style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:{{ t.heatFg }}"></div>
+<div style="font:500 10.5px/1.3 'IBM Plex Mono',monospace;color:#1b1a17;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.countdown }}</div>
+</div>
+</sc-if>
+<div onClick="{{ t.nudge }}" style="flex-shrink:0;font:600 11px/1 'Space Grotesk',sans-serif;color:#1b1a17;background:#ffc20a;padding:9px 13px;border-radius:8px;cursor:pointer" style-hover="background:#ffd451" style-active="transform:translateY(1px)">Nudge now</div>
+</div>
+</div>
+</div>
+</sc-for>
+</div>
+
+<div style="padding:20px 16px 8px;font:600 13px/1 'Space Grotesk',sans-serif;color:#1b1a17">Reminder feed</div>
+<div style="padding:0 14px;display:flex;flex-direction:column;gap:1px;background:#e8e3d8;margin:0 14px;border-radius:10px;overflow:hidden">
+<sc-for list="{{ feed }}" as="f" hint-placeholder-count="4">
+<div style="background:#fff;padding:10px 12px;display:flex;align-items:center;gap:9px">
+<div style="font:600 9px/1 'IBM Plex Mono',monospace;color:#1b1a17;background:#f0ece2;padding:4px 5px;border-radius:3px;flex-shrink:0">{{ f.channel }}</div>
+<div style="flex:1;min-width:0;font:400 11px/1.4 'Space Grotesk',sans-serif;color:rgba(27,26,23,.75)">{{ f.text }}</div>
+<div style="font:400 9.5px/1 'IBM Plex Mono',monospace;color:rgba(27,26,23,.35);flex-shrink:0">{{ f.when }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isEpisodes }}" hint-placeholder-val="{{ false }}">
+<div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+
+<div style="background:#1b1a17;border-radius:14px;padding:16px 17px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px">
+<div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.45)">Slate completion</div>
+<div style="font:400 11px/1.4 'Space Grotesk',sans-serif;color:rgba(255,255,255,.65);margin-top:7px">{{ slateSummary }}</div>
+</div>
+<div style="font:600 42px/1 'IBM Plex Mono',monospace;color:#ffc20a;flex-shrink:0">{{ slatePct }}</div>
+</div>
+<div style="height:7px;background:rgba(255,255,255,.14);border-radius:99px;overflow:hidden;display:flex;margin-top:14px">
+<div style="background:#ffc20a;width:{{ slatePct }}"></div>
+</div>
+</div>
+
+<sc-for list="{{ episodeCards }}" as="e" hint-placeholder-count="3">
+<div onClick="{{ e.open }}" style="background:#fff;border:1px solid #e8e3d8;border-radius:12px;padding:14px;cursor:pointer" style-hover="border-color:#ffc20a">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;color:#b57f00;letter-spacing:.08em">{{ e.code }}</div>
+<div style="font:400 10px/1 'IBM Plex Mono',monospace;color:rgba(27,26,23,.45)">{{ e.air }}</div>
+</div>
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:7px 0 11px">
+<div style="font:600 16px/1.25 'Space Grotesk',sans-serif;color:#1b1a17">{{ e.title }}</div>
+<div style="font:600 24px/1 'IBM Plex Mono',monospace;color:#1b1a17;flex-shrink:0">{{ e.pct }}</div>
+</div>
+<div style="height:6px;background:#f0ece2;border-radius:99px;overflow:hidden;display:flex">
+<div style="background:#1b1a17;width:{{ e.pct }}"></div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:9px">
+<div style="font:400 11px/1 'IBM Plex Mono',monospace;color:rgba(27,26,23,.55)">{{ e.progress }}</div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;color:{{ e.riskFg }}">{{ e.risk }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isEpisode }}" hint-placeholder-val="{{ false }}">
+<div>
+<div style="background:#fff;border-bottom:1px solid #e8e3d8;padding:15px 16px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px">
+<div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45)">Episode completion</div>
+<div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:rgba(27,26,23,.55);margin-top:7px">{{ epProgress }}</div>
+</div>
+<div style="font:600 38px/1 'IBM Plex Mono',monospace;color:#1b1a17;flex-shrink:0">{{ epPct }}</div>
+</div>
+<div style="height:7px;background:#f0ece2;border-radius:99px;overflow:hidden;display:flex;margin-top:13px">
+<div style="background:#1b1a17;width:{{ epPct }}"></div>
+</div>
+</div>
+<div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45)">Member status</div>
+<sc-for list="{{ epMembers }}" as="m" hint-placeholder-count="3">
+<div style="background:#fff;border:1px solid #e8e3d8;border-radius:13px;overflow:hidden">
+<div style="padding:12px 13px;display:flex;align-items:center;gap:11px;border-bottom:1px solid #f4f1ea">
+<div style="width:32px;height:32px;border-radius:50%;background:#1b1a17;color:#ffc20a;display:flex;align-items:center;justify-content:center;font:600 11px/1 'IBM Plex Mono',monospace;flex-shrink:0">{{ m.initials }}</div>
+<div style="flex:1;min-width:0">
+<div style="font:600 13px/1.2 'Space Grotesk',sans-serif;color:#1b1a17">{{ m.name }}</div>
+<div style="font:400 10px/1.35 'IBM Plex Mono',monospace;color:rgba(27,26,23,.5);margin-top:3px">{{ m.sub }}</div>
+</div>
+<div style="display:flex;align-items:center;gap:9px;flex-shrink:0">
+<div style="font:600 9.5px/1 'IBM Plex Mono',monospace;padding:5px 7px;border-radius:4px;background:{{ m.heatBg }};color:{{ m.heatFg }}">{{ m.state }}</div>
+<div style="font:600 15px/1 'IBM Plex Mono',monospace;color:#1b1a17;width:38px;text-align:right">{{ m.pct }}</div>
+</div>
+</div>
+<sc-for list="{{ m.tasks }}" as="t" hint-placeholder-count="2">
+<div style="padding:10px 13px;display:flex;align-items:center;gap:11px;border-bottom:1px solid #f9f7f2">
+<div onClick="{{ t.toggle }}" style="width:20px;height:20px;border-radius:6px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font:600 11px/1 'IBM Plex Mono',monospace;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};color:{{ t.boxFg }}">{{ t.check }}</div>
+<div style="flex:1;min-width:0">
+<div style="font:500 12.5px/1.25 'Space Grotesk',sans-serif;color:{{ t.titleFg }};text-decoration:{{ t.titleDeco }}">{{ t.typeLabel }}</div>
+<div style="font:400 10px/1.4 'IBM Plex Mono',monospace;color:rgba(27,26,23,.45);margin-top:3px">{{ t.rowNote }}</div>
+</div>
+<div onClick="{{ t.nudge }}" style="flex-shrink:0;font:600 10px/1 'Space Grotesk',sans-serif;color:{{ t.pokeFg }};border:1px solid {{ t.pokeBd }};background:{{ t.pokeBg }};padding:7px 9px;border-radius:7px;cursor:pointer">{{ t.pokeLabel }}</div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isTeam }}" hint-placeholder-val="{{ false }}">
+<div style="padding:14px;display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ teamCards }}" as="p" hint-placeholder-count="6">
+<div onClick="{{ p.open }}" style="background:#fff;border:1px solid #e8e3d8;border-radius:12px;padding:13px;display:flex;align-items:center;gap:12px;cursor:pointer" style-hover="border-color:#ffc20a">
+<div style="width:38px;height:38px;border-radius:50%;background:#1b1a17;color:#ffc20a;display:flex;align-items:center;justify-content:center;font:600 12px/1 'IBM Plex Mono',monospace;flex-shrink:0">{{ p.initials }}</div>
+<div style="flex:1;min-width:0">
+<div style="font:600 13.5px/1.2 'Space Grotesk',sans-serif;color:#1b1a17">{{ p.name }}</div>
+<div style="font:400 10.5px/1.4 'IBM Plex Mono',monospace;color:rgba(27,26,23,.5);margin-top:3px">{{ p.sub }}</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+<div style="font:600 9.5px/1 'IBM Plex Mono',monospace;padding:5px 7px;border-radius:4px;background:{{ p.heatBg }};color:{{ p.heatFg }}">{{ p.openLabel }}</div>
+<div style="font:400 9px/1 'IBM Plex Mono',monospace;color:rgba(27,26,23,.4)">{{ p.channel }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPerson }}" hint-placeholder-val="{{ false }}">
+<div>
+<div style="background:#fff;border-bottom:1px solid #e8e3d8;padding:14px 16px;display:flex;gap:8px">
+<div onClick="{{ messagePerson }}" style="flex:1;text-align:center;font:600 11.5px/1 'Space Grotesk',sans-serif;color:#1b1a17;background:#ffc20a;padding:11px;border-radius:9px;cursor:pointer" style-hover="background:#ffd451">Nudge all open</div>
+<div onClick="{{ startAssign }}" style="flex:1;text-align:center;font:600 11.5px/1 'Space Grotesk',sans-serif;color:#fff;background:#1b1a17;padding:11px;border-radius:9px;cursor:pointer" style-hover="background:#332f28">Assign task</div>
+</div>
+<div style="padding:14px;display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ personTasks }}" as="t" hint-placeholder-count="3">
+<div style="background:#fff;border:1px solid #e8e3d8;border-radius:11px;padding:12px 13px">
+<div style="display:flex;align-items:flex-start;gap:10px">
+<div style="flex:1;min-width:0">
+<div style="font:600 13px/1.25 'Space Grotesk',sans-serif;color:{{ t.titleFg }};text-decoration:{{ t.titleDeco }}">{{ t.typeLabel }}</div>
+<div style="font:400 10.5px/1.4 'IBM Plex Mono',monospace;color:rgba(27,26,23,.5);margin-top:3px">{{ t.sub }}</div>
+</div>
+<div style="font:600 9.5px/1 'IBM Plex Mono',monospace;padding:5px 7px;border-radius:4px;background:{{ t.heatBg }};color:{{ t.heatFg }};flex-shrink:0">{{ t.heatLabel }}</div>
+</div>
+<div style="font:500 10.5px/1.3 'IBM Plex Mono',monospace;color:#1b1a17;background:#f7f5f0;border-radius:7px;padding:7px 9px;margin-top:9px">{{ t.countdown }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAssign }}" hint-placeholder-val="{{ false }}">
+<div style="padding:16px;display:flex;flex-direction:column;gap:18px">
+
+<div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45);margin-bottom:9px">Assign to</div>
+<div style="display:flex;flex-wrap:wrap;gap:7px">
+<sc-for list="{{ formPeople }}" as="p" hint-placeholder-count="6">
+<div onClick="{{ p.pick }}" style="display:flex;align-items:center;gap:7px;padding:7px 11px 7px 7px;border-radius:99px;cursor:pointer;border:1px solid {{ p.bd }};background:{{ p.bg }};color:{{ p.fg }}">
+<div style="width:22px;height:22px;border-radius:50%;background:{{ p.avBg }};color:{{ p.avFg }};display:flex;align-items:center;justify-content:center;font:600 9px/1 'IBM Plex Mono',monospace">{{ p.initials }}</div>
+<span style="font:500 11.5px/1 'Space Grotesk',sans-serif">{{ p.name }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45);margin-bottom:9px">Episode</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<sc-for list="{{ formEpisodes }}" as="e" hint-placeholder-count="3">
+<div onClick="{{ e.pick }}" style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;cursor:pointer;border:1px solid {{ e.bd }};background:{{ e.bg }}">
+<div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:{{ e.dot }}"></div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;color:#b57f00">{{ e.code }}</div>
+<div style="flex:1;min-width:0;font:500 12.5px/1.2 'Space Grotesk',sans-serif;color:#1b1a17;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.title }}</div>
+<div style="font:400 10px/1 'IBM Plex Mono',monospace;color:rgba(27,26,23,.4);flex-shrink:0">{{ e.air }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45);margin-bottom:9px">Task</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+<sc-for list="{{ formTypes }}" as="k" hint-placeholder-count="9">
+<div onClick="{{ k.pick }}" style="padding:11px 10px;border-radius:9px;cursor:pointer;text-align:center;font:500 11.5px/1.25 'Space Grotesk',sans-serif;border:1px solid {{ k.bd }};background:{{ k.bg }};color:{{ k.fg }}">{{ k.label }}</div>
+</sc-for>
+</div>
+</div>
+
+<div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45);margin-bottom:9px">Due in</div>
+<div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e8e3d8;border-radius:10px;padding:10px 12px">
+<div onClick="{{ dueDown }}" style="width:32px;height:32px;border-radius:8px;background:#f0ece2;display:flex;align-items:center;justify-content:center;font:600 16px/1 'IBM Plex Mono',monospace;color:#1b1a17;cursor:pointer" style-hover="background:#e6e1d6">−</div>
+<div style="flex:1;text-align:center">
+<span style="font:600 22px/1 'IBM Plex Mono',monospace;color:#1b1a17">{{ formDue }}</span>
+<span style="font:400 12px/1 'Space Grotesk',sans-serif;color:rgba(27,26,23,.5);margin-left:5px">days</span>
+</div>
+<div onClick="{{ dueUp }}" style="width:32px;height:32px;border-radius:8px;background:#f0ece2;display:flex;align-items:center;justify-content:center;font:600 16px/1 'IBM Plex Mono',monospace;color:#1b1a17;cursor:pointer" style-hover="background:#e6e1d6">+</div>
+</div>
+</div>
+
+<div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45);margin-bottom:9px">Reminder ladder</div>
+<div style="background:#1b1a17;border-radius:12px;padding:14px">
+<div style="display:flex;align-items:flex-end;gap:5px;height:54px">
+<sc-for list="{{ ladder }}" as="s" hint-placeholder-count="5">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px">
+<div style="width:100%;border-radius:4px 4px 0 0;background:{{ s.bg }};height:{{ s.h }}"></div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;color:rgba(255,255,255,.75)">{{ s.days }}d</div>
+</div>
+</sc-for>
+</div>
+<div style="font:400 10.5px/1.5 'Space Grotesk',sans-serif;color:rgba(255,255,255,.55);margin-top:11px">{{ ladderNote }}</div>
+</div>
+</div>
+
+<div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45);margin-bottom:9px">Send via</div>
+<div style="display:flex;gap:6px">
+<sc-for list="{{ formChannels }}" as="c" hint-placeholder-count="3">
+<div onClick="{{ c.pick }}" style="flex:1;padding:10px 8px;border-radius:9px;cursor:pointer;text-align:center;border:1px solid {{ c.bd }};background:{{ c.bg }}">
+<div style="font:600 11px/1.2 'Space Grotesk',sans-serif;color:{{ c.fg }}">{{ c.name }}</div>
+<div style="font:400 9px/1 'IBM Plex Mono',monospace;color:rgba(27,26,23,.42);margin-top:4px">{{ c.note }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div onClick="{{ submitAssign }}" style="text-align:center;font:600 14px/1 'Space Grotesk',sans-serif;color:#1b1a17;background:#ffc20a;padding:16px;border-radius:12px;cursor:pointer" style-hover="background:#ffd451" style-active="transform:translateY(1px)">{{ submitLabel }}</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isRequests }}" hint-placeholder-val="{{ false }}">
+<div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+<div style="font:400 11px/1.55 'Space Grotesk',sans-serif;color:rgba(27,26,23,.55);padding:0 2px 2px">Anyone can install the app and register. Until you approve them they see a holding screen and cannot be assigned work.</div>
+<sc-for list="{{ pendingRows }}" as="r" hint-placeholder-count="3">
+<div style="background:#fff;border:1px solid #e8e3d8;border-radius:13px;padding:14px">
+<div style="display:flex;align-items:flex-start;gap:11px">
+<div style="width:36px;height:36px;border-radius:50%;background:#f0ece2;color:#1b1a17;display:flex;align-items:center;justify-content:center;font:600 12px/1 'IBM Plex Mono',monospace;flex-shrink:0">{{ r.initials }}</div>
+<div style="flex:1;min-width:0">
+<div style="font:600 14px/1.2 'Space Grotesk',sans-serif;color:#1b1a17">{{ r.name }}</div>
+<div style="font:400 10.5px/1.5 'IBM Plex Mono',monospace;color:rgba(27,26,23,.5);margin-top:4px">{{ r.meta }}</div>
+</div>
+<div style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;background:#fff4d6;color:#8a6400;padding:5px 6px;border-radius:3px;flex-shrink:0">Pending</div>
+</div>
+<div style="font:400 11px/1.5 'Space Grotesk',sans-serif;color:rgba(27,26,23,.6);background:#f9f7f2;border-radius:8px;padding:10px 11px;margin-top:11px">{{ r.note }}</div>
+<div style="display:flex;gap:7px;margin-top:11px">
+<div onClick="{{ r.reject }}" style="flex:1;text-align:center;font:600 11.5px/1 'Space Grotesk',sans-serif;color:rgba(27,26,23,.6);border:1px solid #e0dacd;padding:11px;border-radius:9px;cursor:pointer" style-hover="background:#f7f5f0">Decline</div>
+<div onClick="{{ r.approve }}" style="flex:2;text-align:center;font:600 11.5px/1 'Space Grotesk',sans-serif;color:#1b1a17;background:#ffc20a;padding:11px;border-radius:9px;cursor:pointer" style-hover="background:#ffd451">Approve as {{ r.craft }}</div>
+</div>
+</div>
+</sc-for>
+<sc-if value="{{ noRequests }}" hint-placeholder-val="{{ false }}">
+<div style="background:#fff;border:1px dashed #ddd5c4;border-radius:13px;padding:26px 18px;text-align:center;font:400 11.5px/1.6 'Space Grotesk',sans-serif;color:rgba(27,26,23,.5)">No pending registrations. New sign-ups from the Play Store land here.</div>
+</sc-if>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45);margin:8px 0 0">Approved accounts</div>
+<div style="background:#fff;border:1px solid #e8e3d8;border-radius:12px;overflow:hidden">
+<sc-for list="{{ approvedRows }}" as="a" hint-placeholder-count="4">
+<div style="padding:11px 13px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f9f7f2">
+<div style="width:24px;height:24px;border-radius:50%;background:#1b1a17;color:#ffc20a;display:flex;align-items:center;justify-content:center;font:600 9px/1 'IBM Plex Mono',monospace;flex-shrink:0">{{ a.initials }}</div>
+<div style="flex:1;min-width:0;font:500 12px/1.2 'Space Grotesk',sans-serif;color:#1b1a17">{{ a.name }}</div>
+<div style="font:400 10px/1 'IBM Plex Mono',monospace;color:rgba(27,26,23,.45);flex-shrink:0">{{ a.craft }}</div>
+<div onClick="{{ a.revoke }}" style="font:500 10px/1 'Space Grotesk',sans-serif;color:rgba(27,26,23,.45);border:1px solid #eae4d8;padding:6px 8px;border-radius:6px;cursor:pointer;flex-shrink:0" style-hover="color:#a3210f;border-color:#f4b4b0">Revoke</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+<div style="padding:16px;display:flex;flex-direction:column;gap:18px">
+
+<div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45);margin-bottom:9px">Admin access</div>
+<div style="background:#1b1a17;border-radius:13px;padding:15px;margin-bottom:9px">
+<div style="display:flex;align-items:center;gap:11px">
+<div style="width:34px;height:34px;border-radius:50%;background:#ffc20a;color:#1b1a17;display:flex;align-items:center;justify-content:center;font:600 12px/1 'IBM Plex Mono',monospace;flex-shrink:0">KS</div>
+<div style="flex:1;min-width:0">
+<div style="display:flex;align-items:center;gap:7px">
+<div style="font:600 12.5px/1.2 'Space Grotesk',sans-serif;color:#fff">Master admin</div>
+<div style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;background:#ffc20a;color:#1b1a17;padding:4px 5px;border-radius:3px">Verified</div>
+</div>
+<div style="font:400 10.5px/1.4 'IBM Plex Mono',monospace;color:rgba(255,255,255,.6);margin-top:5px">{{ ownerEmail }}</div>
+</div>
+</div>
+<div style="font:400 10.5px/1.55 'Space Grotesk',sans-serif;color:rgba(255,255,255,.5);margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.12)">This address is fixed in the backend. Whoever signs in with it, and passes Google email verification, gets the admin view. It cannot be claimed or changed from inside the app.</div>
+</div>
+<div style="background:#fff;border:1px solid #e8e3d8;border-radius:12px;overflow:hidden;margin-bottom:9px">
+<sc-for list="{{ roleRows }}" as="r" hint-placeholder-count="6">
+<div style="padding:11px 13px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f9f7f2">
+<div style="width:26px;height:26px;border-radius:50%;background:#f0ece2;color:#1b1a17;display:flex;align-items:center;justify-content:center;font:600 9px/1 'IBM Plex Mono',monospace;flex-shrink:0">{{ r.initials }}</div>
+<div style="flex:1;min-width:0">
+<div style="font:500 12px/1.2 'Space Grotesk',sans-serif;color:#1b1a17">{{ r.name }}</div>
+<div style="font:400 9.5px/1.3 'IBM Plex Mono',monospace;color:rgba(27,26,23,.45);margin-top:3px">{{ r.roleLabel }}</div>
+</div>
+<div onClick="{{ r.toggle }}" style="flex-shrink:0;font:600 10px/1 'Space Grotesk',sans-serif;padding:7px 10px;border-radius:7px;cursor:pointer;border:1px solid {{ r.btnBd }};background:{{ r.btnBg }};color:{{ r.btnFg }}">{{ r.btn }}</div>
+</div>
+</sc-for>
+</div>
+<div style="font:400 10.5px/1.55 'Space Grotesk',sans-serif;color:rgba(27,26,23,.5);margin-bottom:22px">Admins can approve registrations, assign tasks and nudge. Only the master admin can promote, demote, or edit the escalation ladder.</div>
+
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45);margin-bottom:9px">Delivery channels</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ channelRows }}" as="c" hint-placeholder-count="4">
+<div style="background:#fff;border:1px solid #e8e3d8;border-radius:12px;padding:13px">
+<div style="display:flex;align-items:center;gap:11px">
+<div style="flex:1;min-width:0">
+<div style="display:flex;align-items:center;gap:7px">
+<div style="font:600 13px/1.2 'Space Grotesk',sans-serif;color:#1b1a17">{{ c.name }}</div>
+<div style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;padding:4px 5px;border-radius:3px;background:{{ c.tagBg }};color:{{ c.tagFg }}">{{ c.tag }}</div>
+</div>
+<div style="font:400 10.5px/1.45 'IBM Plex Mono',monospace;color:rgba(27,26,23,.5);margin-top:5px">{{ c.limit }}</div>
+</div>
+<div onClick="{{ c.toggle }}" style="width:44px;height:26px;border-radius:99px;flex-shrink:0;cursor:pointer;padding:3px;display:flex;justify-content:{{ c.knobSide }};background:{{ c.trackBg }}">
+<div style="width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)"></div>
+</div>
+</div>
+<sc-if value="{{ c.on }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid #f0ece2">
+<div style="flex:1;min-width:0;font:400 10px/1.4 'IBM Plex Mono',monospace;color:rgba(27,26,23,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.endpoint }}</div>
+<div onClick="{{ c.test }}" style="flex-shrink:0;font:600 10.5px/1 'Space Grotesk',sans-serif;color:#1b1a17;border:1px solid #e0dacd;padding:8px 11px;border-radius:7px;cursor:pointer" style-hover="background:#f7f5f0">Test send</div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+<div style="font:400 10.5px/1.55 'Space Grotesk',sans-serif;color:rgba(27,26,23,.5);margin-top:9px">Channels are tried in order. If WhatsApp fails or the 24-hour window has closed, the reminder falls through to Telegram, then SMS.</div>
+</div>
+
+<div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45);margin-bottom:9px">Escalation schedule</div>
+<div style="background:#fff;border:1px solid #e8e3d8;border-radius:12px;padding:6px 14px">
+<sc-for list="{{ planRows }}" as="r" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid #f4f1ea">
+<div style="width:20px;height:20px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font:600 9px/1 'IBM Plex Mono',monospace;background:{{ r.dotBg }};color:{{ r.dotFg }}">{{ r.step }}</div>
+<div style="flex:1;min-width:0;font:500 12px/1.3 'Space Grotesk',sans-serif;color:#1b1a17">{{ r.label }}</div>
+<div style="display:flex;align-items:center;gap:9px;flex-shrink:0">
+<div onClick="{{ r.down }}" style="width:26px;height:26px;border-radius:7px;background:#f0ece2;display:flex;align-items:center;justify-content:center;font:600 13px/1 'IBM Plex Mono',monospace;cursor:pointer" style-hover="background:#e6e1d6">−</div>
+<div style="width:34px;text-align:center;font:600 14px/1 'IBM Plex Mono',monospace;color:#1b1a17">{{ r.days }}d</div>
+<div onClick="{{ r.up }}" style="width:26px;height:26px;border-radius:7px;background:#f0ece2;display:flex;align-items:center;justify-content:center;font:600 13px/1 'IBM Plex Mono',monospace;cursor:pointer" style-hover="background:#e6e1d6">+</div>
+</div>
+</div>
+</sc-for>
+<div style="padding:11px 0;font:400 10.5px/1.5 'IBM Plex Mono',monospace;color:rgba(27,26,23,.5)">After step 5 the reminder repeats daily until the task is marked done.</div>
+</div>
+</div>
+
+<div>
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,26,23,.45);margin-bottom:9px">Quiet hours</div>
+<div style="background:#fff;border:1px solid #e8e3d8;border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+<div style="font:400 11.5px/1.4 'Space Grotesk',sans-serif;color:rgba(27,26,23,.7)">No reminders between 10pm and 8am. Queued sends go out at 9am.</div>
+<div onClick="{{ toggleQuiet }}" style="width:44px;height:26px;border-radius:99px;flex-shrink:0;cursor:pointer;padding:3px;display:flex;justify-content:{{ quietSide }};background:{{ quietBg }}">
+<div style="width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)"></div>
+</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:16px;right:16px;bottom:104px;z-index:70;background:#1b1a17;border-radius:11px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.28)">
+<div style="width:7px;height:7px;border-radius:50%;background:#ffc20a;flex-shrink:0"></div>
+<div style="font:400 11.5px/1.4 'Space Grotesk',sans-serif;color:#fff">{{ toast }}</div>
+</div>
+</sc-if>
+
+<div style="position:absolute;left:0;right:0;bottom:0;z-index:65;background:#1b1a17;padding:11px 10px 30px;display:flex;align-items:center">
+<sc-for list="{{ navItems }}" as="n" hint-placeholder-count="4">
+<div onClick="{{ n.go }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;padding:4px 0">
+<div style="width:7px;height:7px;border-radius:50%;background:{{ n.dot }}"></div>
+<div style="font:500 10px/1 'Space Grotesk',sans-serif;color:{{ n.fg }}">{{ n.label }}</div>
+</div>
+</sc-for>
+</div>
+
+<sc-if value="{{ showFab }}" hint-placeholder-val="{{ true }}">
+<div onClick="{{ startAssign }}" style="position:absolute;right:18px;bottom:96px;z-index:66;width:54px;height:54px;border-radius:50%;background:#ffc20a;color:#1b1a17;display:flex;align-items:center;justify-content:center;font:400 30px/1 'Space Grotesk',sans-serif;cursor:pointer;box-shadow:0 8px 22px rgba(27,26,23,.32)" style-hover="background:#ffd451" style-active="transform:translateY(2px)">+</div>
+</sc-if>
+
+</div>
+</x-import>
+</div>
+
+<sc-if value="{{ showMemberPreview }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;background:#ffc20a;color:#1b1a17;padding:5px 8px;border-radius:4px">Team member</span>
+<span style="font:400 12px/1 'Space Grotesk',sans-serif;color:rgba(27,26,23,.5)">{{ memberLabel }}</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<sc-for list="{{ memberChips }}" as="c" hint-placeholder-count="3">
+<div onClick="{{ c.pick }}" style="font:500 11px/1 'Space Grotesk',sans-serif;padding:7px 11px;border-radius:99px;cursor:pointer;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</div>
+</sc-for>
+</div>
+
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+<sc-if value="{{ memberPending }}" hint-placeholder-val="{{ false }}">
+<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 34px;background:#f7f5f0">
+<img src="uploads/Asset%2028-photoaidcom-cropped.png" alt="Kahiniscope" style="width:76px;height:76px;border-radius:50%" />
+<div style="font:600 20px/1.3 'Space Grotesk',sans-serif;color:#1b1a17;margin-top:22px">{{ pendingHeadline }}</div>
+<div style="font:400 12.5px/1.65 'Space Grotesk',sans-serif;color:rgba(27,26,23,.6);margin-top:10px">Your registration has gone to the Kahiniscope admin. You will see your dashboard here as soon as it is approved.</div>
+<div style="display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e8e3d8;border-radius:99px;padding:9px 15px;margin-top:22px">
+<div style="width:7px;height:7px;border-radius:50%;background:#ffc20a"></div>
+<div style="font:500 10.5px/1 'IBM Plex Mono',monospace;color:#1b1a17">{{ pendingStatus }}</div>
+</div>
+<div style="font:400 10.5px/1.6 'IBM Plex Mono',monospace;color:rgba(27,26,23,.42);margin-top:26px">We will message you on WhatsApp the moment it is approved.</div>
+</div>
+</sc-if>
+<sc-if value="{{ memberApproved }}" hint-placeholder-val="{{ true }}">
+<div style="height:100%;display:flex;flex-direction:column;background:#f7f5f0">
+<div style="flex-shrink:0;padding:60px 20px 16px;background:#ffc20a">
+<div style="font:400 11px/1 'IBM Plex Mono',monospace;color:rgba(27,26,23,.6)">Tuesday, 14 September</div>
+<div style="font:600 24px/1.15 'Space Grotesk',sans-serif;color:#1b1a17;margin-top:6px">{{ memberGreeting }}</div>
+<div style="font:400 12px/1.4 'Space Grotesk',sans-serif;color:rgba(27,26,23,.65);margin-top:6px">{{ memberSummary }}</div>
+</div>
+
+<div style="flex:1;overflow:auto;padding:14px 14px 40px;display:flex;flex-direction:column;gap:9px">
+<sc-for list="{{ memberTasks }}" as="t" hint-placeholder-count="2">
+<div style="background:#fff;border:1px solid #e8e3d8;border-radius:13px;overflow:hidden">
+<div style="height:4px;background:#e8e3d8;display:flex"><div style="background:{{ t.heatFg }};width:{{ t.heatPct }}"></div></div>
+<div style="padding:14px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;color:#b57f00">{{ t.epCode }}</div>
+<div style="font:600 9.5px/1 'IBM Plex Mono',monospace;padding:5px 7px;border-radius:4px;background:{{ t.heatBg }};color:{{ t.heatFg }}">{{ t.heatLabel }}</div>
+</div>
+<div style="font:600 17px/1.25 'Space Grotesk',sans-serif;color:{{ t.titleFg }};text-decoration:{{ t.titleDeco }};margin:8px 0 4px">{{ t.typeLabel }}</div>
+<div style="font:400 12px/1.4 'Space Grotesk',sans-serif;color:rgba(27,26,23,.55)">{{ t.epTitle }}</div>
+<div style="display:flex;align-items:center;gap:8px;background:#f7f5f0;border-radius:8px;padding:9px 11px;margin:12px 0 0">
+<div style="font:500 10.5px/1.35 'IBM Plex Mono',monospace;color:#1b1a17">{{ t.memberNote }}</div>
+</div>
+<div onClick="{{ t.toggle }}" style="text-align:center;font:600 13px/1 'Space Grotesk',sans-serif;padding:14px;border-radius:10px;cursor:pointer;margin-top:11px;background:{{ t.ctaBg }};color:{{ t.ctaFg }};border:1px solid {{ t.ctaBd }}">{{ t.cta }}</div>
+</div>
+</div>
+</sc-for>
+
+<div style="background:#fff;border:1px dashed #ddd5c4;border-radius:13px;padding:16px;text-align:center">
+<div style="font:400 11px/1.6 'Space Grotesk',sans-serif;color:rgba(27,26,23,.5)">Reminders arrive on WhatsApp, then Telegram, then SMS. Marking a task done stops them immediately.</div>
+</div>
+</div>
+</div>
+</sc-if>
+</x-import>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1000,&quot;height&quot;:980},&quot;showCountdown&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Escalation&quot;},&quot;showMemberPreview&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Layout&quot;}}">
+const HEAT = [
+  { bg:'#eef1f4', fg:'#3f5261', label:'On track', pct:'12%' },
+  { bg:'#fff4d6', fg:'#8a6400', label:'Reminded', pct:'32%' },
+  { bg:'#ffe7cd', fg:'#8d4500', label:'Chasing',  pct:'56%' },
+  { bg:'#ffdbd0', fg:'#94331a', label:'Escalated',pct:'80%' },
+  { bg:'#fdd0cc', fg:'#a3210f', label:'Daily',    pct:'100%' }
+];
+const TYPES = ['Script writing','Translation','Voice recording','Dubbing / mixing','Editing','Thumbnail / graphics','Upload & SEO','Music / SFX','Proofreading'];
+const CAD = ['weekly','every 4 days','every 3 days','every 2 days','daily'];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'today', epId: 'e1', personId: 'p3', memberId: 'p7', toast: null,
+    quiet: true,
+    plan: [7,4,3,2,1],
+    channels: [
+      { id:'wa', name:'WhatsApp Cloud API', tag:'Primary', on:true,  limit:'1,000 free service conversations / month', endpoint:'graph.facebook.com/v21.0/•••4821/messages' },
+      { id:'tg', name:'Telegram bot',       tag:'Fallback',on:true,  limit:'Unlimited, no cost — needs /start once', endpoint:'api.telegram.org/bot•••:AAF3q/sendMessage' },
+      { id:'tb', name:'Textbelt SMS',       tag:'Last resort', on:true, limit:'1 free SMS / day per key — overdue only', endpoint:'textbelt.com/text · key ••••free' },
+      { id:'em', name:'Email digest',       tag:'Off', on:false, limit:'Daily 9am roll-up of everything overdue', endpoint:'smtp.resend.com · noreply@kahiniscope' }
+    ],
+    people: [
+      { id:'p1', name:'Arif Hossain',  craft:'Script',       ch:'WhatsApp', status:'approved' },
+      { id:'p2', name:'Nabanita Roy',  craft:'Translation',  ch:'Telegram', status:'approved' },
+      { id:'p3', name:'Rizu Ahmed',    craft:'Voice',        ch:'WhatsApp', status:'approved' },
+      { id:'p4', name:'Tanmoy Das',    craft:'Post / mix',   ch:'Telegram', status:'approved' },
+      { id:'p5', name:'Sohag Mia',     craft:'Graphics',     ch:'SMS',      status:'approved' },
+      { id:'p6', name:'Piyali Sen',    craft:'Proofreading', ch:'WhatsApp', status:'approved' },
+      { id:'p7', name:'Shuvo Karim',   craft:'Editing',      ch:'WhatsApp', status:'pending',
+        meta:'+880 17•• ••4192 · registered 2 hours ago',
+        note:'“Worked on EP-33 to EP-36 editing with Tanmoy. Can also do SFX cleanup.”' },
+      { id:'p8', name:'Mahi Chowdhury',craft:'Voice',        ch:'Telegram', status:'pending',
+        meta:'+880 19•• ••7730 · registered yesterday',
+        note:'“Sent a voice sample to your Messenger last week.”' },
+      { id:'p9', name:'Rupa Dutta',    craft:'Translation',  ch:'WhatsApp', status:'pending',
+        meta:'+880 16•• ••2054 · registered 3 days ago',
+        note:'“Japanese to Bengali. Referred by Nabanita.”' }
+    ],
+    episodes: [
+      { id:'e1', code:'EP-41', title:'রক্তমুখী নীলা',        air:'Air 20 Sep' },
+      { id:'e2', code:'EP-42', title:'শেষ ট্রামের যাত্রী',    air:'Air 27 Sep' },
+      { id:'e3', code:'EP-43', title:'কুয়াশার নিচে',         air:'Air 04 Oct' }
+    ],
+    tasks: [
+      { id:'t1', ep:'e1', type:'Voice recording',     who:'p3', due:-4, sent:3, since:1, done:false },
+      { id:'t2', ep:'e1', type:'Dubbing / mixing',    who:'p4', due:2,  sent:1, since:2, done:false },
+      { id:'t3', ep:'e1', type:'Thumbnail / graphics',who:'p5', due:5,  sent:0, since:3, done:false },
+      { id:'t4', ep:'e1', type:'Editing',             who:'p4', due:-1, sent:2, since:0, done:false },
+      { id:'t5', ep:'e1', type:'Script writing',      who:'p1', due:-9, sent:0, since:0, done:true },
+      { id:'t6', ep:'e2', type:'Translation',         who:'p2', due:-1, sent:2, since:2, done:false },
+      { id:'t7', ep:'e2', type:'Proofreading',        who:'p6', due:6,  sent:0, since:1, done:false },
+      { id:'t8', ep:'e2', type:'Voice recording',     who:'p3', due:-9, sent:4, since:0, done:false },
+      { id:'t9', ep:'e2', type:'Script writing',      who:'p1', due:-3, sent:0, since:0, done:true },
+      { id:'t10',ep:'e3', type:'Script writing',      who:'p1', due:9,  sent:0, since:5, done:false },
+      { id:'t11',ep:'e3', type:'Music / SFX',         who:'p4', due:12, sent:0, since:0, done:false }
+    ],
+    feed: [
+      { channel:'WA', text:'Rizu Ahmed — Voice recording, EP-42 (4th reminder)', when:'09:02' },
+      { channel:'TG', text:'Nabanita Roy — Translation, EP-42 (3rd reminder)',   when:'09:02' },
+      { channel:'SMS',text:'Tanmoy Das — Editing, EP-41 (overdue fallback)',     when:'08:58' },
+      { channel:'WA', text:'Piyali Sen — Proofreading assigned, EP-42',          when:'Yesterday' }
+    ],
+    form: { who:'p3', ep:'e1', type:'Voice recording', due:5, ch:'wa' }
+  };
+
+  // ── helpers ───────────────────────────────────────────────
+  person(id) { return this.state.people.find(p => p.id === id) || {}; }
+  episode(id) { return this.state.episodes.find(e => e.id === id) || {}; }
+  initials(name) { return (name||'').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase(); }
+  heat(t) { return HEAT[Math.min(t.sent, 4)]; }
+  gap(t) { const p = this.state.plan; return p[Math.min(t.sent, p.length - 1)]; }
+  nextIn(t) { return Math.max(0, this.gap(t) - t.since); }
+  dueLabel(t) {
+    if (t.due < 0) return Math.abs(t.due) + 'd overdue';
+    if (t.due === 0) return 'due today';
+    return 'due in ' + t.due + 'd';
+  }
+  countdown(t) {
+    const n = this.nextIn(t);
+    const cad = CAD[Math.min(t.sent, 4)];
+    const when = n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days';
+    return 'Reminder #' + (t.sent + 1) + ' ' + when + ' · ' + cad;
+  }
+  say(msg) {
+    clearTimeout(this._tt);
+    this.setState({ toast: msg });
+    this._tt = setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+  patch(id, fn) {
+    this.setState(s => ({ tasks: s.tasks.map(t => t.id === id ? Object.assign({}, t, fn(t)) : t) }));
+  }
+  nudge(t) {
+    this.patch(t.id, () => ({ sent: t.sent + 1, since: 0 }));
+    const p = this.person(t.who);
+    this.say('Sent to ' + p.name + ' via ' + p.ch + ' — ' + t.type + ', ' + this.episode(t.ep).code);
+  }
+  toggleDone(t) {
+    this.patch(t.id, () => ({ done: !t.done }));
+    this.say(t.done ? t.type + ' reopened — reminders resume' : t.type + ' marked done — reminders stopped');
+  }
+
+  taskView(t, extra) {
+    const h = this.heat(t);
+    const done = t.done;
+    return Object.assign({
+      id: t.id,
+      typeLabel: t.type,
+      initials: this.initials(this.person(t.who).name),
+      heatBg: done ? '#edf3ee' : h.bg,
+      heatFg: done ? '#2f6b45' : h.fg,
+      heatLabel: done ? 'Done' : h.label,
+      heatPct: done ? '100%' : h.pct,
+      countdown: done ? 'Complete — no further reminders' : this.countdown(t),
+      titleFg: done ? 'rgba(27,26,23,.4)' : '#1b1a17',
+      titleDeco: done ? 'line-through' : 'none',
+      check: done ? '✓' : '',
+      boxBg: done ? '#1b1a17' : '#fff',
+      boxFg: done ? '#ffc20a' : '#1b1a17',
+      boxBorder: done ? '#1b1a17' : '#ddd5c4',
+      toggle: () => this.toggleDone(t),
+      nudge: () => this.nudge(t),
+      open: () => this.setState({ screen: 'person', personId: t.who })
+    }, extra || {});
+  }
+
+  renderVals() {
+    const s = this.state;
+    const open = s.tasks.filter(t => !t.done);
+    const screen = s.screen;
+    const ep = this.episode(s.epId);
+    const per = this.person(s.personId);
+
+    const approved = s.people.filter(p => p.status === 'approved');
+    const pending = s.people.filter(p => p.status === 'pending');
+    const slateTotal = s.tasks.length;
+    const slateDone = s.tasks.filter(t => t.done).length;
+
+    const titles = {
+      today: ['Production board', 'Tuesday, 14 September'],
+      episodes: ['Episodes', s.episodes.length + ' in production'],
+      episode: [ep.code + ' · ' + ep.title, ep.air],
+      team: ['Team', approved.length + ' people · ' + open.length + ' open tasks'],
+      person: [per.name, per.craft + ' · reminders via ' + per.ch],
+      assign: ['New task', 'Pick a person, then the work'],
+      requests: ['Access requests', pending.length + ' waiting for approval'],
+      settings: ['Notifications', 'Channels and escalation']
+    };
+    const [headerTitle, headerSub] = titles[screen] || titles.today;
+
+    const epTasksRaw = s.tasks.filter(t => t.ep === s.epId);
+    const epDone = epTasksRaw.filter(t => t.done).length;
+
+    const nav = [
+      { id:'today', label:'Board' },
+      { id:'episodes', label:'Episodes' },
+      { id:'team', label:'Team' },
+      { id:'settings', label:'Notify' }
+    ];
+    const activeNav = screen === 'episode' ? 'episodes' : screen === 'person' ? 'team' : screen;
+
+    const chase = open.slice().sort((a,b) => (b.sent - a.sent) || (a.due - b.due));
+    const form = s.form;
+
+    const me = this.person(s.memberId);
+    const memberTasks = s.tasks.filter(t => t.who === s.memberId).map(t => this.taskView(t, {
+      epCode: this.episode(t.ep).code,
+      epTitle: this.episode(t.ep).title,
+      memberNote: t.done ? 'Closed — thanks' : this.dueLabel(t) + ' · next reminder ' + (this.nextIn(t) === 0 ? 'today' : 'in ' + this.nextIn(t) + 'd'),
+      cta: t.done ? 'Reopen task' : 'Mark done',
+      ctaBg: t.done ? '#fff' : '#1b1a17',
+      ctaFg: t.done ? 'rgba(27,26,23,.6)' : '#ffc20a',
+      ctaBd: t.done ? '#ddd5c4' : '#1b1a17'
+    }));
+    const memberOpen = memberTasks.filter(t => t.heatLabel !== 'Done').length;
+
+    const planLabels = ['First reminder after','Then every','Then every','Then every','Then every'];
+
+    return {
+      headerTitle, headerSub,
+      showBack: screen === 'episode' || screen === 'person' || screen === 'assign' || screen === 'requests',
+      goBack: () => this.setState({ screen: screen === 'episode' ? 'episodes' : screen === 'person' ? 'team' : 'today' }),
+      ownerEmail: 'owner@kahiniscope.example',
+      roleRows: approved.map(p => {
+        const isAdmin = p.role === 'admin';
+        return {
+          name: p.name, initials: this.initials(p.name),
+          roleLabel: isAdmin ? 'Admin · can approve and assign' : p.craft + ' · member',
+          btn: isAdmin ? 'Demote' : 'Make admin',
+          btnBg: isAdmin ? '#fff8e3' : '#fff', btnBd: isAdmin ? '#ffc20a' : '#e0dacd', btnFg: '#1b1a17',
+          toggle: () => {
+            this.setState(st => ({ people: st.people.map(x => x.id === p.id ? Object.assign({}, x, { role: isAdmin ? 'member' : 'admin' }) : x) }));
+            this.say(p.name + (isAdmin ? ' is back to member access' : ' is now an admin'));
+          }
+        };
+      }),
+      isRequests: screen === 'requests',
+      showFab: ['today','episodes','episode','team','person'].indexOf(screen) > -1,
+      scrollPad: ['today','episodes','episode','team','person'].indexOf(screen) > -1 ? '164px' : '110px',
+      hasRequests: pending.length > 0,
+      noRequests: pending.length === 0,
+      requestCount: pending.length,
+      requestNames: pending.map(p => p.name.split(' ')[0]).join(', ') + ' · from Play Store',
+      goRequests: () => this.setState({ screen: 'requests' }),
+      pendingRows: pending.map(p => ({
+        name: p.name, initials: this.initials(p.name), craft: p.craft,
+        meta: p.meta, note: p.note,
+        approve: () => {
+          this.setState(st => ({ people: st.people.map(x => x.id === p.id ? Object.assign({}, x, { status: 'approved' }) : x) }));
+          this.say(p.name + ' approved as ' + p.craft + ' — dashboard unlocked');
+        },
+        reject: () => {
+          this.setState(st => ({ people: st.people.filter(x => x.id !== p.id) }));
+          this.say(p.name + ' declined');
+        }
+      })),
+      approvedRows: approved.map(p => ({
+        name: p.name, initials: this.initials(p.name), craft: p.craft,
+        revoke: () => {
+          this.setState(st => ({ people: st.people.map(x => x.id === p.id ? Object.assign({}, x, { status: 'pending' }) : x) }));
+          this.say(p.name + '’s access revoked — back in the approval queue');
+        }
+      })),
+      slatePct: slateTotal ? Math.round(slateDone / slateTotal * 100) + '%' : '0%',
+      slateSummary: slateDone + ' of ' + slateTotal + ' tasks closed across ' + s.episodes.length + ' episodes',
+      isToday: screen === 'today',
+      isEpisodes: screen === 'episodes',
+      isEpisode: screen === 'episode',
+      isTeam: screen === 'team',
+      isPerson: screen === 'person',
+      isAssign: screen === 'assign',
+      isSettings: screen === 'settings',
+      showCountdown: this.props.showCountdown !== false,
+      showMemberPreview: this.props.showMemberPreview !== false,
+      toast: s.toast,
+
+      statOverdue: open.filter(t => t.due < 0).length,
+      statActive: open.length,
+      statDone: s.tasks.filter(t => t.done).length,
+
+      chaseList: chase.map(t => this.taskView(t, {
+        meta: this.episode(t.ep).code + ' · ' + this.person(t.who).name + ' · ' + this.dueLabel(t)
+      })),
+      feed: s.feed,
+
+      episodeCards: s.episodes.map(e => {
+        const ts = s.tasks.filter(t => t.ep === e.id);
+        const d = ts.filter(t => t.done).length;
+        const late = ts.filter(t => !t.done && t.due < 0).length;
+        return {
+          code: e.code, title: e.title, air: e.air,
+          pct: ts.length ? Math.round(d / ts.length * 100) + '%' : '0%',
+          progress: d + ' of ' + ts.length + ' tasks done',
+          risk: late ? late + ' overdue' : 'on schedule',
+          riskFg: late ? '#a3210f' : '#3f5261',
+          open: () => this.setState({ screen: 'episode', epId: e.id })
+        };
+      }),
+
+      epPct: epTasksRaw.length ? Math.round(epDone / epTasksRaw.length * 100) + '%' : '0%',
+      epProgress: epDone + ' of ' + epTasksRaw.length + ' tasks closed · tap a box to close one',
+      epMembers: approved.filter(p => epTasksRaw.some(t => t.who === p.id)).map(p => {
+        const mine = epTasksRaw.filter(t => t.who === p.id);
+        const d = mine.filter(t => t.done).length;
+        const late = mine.filter(t => !t.done && t.due < 0).length;
+        const worst = mine.reduce((m,t) => t.done ? m : Math.max(m, t.sent), 0);
+        const h = HEAT[Math.min(worst, 4)];
+        const allDone = d === mine.length;
+        return {
+          name: p.name, initials: this.initials(p.name),
+          pct: Math.round(d / mine.length * 100) + '%',
+          sub: p.craft + ' · ' + d + '/' + mine.length + ' done · via ' + p.ch,
+          state: allDone ? 'Clear' : late ? late + ' overdue' : h.label,
+          heatBg: allDone ? '#edf3ee' : h.bg,
+          heatFg: allDone ? '#2f6b45' : h.fg,
+          tasks: mine.map(t => this.taskView(t, {
+            rowNote: t.done ? 'closed' : this.dueLabel(t) + ' · reminder #' + (t.sent + 1) + ' in ' + this.nextIn(t) + 'd',
+            pokeLabel: t.done ? 'Done' : 'Nudge',
+            pokeFg: t.done ? 'rgba(27,26,23,.35)' : '#1b1a17',
+            pokeBg: t.done ? '#f9f7f2' : '#ffc20a',
+            pokeBd: t.done ? '#eae4d8' : '#ffc20a'
+          }))
+        };
+      }),
+
+      teamCards: approved.map(p => {
+        const ts = s.tasks.filter(t => t.who === p.id && !t.done);
+        const worst = ts.reduce((m,t) => Math.max(m, t.sent), 0);
+        const h = HEAT[Math.min(worst, 4)];
+        return {
+          name: p.name, initials: this.initials(p.name), channel: p.ch,
+          sub: p.craft + ' · ' + (ts.length ? ts.map(t => this.episode(t.ep).code).join(', ') : 'nothing open'),
+          openLabel: ts.length ? ts.length + ' open' : 'clear',
+          heatBg: ts.length ? h.bg : '#edf3ee',
+          heatFg: ts.length ? h.fg : '#2f6b45',
+          open: () => this.setState({ screen: 'person', personId: p.id })
+        };
+      }),
+
+      personTasks: s.tasks.filter(t => t.who === s.personId).map(t => this.taskView(t, {
+        sub: this.episode(t.ep).code + ' · ' + this.episode(t.ep).title + ' · ' + this.dueLabel(t)
+      })),
+      messagePerson: () => {
+        const mine = s.tasks.filter(t => t.who === s.personId && !t.done);
+        if (!mine.length) return this.say(per.name + ' has nothing open');
+        this.setState(st => ({ tasks: st.tasks.map(t => (t.who === s.personId && !t.done) ? Object.assign({}, t, { sent: t.sent + 1, since: 0 }) : t) }));
+        this.say('One message with ' + mine.length + ' tasks sent to ' + per.name + ' via ' + per.ch);
+      },
+
+      startAssign: () => this.setState({ screen: 'assign' }),
+      formPeople: approved.map(p => {
+        const on = form.who === p.id;
+        return {
+          name: p.name.split(' ')[0], initials: this.initials(p.name),
+          bg: on ? '#1b1a17' : '#fff', bd: on ? '#1b1a17' : '#e0dacd', fg: on ? '#fff' : '#1b1a17',
+          avBg: on ? '#ffc20a' : '#f0ece2', avFg: '#1b1a17',
+          pick: () => this.setState({ form: Object.assign({}, form, { who: p.id }) })
+        };
+      }),
+      formEpisodes: s.episodes.map(e => {
+        const on = form.ep === e.id;
+        return {
+          code: e.code, title: e.title, air: e.air,
+          bg: on ? '#fff8e3' : '#fff', bd: on ? '#ffc20a' : '#e0dacd', dot: on ? '#ffc20a' : '#e0dacd',
+          pick: () => this.setState({ form: Object.assign({}, form, { ep: e.id }) })
+        };
+      }),
+      formTypes: TYPES.map(k => {
+        const on = form.type === k;
+        return {
+          label: k,
+          bg: on ? '#1b1a17' : '#fff', bd: on ? '#1b1a17' : '#e0dacd', fg: on ? '#fff' : '#1b1a17',
+          pick: () => this.setState({ form: Object.assign({}, form, { type: k }) })
+        };
+      }),
+      formDue: form.due,
+      dueUp: () => this.setState({ form: Object.assign({}, form, { due: form.due + 1 }) }),
+      dueDown: () => this.setState({ form: Object.assign({}, form, { due: Math.max(1, form.due - 1) }) }),
+      ladder: s.plan.map((d,i) => ({ days: d, h: (22 + i * 8) + 'px', bg: HEAT[i].fg })),
+      ladderNote: 'First nudge ' + s.plan[0] + ' days after assigning, then ' + s.plan.slice(1).join(', ') + ' day gaps, then daily until done.',
+      formChannels: [
+        { id:'wa', name:'WhatsApp', note:'free tier' },
+        { id:'tg', name:'Telegram', note:'unlimited' },
+        { id:'tb', name:'SMS', note:'1/day' }
+      ].map(c => {
+        const on = form.ch === c.id;
+        return {
+          name: c.name, note: c.note,
+          bg: on ? '#fff8e3' : '#fff', bd: on ? '#ffc20a' : '#e0dacd', fg: '#1b1a17',
+          pick: () => this.setState({ form: Object.assign({}, form, { ch: c.id }) })
+        };
+      }),
+      submitLabel: 'Assign to ' + this.person(form.who).name.split(' ')[0] + ' & notify',
+      submitAssign: () => {
+        const id = 't' + (s.tasks.length + 12);
+        this.setState(st => ({
+          tasks: st.tasks.concat([{ id, ep: form.ep, type: form.type, who: form.who, due: form.due, sent: 0, since: 0, done: false }]),
+          screen: 'episode', epId: form.ep
+        }));
+        this.say(form.type + ' assigned to ' + this.person(form.who).name + ' · first reminder in ' + s.plan[0] + ' days');
+      },
+
+      channelRows: s.channels.map(c => ({
+        name: c.name, limit: c.limit, endpoint: c.endpoint, on: c.on,
+        tag: c.on ? c.tag : 'Off',
+        tagBg: c.on ? '#fff4d6' : '#eef1f4', tagFg: c.on ? '#8a6400' : '#3f5261',
+        trackBg: c.on ? '#1b1a17' : '#ddd5c4',
+        knobSide: c.on ? 'flex-end' : 'flex-start',
+        toggle: () => this.setState(st => ({ channels: st.channels.map(x => x.id === c.id ? Object.assign({}, x, { on: !x.on }) : x) })),
+        test: () => this.say('Test message delivered via ' + c.name)
+      })),
+      planRows: s.plan.map((d,i) => ({
+        step: i + 1, days: d,
+        label: planLabels[i] + (i ? '' : ''),
+        dotBg: HEAT[i].fg, dotFg: '#fff',
+        up: () => this.setState(st => ({ plan: st.plan.map((v,j) => j === i ? v + 1 : v) })),
+        down: () => this.setState(st => ({ plan: st.plan.map((v,j) => j === i ? Math.max(1, v - 1) : v) }))
+      })),
+      toggleQuiet: () => this.setState(st => ({ quiet: !st.quiet })),
+      quietBg: s.quiet ? '#1b1a17' : '#ddd5c4',
+      quietSide: s.quiet ? 'flex-end' : 'flex-start',
+
+      navItems: nav.map(n => ({
+        label: n.label,
+        dot: activeNav === n.id ? '#ffc20a' : 'transparent',
+        fg: activeNav === n.id ? '#fff' : 'rgba(255,255,255,.45)',
+        go: () => this.setState({ screen: n.id })
+      })),
+
+      memberTasks,
+      memberPending: me.status === 'pending',
+      memberApproved: me.status === 'approved',
+      memberLabel: me.status === 'pending' ? 'What ' + me.name.split(' ')[0] + ' sees before approval' : 'What ' + me.name.split(' ')[0] + ' sees',
+      pendingHeadline: 'Waiting for approval',
+      pendingStatus: 'Registered as ' + me.craft + ' · pending',
+      memberChips: [
+        { id:'p7', label:'Shuvo (new sign-up)' },
+        { id:'p3', label:'Rizu' },
+        { id:'p4', label:'Tanmoy' }
+      ].filter(c => s.people.some(p => p.id === c.id)).map(c => {
+        const on = s.memberId === c.id;
+        return {
+          label: c.label,
+          bg: on ? '#1b1a17' : 'transparent', bd: on ? '#1b1a17' : '#ddd5c4', fg: on ? '#fff' : 'rgba(27,26,23,.6)',
+          pick: () => this.setState({ memberId: c.id })
+        };
+      }),
+      memberGreeting: memberOpen ? memberOpen + ' task' + (memberOpen > 1 ? 's' : '') + ' waiting on you' : 'All clear',
+      memberSummary: memberOpen ? 'Mark each one done and the reminders stop.' : 'Nothing assigned to you right now. The admin will send it here.'
+    };
+  }
+}
+</script>
+</body>
+</html>

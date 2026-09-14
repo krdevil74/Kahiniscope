@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+functions/lib/
+dist/
+*.tsbuildinfo
+
+# Expo / React Native
+.expo/
+mobile/android/
+mobile/ios/
+mobile/.render-check/
+*.jks
+*.keystore
+
+# Secrets and per-project credentials — never commit these.
+# See .env.example files for what belongs in each.
+.env
+.env.*
+!.env.example
+serviceAccountKey.json
+google-services.json
+GoogleService-Info.plist
+.secret.local
+functions/.secret.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+database-debug.log
+pubsub-debug.log
+ui-debug.log
+
+# Logs and OS noise
+*.log
+npm-debug.log*
+.DS_Store
+
+# Captured store screenshots are per-device; regenerate with npm run screenshots
+mobile/store/screenshots/*.png
