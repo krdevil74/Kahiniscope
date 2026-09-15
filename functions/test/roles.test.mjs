@@ -48,9 +48,39 @@ test("lookalike addresses are not the owner", () => {
   }
 });
 
-test("a second owner address can be added without other changes", () => {
+test("a second owner address is a second key to the same door", () => {
   const owners = ["owner@kahiniscope.test", "backup@kahiniscope.test"];
+
+  // Both are owners, fully and permanently. The second is not a fallback that
+  // activates when the first fails — there is no such thing here.
+  for (const email of owners) {
+    assert.equal(isOwnerEmail(email, true, owners), true, email);
+    assert.deepEqual(initialAccess(email, true, owners), { role: "owner", status: "approved" });
+  }
+
+  // Case and spacing still do not matter, on either.
+  assert.equal(isOwnerEmail("  BACKUP@Kahiniscope.TEST ", true, owners), true);
+
+  // And neither gets in without a verified email.
+  for (const email of owners) {
+    assert.equal(isOwnerEmail(email, false, owners), false, email);
+  }
+
+  // Everyone else is unaffected by there being two.
+  assert.equal(isOwnerEmail("someone@kahiniscope.test", true, owners), false);
+});
+
+test("the address list is parsed from a comma-separated string", () => {
+  // config.ts splits OWNER_EMAILS on commas; this is the shape it produces.
+  const owners = "owner@kahiniscope.test, backup@kahiniscope.test ,"
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  assert.equal(owners.length, 2, "a trailing comma does not create an empty owner");
   assert.equal(isOwnerEmail("backup@kahiniscope.test", true, owners), true);
+  // An empty string must never match, or a stray comma would make everyone owner.
+  assert.equal(isOwnerEmail("", true, owners), false);
 });
 
 test("every other verified Google account lands pending", () => {

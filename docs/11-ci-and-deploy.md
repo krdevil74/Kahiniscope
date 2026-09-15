@@ -127,6 +127,30 @@ A long-lived JSON key is the pragmatic choice for a project this size.
 rotate — and is worth moving to if this repository ever has more than one
 person pushing to it.
 
+### The owner address
+
+`OWNER_EMAILS` is not in the repository. It lives in two places that have to
+stay in step:
+
+- **`functions/.env`** for local work and emulator runs. Gitignored.
+- **the `OWNER_EMAILS` repository secret**, which the deploy workflow writes
+  into `functions/.env` on the runner before deploying.
+
+The workflow **fails loudly** if that secret is missing rather than deploying
+without it. An app with no owner address is an app where every sign-in —
+including the real owner's — lands as a pending member with nobody able to
+approve it, and the only way out is another deploy.
+
+It is a repository secret rather than a variable so it stays out of logs. It
+is not a credential: knowing the address grants nothing, because access still
+needs a signed-in Google session with a verified email on that account.
+
+**A second address is a second key to the same door.** Both get the owner role,
+fully and permanently — it is not a fallback that activates when the first
+fails. That is the point, since losing the one Gmail account would otherwise
+mean losing administrative access entirely, but it means two accounts now need
+2FA rather than one.
+
 ### What it does not deploy
 
 The functions' **secrets** live in Secret Manager and are set once, by hand:

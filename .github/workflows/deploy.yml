@@ -40,12 +40,20 @@ jobs:
         id: creds
         env:
           SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          OWNER_EMAILS: ${{ secrets.OWNER_EMAILS }}
         run: |
           if [ -n "$SERVICE_ACCOUNT" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "::notice::FIREBASE_SERVICE_ACCOUNT is not set — skipping. See docs/11-ci-and-deploy.md."
+          fi
+          # Deploying without this would leave the app with no owner at all —
+          # every sign-in, including the real owner's, would land as a pending
+          # member with nobody able to approve it.
+          if [ -z "$OWNER_EMAILS" ]; then
+            echo "::error::OWNER_EMAILS is not set. Deploying would leave the app with no owner."
+            exit 1
           fi
 
       - name: Use Node
@@ -63,6 +71,22 @@ jobs:
         run: |
           npm ci
           npm ci --prefix functions
+
+      # functions/.env is gitignored, so the runner has to write its own from
+      # the repository secrets. The Firebase CLI reads this file at deploy and
+      # ships its contents as the functions' environment.
+      - name: Write functions/.env
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          OWNER_EMAILS: ${{ secrets.OWNER_EMAILS }}
+          TELEGRAM_BOT_USERNAME: ${{ vars.TELEGRAM_BOT_USERNAME }}
+        run: |
+          {
+            printf 'OWNER_EMAILS=%s\n' "$OWNER_EMAILS"
+            printf 'TELEGRAM_BOT_USERNAME=%s\n' "$TELEGRAM_BOT_USERNAME"
+          } > functions/.env
+          # Print the count, never the addresses.
+          echo "Owner addresses configured: $(printf '%s' "$OWNER_EMAILS" | awk -F, '{print NF}')"
 
       - name: Build functions
         if: steps.creds.outputs.ready == 'true'
