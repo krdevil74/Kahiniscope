@@ -97,11 +97,23 @@ const config: ExpoConfig = {
     typedRoutes: true,
   },
 
+  /**
+   * The EAS account that owns the project. Needed so a build knows where to
+   * look when more than one account is available — including on CI, where
+   * there is no interactive prompt to ask.
+   */
+  owner: "kaushikr74",
+
   extra: {
     router: {},
     eas: {
-      // Filled in by `eas init`.
-      projectId: process.env.EAS_PROJECT_ID,
+      /**
+       * From `eas init`. Not a secret — it is in the expo.dev URL — and
+       * written here rather than left to an environment variable because
+       * `eas init` cannot edit a dynamic config, so it has to live somewhere
+       * a fresh clone will find it.
+       */
+      projectId: process.env.EAS_PROJECT_ID ?? "b5d4eedb-8435-4e60-ba0b-8a64a673f7af",
     },
   },
 };
