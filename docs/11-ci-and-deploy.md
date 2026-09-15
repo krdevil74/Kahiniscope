@@ -63,6 +63,27 @@ All of them require **billing enabled** on the project. Blaze is a
 prerequisite for scheduling, not a bill: the usage here sits inside the free
 allowances that remain under it.
 
+## Regions, and why they are not all the same
+
+Three constants in `functions/src/config.ts`, because three services have
+three different constraints:
+
+| Constant | Value | Why |
+| --- | --- | --- |
+| `REGION` | `asia-south2` | Where Firestore is. Firestore triggers have no choice — they must sit with the database, and a database's location is fixed at creation. |
+| `BLOCKING_REGION` | `asia-south2` | Identity Platform supports a shorter region list than Firestore. It happens to include this one. |
+| `SCHEDULER_REGION` | `asia-south1` | **Cloud Scheduler does not exist in asia-south2.** The deploy fails with "Location 'asia-south2' is not a valid location". |
+
+The scheduled pass has no reason to sit with the database: it wakes once a day
+and talks to Firestore through the Admin SDK, which is region-agnostic. The
+cross-region hop costs milliseconds on a job measured in seconds.
+
+This is the cost of a newer, thinner region. `asia-south1` (Mumbai) carries
+the full set of services and is no further from Dhaka; if the database were
+being created today, that is where it would go. It is not worth moving now —
+a Firestore location cannot be changed, so moving means a new database and a
+migration, to save one constant.
+
 ## Deploy
 
 Deploys `firestore:rules`, `firestore:indexes` and `functions` — the whole
