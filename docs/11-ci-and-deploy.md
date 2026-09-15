@@ -114,6 +114,10 @@ puzzle.
    - **Service Usage Viewer**, so the CLI can see which APIs are on. Without
      it the CLI reads "enabled" as "missing", tries to enable it, and fails on
      permissions — an error that points at the wrong problem
+   - **Cloud Scheduler Admin**, for the two scheduled jobs. `firebase.admin`
+     does not cover `cloudscheduler.jobs.update`
+   - **Secret Manager Admin**, so the deploy can bind declared secrets to the
+     functions' runtime service account
 2. Create a JSON key for it and download it.
 3. `gh secret set FIREBASE_SERVICE_ACCOUNT < that-file.json`
 4. Optionally `gh variable set FIREBASE_PROJECT_ID --body kahiniscope-5c9ee`
