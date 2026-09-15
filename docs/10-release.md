@@ -48,11 +48,15 @@ impression and an awkward question in the data-safety review.
 ## Building
 
 ```bash
+npm install -g eas-cli       # the package is eas-cli; the command is eas
 cd mobile
-npx eas login
-npx eas init                 # fills EAS_PROJECT_ID
-npx eas build --platform android --profile production
+eas login
+eas init                     # fills EAS_PROJECT_ID
+eas build --platform android --profile production
 ```
+
+`npx eas` does not work — npx resolves a package called `eas`, which is not
+the CLI. Either install `eas-cli` globally as above, or run `npx eas-cli@latest`.
 
 Before the first build:
 
@@ -62,7 +66,7 @@ Before the first build:
 - Fill `mobile/.env` from `.env.example` with the Firebase web config and the
   Google web client id.
 - Let EAS manage the signing key, and then **back it up**
-  (`npx eas credentials`). Losing it means never being able to update this app
+  (`eas credentials`). Losing it means never being able to update this app
   under this package name again.
 
 `npm run build:preview` produces an APK you can sideload, which is the quickest

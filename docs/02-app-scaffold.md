@@ -155,7 +155,8 @@ npm run build:preview      # APK, internal distribution
 npm run build:production   # AAB for Play, autoIncrement
 ```
 
-Before the first build: `eas init` (fills `EAS_PROJECT_ID`), and download
+Before the first build: `npm install -g eas-cli`, then `eas init` (fills
+`EAS_PROJECT_ID`), and download
 `google-services.json` from the Firebase console into `mobile/`. It is not in
 the repository — it is per-project, and EAS supplies it as a secret file at
 build time. `app.config.ts` wires it up only if it is present, so `expo
