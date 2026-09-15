@@ -73,7 +73,7 @@ beforeEach(async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
 
-    await setDoc(doc(db, "users", OWNER), user({ name: "Kahiniscope", email: "owner@kahiniscope.example", role: "owner", status: "approved" }));
+    await setDoc(doc(db, "users", OWNER), user({ name: "Kahiniscope", email: "owner@kahiniscope.test", role: "owner", status: "approved" }));
     await setDoc(doc(db, "users", ADMIN), user({ name: "Admin", email: "admin@gmail.com", role: "admin", status: "approved" }));
     await setDoc(doc(db, "users", MEMBER), user({ name: "Rizu Ahmed", email: "rizu@gmail.com", craft: "Voice" }));
     await setDoc(doc(db, "users", OTHER_MEMBER), user({ name: "Tanvir", email: "tanvir@gmail.com", craft: "Editing" }));

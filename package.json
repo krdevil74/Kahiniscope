@@ -15,14 +15,14 @@
     "deploy": "firebase deploy --only firestore:rules,firestore:indexes,functions",
     "test:rules:run": "node --test \"tests/rules.test.mjs\"",
     "test:auth:run": "node --test --test-concurrency=1 \"tests/auth.test.mjs\"",
-    "test:auth": "npm --prefix functions run build && firebase emulators:exec --project kahiniscope-demo --only auth,firestore,functions \"npm run test:auth:run\"",
+    "test:auth": "npm --prefix functions run build && OWNER_EMAILS=owner@kahiniscope.test firebase emulators:exec --project kahiniscope-demo --only auth,firestore,functions \"npm run test:auth:run\"",
     "seed:demo": "node functions/scripts/seed-demo.mjs",
     "test:approval:run": "node --test --test-concurrency=1 \"tests/approval.test.mjs\"",
-    "test:approval": "npm --prefix functions run build && firebase emulators:exec --project kahiniscope-demo --only auth,firestore,functions \"npm run test:approval:run\"",
+    "test:approval": "npm --prefix functions run build && OWNER_EMAILS=owner@kahiniscope.test firebase emulators:exec --project kahiniscope-demo --only auth,firestore,functions \"npm run test:approval:run\"",
     "test:roles:run": "node --test --test-concurrency=1 \"tests/roles.test.mjs\"",
-    "test:roles": "npm --prefix functions run build && firebase emulators:exec --project kahiniscope-demo --only auth,firestore,functions \"npm run test:roles:run\"",
+    "test:roles": "npm --prefix functions run build && OWNER_EMAILS=owner@kahiniscope.test firebase emulators:exec --project kahiniscope-demo --only auth,firestore,functions \"npm run test:roles:run\"",
     "test:escalation:run": "node --test --test-concurrency=1 \"tests/escalation.test.mjs\"",
-    "test:escalation": "npm --prefix functions run build && ESCALATION_RUN_KEY=test-run-key firebase emulators:exec --project kahiniscope-demo --only auth,firestore,functions \"npm run test:escalation:run\""
+    "test:escalation": "npm --prefix functions run build && OWNER_EMAILS=owner@kahiniscope.test ESCALATION_RUN_KEY=test-run-key firebase emulators:exec --project kahiniscope-demo --only auth,firestore,functions \"npm run test:escalation:run\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",

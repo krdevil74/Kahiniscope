@@ -30,7 +30,12 @@ const db = getFirestore();
 const defaults = {
   plan: [7, 4, 3, 2, 1],
   quietHours: { enabled: true, from: 22, to: 8, sendQueuedAt: 9 },
-  channels: { push: true, telegram: true, whatsapp: true, sms: false, email: false },
+  // Only the free channels. WhatsApp bills per message; Textbelt's free key
+  // is one SMS a day for the whole team.
+  channels: { push: true, telegram: true, whatsapp: false, sms: false, email: false },
+  // Episodes, tasks and reminder logs older than this are swept weekly.
+  // The floor is 90 days regardless of what is written here.
+  retention: { enabled: true, days: 365 },
 };
 
 const ref = db.doc("settings/global");

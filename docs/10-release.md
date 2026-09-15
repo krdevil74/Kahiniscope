@@ -22,7 +22,7 @@ that makes those two short is done.
 ### Two things the pre-flight caught
 
 **The owner address was in the app bundle.** The handoff is explicit that
-`owner@kahiniscope.example` must live in a Cloud Function constant and never reach
+the configured owner address must live in a Cloud Function constant and never reach
 the client. It had crept into the emulator sign-in buttons on the sign-in
 screen — dead code in a release build, because it is gated on `__DEV__`, but a
 string literal survives minification whether or not the code around it can
@@ -30,7 +30,7 @@ run. `strings` on the compiled bundle found it. The addresses now come from
 `.env`, and the scan is clean:
 
 ```
-clean: owner@kahiniscope.example   clean: TELEGRAM_BOT_TOKEN
+clean: the owner address   clean: TELEGRAM_BOT_TOKEN
 clean: WHATSAPP_TOKEN          clean: TEXTBELT_KEY
 clean: ESCALATION_RUN_KEY      clean: serviceAccount
 ```

@@ -168,6 +168,43 @@ done
 Replacing one later is `firebase functions:secrets:set NAME` followed by a
 redeploy, which is what binds the new version.
 
+## Data retention
+
+Episodes, tasks and reminder logs older than **one year** are deleted
+automatically. `purgeOldData` runs weekly — Sundays at 03:00 Dhaka, well clear
+of the 09:00 escalation pass so the two never argue about the same documents.
+
+Weekly rather than daily on purpose: the volume is a few hundred documents a
+year, and a job that deletes production data should run as rarely as it can
+while still doing its job.
+
+Three choices worth knowing:
+
+- **Open tasks are swept too.** A task nobody closed in a year is not pending
+  work — it is a task from a finished episode that was forgotten. Leaving it
+  means the escalation job chases somebody about EP-12 forever.
+- **The window has a floor of 90 days**, whatever `settings/global` says. A
+  fat-fingered `retention: { days: 3 }` would otherwise delete the current
+  slate on the next run. The clamp is applied both when reading the setting
+  and when computing the cutoff, so neither path can be bypassed.
+- **Each collection is judged on its own clock** — episodes by air date, tasks
+  by when they were assigned, logs by when they were sent — rather than by
+  chasing references between them. A sweep that hits its per-run limit can
+  therefore never half-delete an episode.
+
+It can be switched off with `retention: { enabled: false }` in
+`settings/global`, but only explicitly: anything else reads as on, because
+unbounded growth is the thing that eventually costs money.
+
+The privacy policy states this one-year window, so changing it means changing
+that document too.
+
+**On cost, honestly:** this is not what would have cost you money. Firestore's
+free tier is 1 GiB, and this app generates a few thousand small documents a
+year — retention here is data hygiene and a promise the privacy policy can
+keep, rather than a bill being avoided. The thing that actually costs money is
+WhatsApp, and that ships off.
+
 ## Android build
 
 Manual, from the Actions tab, with a choice of `preview` (an APK you can

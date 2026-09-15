@@ -101,7 +101,7 @@ Notify screen.
 
 ## 6. First sign-in
 
-Sign in to the app with **owner@kahiniscope.example**. That account, and only that
+Sign in to the app with **the owner address**. That account, and only that
 account, comes back with `role: "owner"`. Every other Google account on earth
 comes back `role: "member", status: "pending"`.
 
@@ -175,7 +175,7 @@ fields whenever they disagree with the owner list.
 
 ### On losing the Gmail account
 
-If `owner@kahiniscope.example` is lost, admin access goes with it. Keep two-factor
+If the configured owner address is lost, admin access goes with it. Keep two-factor
 authentication on it. `OWNER_EMAILS` in `functions/src/config.ts` is an array
 for this reason — add a second address you control, redeploy, and that address
 becomes a co-owner on its next sign-in. Do it before it is urgent.

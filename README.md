@@ -41,14 +41,14 @@ No custom server. No REST layer — the app talks to Firestore directly, guarded
 
 Three roles, enforced by Firebase custom claims and Firestore rules. **The UI is not the security boundary.**
 
-- **owner** — exactly one account, bound to the hard-coded address `owner@kahiniscope.example`. Granted automatically on first sign-in if the Google token has that email *and* `email_verified === true`. Can do everything, plus: promote/demote admins, edit the escalation ladder, revoke access.
+- **owner** — exactly one account, bound to a single configured address. Granted automatically on first sign-in if the Google token has that email *and* `email_verified === true`. Can do everything, plus: promote/demote admins, edit the escalation ladder, revoke access.
 - **admin** — promoted by the owner. Can approve/decline registrations, create and assign tasks, nudge, mark anything done. Cannot promote, demote, or change the ladder.
 - **member** — the default for every new sign-in, initially with `status: "pending"`. Sees only their own tasks, and can write only the `done` field on them.
 
 The owner address must live in a Cloud Function constant, **never in the app bundle**:
 
 ```js
-const OWNER_EMAIL = "owner@kahiniscope.example";
+const OWNER_EMAIL = process.env.OWNER_EMAILS;  // set in functions/.env, never committed
 ```
 
 A `beforeSignIn` / `onCreate` auth trigger writes the user document and sets the claim. Every other sign-in is written `status: "pending", role: "member"`.
@@ -213,7 +213,7 @@ Vertical form, each group labelled with a 10px uppercase monospace caption:
 ### 8. Notify (settings)
 Four sections.
 
-**Admin access** — a dark card: yellow "KS" avatar, "Master admin" with a yellow **Verified** badge, the address `owner@kahiniscope.example` in monospace, and a note that it is fixed in the backend and cannot be claimed or changed from inside the app. Below it, a white list of approved members with a **Make admin** / **Demote** button each, and a line explaining that only the master admin can promote, demote or edit the ladder. **Render these controls for the owner only.**
+**Admin access** — a dark card: yellow "KS" avatar, "Master admin" with a yellow **Verified** badge, the owner's address in monospace, and a note that it is fixed in the backend and cannot be claimed or changed from inside the app. Below it, a white list of approved members with a **Make admin** / **Demote** button each, and a line explaining that only the master admin can promote, demote or edit the ladder. **Render these controls for the owner only.**
 
 **Delivery channels** — one card per channel: name, a status tag (Primary / Fallback / Last resort / Off), the free-tier limit in monospace, a 44×26 toggle, and when on, the endpoint plus a **Test send** button. Closing note: channels are tried in order, falling through WhatsApp → Telegram → SMS.
 

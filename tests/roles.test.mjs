@@ -30,7 +30,7 @@ import {
 } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/functions";
 
-const OWNER_EMAIL = "owner@kahiniscope.example";
+const OWNER_EMAIL = "owner@kahiniscope.test";
 const REGION = "asia-south2";
 
 const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1:9099";

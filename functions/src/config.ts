@@ -7,17 +7,43 @@
  */
 
 /**
- * Addresses granted the owner role on sign-in. Exactly one is live today;
- * the array exists because losing the Gmail account means losing admin
- * access, so a second owner address can be added here without a code change
- * anywhere else. Keep 2FA on every address listed.
+ * Addresses granted the owner role on sign-in.
+ *
+ * Read from the environment, never written down here. The address is not a
+ * secret in the cryptographic sense — knowing it grants nothing, because
+ * access still requires signing into that Google account with a verified
+ * email — but it names the single account that controls everything, and a
+ * public repository is a poor place to point at it.
+ *
+ * Set it in functions/.env, which is gitignored:
+ *
+ *   OWNER_EMAILS=someone@gmail.com
+ *
+ * Comma-separated for more than one. Losing the Gmail account means losing
+ * admin access, so keep 2FA on it and add a second address you control before
+ * that becomes urgent — this is the one change that needs no code edit.
  *
  * Matching is an exact, case-insensitive comparison against the verified
  * `email` on the Google token. Gmail's dot and plus aliases are deliberately
  * NOT normalised: the rule stays predictable, and the real mailbox is the
- * only one that can hold a Google session for this address anyway.
+ * only one that can hold a Google session for the address anyway.
  */
-export const OWNER_EMAILS: readonly string[] = ["owner@kahiniscope.example"];
+export const OWNER_EMAILS: readonly string[] = (process.env.OWNER_EMAILS ?? "")
+  .split(",")
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
+
+/**
+ * With no owner address configured, nobody is ever granted the owner role.
+ * That is the safe direction to fail — an app with no admin beats an app with
+ * the wrong one — but it is silent, so it says so loudly in the log.
+ */
+if (OWNER_EMAILS.length === 0) {
+  console.error(
+    "OWNER_EMAILS is not set. No account will be granted the owner role. " +
+      "Set it in functions/.env and redeploy."
+  );
+}
 
 /**
  * Where Firestore is, and therefore where every Firestore trigger must be.
@@ -82,6 +108,15 @@ export const DEFAULT_QUIET_HOURS = {
  * deliberately, from the Notify screen, by somebody who has decided to pay
  * for them.
  */
+/**
+ * Nothing is kept longer than a year. See functions/src/retention.ts — the
+ * floor is 90 days regardless of what is written here.
+ */
+export const DEFAULT_RETENTION = {
+  enabled: true,
+  days: 365,
+};
+
 export const DEFAULT_CHANNELS = {
   push: true,
   telegram: true,

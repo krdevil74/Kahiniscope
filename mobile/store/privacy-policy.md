@@ -10,7 +10,13 @@ This policy describes exactly what the app collects, why, and who it reaches.
 
 ## Who runs this app
 
-Kahiniscope. Contact: **owner@kahiniscope.example**.
+Kahiniscope. Contact: **<support address>**.
+
+> Fill this in before publishing. Play requires a public contact address on
+> the listing, so whatever goes here is public by definition. Consider a
+> separate address rather than the owner account that controls the app —
+> publishing that one invites targeted attempts at the single login that can
+> administer everything.
 
 ## What is collected, and why
 
@@ -64,15 +70,21 @@ its own terms.
 
 ## How long it is kept
 
-Your record and your task history are kept for as long as you are part of the
-team. Reminder logs are kept so the admin can check delivery.
+**Nothing is kept longer than one year.** Episodes, tasks and the record of
+reminders sent are deleted automatically once they are more than a year old —
+a job runs weekly and removes them. This is not something you have to ask for;
+it happens on its own.
+
+Your user record — name, email, phone, craft — is kept for as long as you are
+part of the team, because it is what lets work be assigned to you. Ask to be
+removed and it goes.
 
 ## Your choices
 
 - **Notifications** can be refused or turned off in your phone's settings. You
   will still be reminded on the other channels.
 - **Telegram** is optional. If you never connect it, nothing is sent there.
-- **Deletion.** Ask the admin at owner@kahiniscope.example to remove your account.
+- **Deletion.** Ask the admin at the contact address above to remove your account.
   Declining or deleting an account removes your user record and your sign-in
   from the system. You can also revoke the app's access to your Google account
   at myaccount.google.com.
@@ -88,4 +100,4 @@ If this policy changes, the date at the top changes with it.
 
 ## Contact
 
-owner@kahiniscope.example
+<support address>

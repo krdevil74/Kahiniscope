@@ -10,6 +10,7 @@ Read straight off what the app actually does. The Play form asks about
 | Does your app collect or share any of the required user data types? | **Yes** |
 | Is all of the user data collected by your app encrypted in transit? | **Yes** — Firebase and every messaging API are HTTPS/TLS only |
 | Do you provide a way for users to request that their data be deleted? | **Yes** — by email to the admin; see the privacy policy |
+| Is data deleted automatically? | **Yes** — episodes, tasks and reminder logs are swept weekly once older than a year |
 | Does your app contain ads? | **No** |
 | Is your app designed for children? | **No** |
 

@@ -23,3 +23,4 @@ export { telegramWebhook } from "./telegram-webhook";
 export { nudgeTask, nudgeAllOpen } from "./nudge";
 export { welcomeOnApproval } from "./welcome";
 export { linkTelegram } from "./link-telegram";
+export { purgeOldData } from "./retention";

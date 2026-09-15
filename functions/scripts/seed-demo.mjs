@@ -176,5 +176,5 @@ console.log(
   `Seeded ${EPISODES.length} episodes, ${PEOPLE.length} approved members, ` +
     `${PENDING.length} pending registrations, ${TASKS.length} tasks and ${FEED.length} log entries.`
 );
-console.log("Sign in as owner@kahiniscope.example to see the board.");
+console.log("Sign in as the address in OWNER_EMAILS to see the board.");
 process.exit(0);

@@ -14,32 +14,32 @@ import {
   displayNameFrom,
 } from "../lib/roles.js";
 
-const OWNERS = ["owner@kahiniscope.example"];
+const OWNERS = ["owner@kahiniscope.test"];
 
 test("the owner address on a verified token is the owner", () => {
-  assert.equal(isOwnerEmail("owner@kahiniscope.example", true, OWNERS), true);
-  assert.deepEqual(initialAccess("owner@kahiniscope.example", true, OWNERS), {
+  assert.equal(isOwnerEmail("owner@kahiniscope.test", true, OWNERS), true);
+  assert.deepEqual(initialAccess("owner@kahiniscope.test", true, OWNERS), {
     role: "owner",
     status: "approved",
   });
 });
 
 test("case and surrounding space do not matter", () => {
-  assert.equal(isOwnerEmail("  Kahiniscope@Gmail.COM ", true, OWNERS), true);
+  assert.equal(isOwnerEmail("  Owner@Kahiniscope.TEST ", true, OWNERS), true);
 });
 
 test("an unverified owner address is not the owner", () => {
-  assert.equal(isOwnerEmail("owner@kahiniscope.example", false, OWNERS), false);
-  assert.equal(isOwnerEmail("owner@kahiniscope.example", undefined, OWNERS), false);
+  assert.equal(isOwnerEmail("owner@kahiniscope.test", false, OWNERS), false);
+  assert.equal(isOwnerEmail("owner@kahiniscope.test", undefined, OWNERS), false);
 });
 
 test("lookalike addresses are not the owner", () => {
   for (const email of [
-    "owner@kahiniscope.example.attacker.net",
-    "kahiniscope@googlemail.com",
-    "kahiniscope+admin@gmail.com",
-    "kahini.scope@gmail.com",
-    "xowner@kahiniscope.example",
+    "owner@kahiniscope.test.attacker.net",
+    "owner@kahiniscope.example",
+    "owner+admin@kahiniscope.test",
+    "own.er@kahiniscope.test",
+    "xowner@kahiniscope.test",
     "",
     null,
     undefined,
@@ -49,8 +49,8 @@ test("lookalike addresses are not the owner", () => {
 });
 
 test("a second owner address can be added without other changes", () => {
-  const owners = ["owner@kahiniscope.example", "backup.owner@gmail.com"];
-  assert.equal(isOwnerEmail("backup.owner@gmail.com", true, owners), true);
+  const owners = ["owner@kahiniscope.test", "backup@kahiniscope.test"];
+  assert.equal(isOwnerEmail("backup@kahiniscope.test", true, owners), true);
 });
 
 test("every other verified Google account lands pending", () => {
@@ -88,7 +88,7 @@ test("reconcile restores the real owner from a tampered document", () => {
   assert.deepEqual(
     reconcileAccess(
       { role: "member", status: "pending" },
-      "owner@kahiniscope.example",
+      "owner@kahiniscope.test",
       true,
       OWNERS
     ),

@@ -40,7 +40,7 @@ import {
   where,
 } from "firebase/firestore";
 
-const OWNER_EMAIL = "owner@kahiniscope.example";
+const OWNER_EMAIL = "owner@kahiniscope.test";
 const RUN_KEY = process.env.ESCALATION_RUN_KEY ?? "test-run-key";
 const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1:9099";
 const [fsHost, fsPort] = (process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080").split(":");

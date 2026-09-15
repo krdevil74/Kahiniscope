@@ -76,7 +76,8 @@ prototype, which is drawn in an iOS frame and is not what installs.
 
 ## Contact details
 
-- Email: `owner@kahiniscope.example`
+- Email: `<support address>` — see the note in `privacy-policy.md`; this is
+  published on the listing, so it need not be the owner account
 - Privacy policy URL: wherever `store/privacy-policy.md` is published. A GitHub
   Pages page, a Google Site or a Notion public page is enough; Play only
   requires that the URL is public and loads.

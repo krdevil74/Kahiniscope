@@ -35,7 +35,7 @@ out.
 
 ## The owner's address is not in the bundle
 
-The master admin card shows `owner@kahiniscope.example`, but that string is never
+The master admin card shows the configured owner address, but that string is never
 compiled into the app. It is read from the owner's own user document — the
 account whose `role` is `owner` — which is written by the Cloud Function that
 holds the constant. The app displays what the backend decided; it has no way of
