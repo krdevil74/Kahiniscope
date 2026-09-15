@@ -10,7 +10,7 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onRequest } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 
-import { DEFAULT_PLAN, DEFAULT_QUIET_HOURS, REGION } from "../config";
+import { DEFAULT_PLAN, DEFAULT_QUIET_HOURS, REGION, SCHEDULER_REGION } from "../config";
 import { TELEGRAM_BOT_TOKEN } from "../messaging/telegram";
 import { TEXTBELT_KEY, WHATSAPP_PHONE_ID, WHATSAPP_TOKEN } from "../messaging/pending-channels";
 import { defineSecret } from "firebase-functions/params";
@@ -161,7 +161,8 @@ export const escalateDaily = onSchedule(
   {
     schedule: "0 9 * * *",
     timeZone: TIME_ZONE,
-    region: REGION,
+    // Not REGION: Cloud Scheduler is not available where the database is.
+    region: SCHEDULER_REGION,
     secrets: SECRETS,
     retryCount: 1,
   },

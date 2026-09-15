@@ -48,6 +48,21 @@ export const REGION = "asia-south2";
  */
 export const BLOCKING_REGION = "asia-south2";
 
+/**
+ * Region for the scheduled escalation pass.
+ *
+ * Cloud Scheduler does not exist in asia-south2 — the deploy fails there with
+ * "Location 'asia-south2' is not a valid location". asia-south1 (Mumbai) is
+ * the nearest region that has it.
+ *
+ * A scheduled job has no reason to sit with the database: it wakes up once a
+ * day and talks to Firestore through the Admin SDK, which is region-agnostic.
+ * The cross-region hop costs milliseconds on a job that runs at nine in the
+ * morning and is measured in seconds. Firestore *triggers* are the ones with
+ * no choice, and they stay in REGION.
+ */
+export const SCHEDULER_REGION = "asia-south1";
+
 /** Default escalation ladder written into settings/global on first run. */
 export const DEFAULT_PLAN = [7, 4, 3, 2, 1];
 
