@@ -3,9 +3,9 @@
  * they load.
  */
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { View } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";
@@ -25,6 +25,7 @@ import { NotoSansBengali_500Medium } from "@expo-google-fonts/noto-sans-bengali/
 import { NotoSansBengali_600SemiBold } from "@expo-google-fonts/noto-sans-bengali/600SemiBold";
 
 import { SessionProvider, useSession } from "../src/lib/auth";
+import { shouldSendToSignIn } from "../src/lib/session-routing.ts";
 import { useNotificationTaps } from "../src/lib/notifications";
 import { ToastProvider } from "../src/lib/toast";
 import { colors } from "../src/theme/tokens";
@@ -58,6 +59,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <SessionProvider>
         <ToastProvider>
+          <SignedOutGate />
           <NotificationRouting />
         <View style={{ flex: 1, backgroundColor: colors.surfaceAlt }} onLayout={onReady}>
           {/* The header bar is ink everywhere it appears, and Android is
@@ -75,6 +77,33 @@ export default function RootLayout() {
       </SessionProvider>
     </SafeAreaProvider>
   );
+}
+
+/**
+ * Sending somebody back to the door when their session ends.
+ *
+ * The gate in app/index.tsx only runs at `/`, so it cannot help anybody who
+ * is already somewhere else — and signing out happens from the member's
+ * dashboard and the holding screen, never from `/`. Without this, Sign out
+ * ended the session and left the person looking at a screen they were no
+ * longer entitled to, with no way back to the sign-in button.
+ *
+ * It lives here rather than on each screen because the last two bugs of this
+ * shape were both a screen that had not been told to redirect. One guard for
+ * the whole app cannot be forgotten on the next screen somebody adds.
+ */
+function SignedOutGate() {
+  const { loading, user } = useSession();
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (shouldSendToSignIn({ loading, signedIn: Boolean(user) }, segments[0])) {
+      router.replace("/sign-in");
+    }
+  }, [loading, user, segments, router]);
+
+  return null;
 }
 
 /**

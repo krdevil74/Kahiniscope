@@ -35,6 +35,7 @@ export default function Pending() {
   // The approval re-mints the claim and the snapshot above fires, but a
   // route does not leave itself — this is what makes the holding screen give
   // way to the dashboard without anybody signing out.
+  if (!loading && !user) return <Redirect href="/sign-in" />;
   if (!loading && isApproved) return <Redirect href={isAdmin ? "/board" : "/my-tasks"} />;
 
   // The form is done once a craft is on the record — that is the field the

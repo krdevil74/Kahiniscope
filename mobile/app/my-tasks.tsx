@@ -37,6 +37,11 @@ export default function MyTasks() {
   const now = useNow();
   const { user, profile, isApproved, isAdmin, loading, signOut } = useSession();
 
+  // Signing out happens on this screen, so this screen has to answer for it:
+  // the layout's guard would too, one tick later, but a dashboard that draws
+  // even once for somebody with no session is a dashboard showing somebody
+  // else's work.
+  if (!loading && !user) return <Redirect href="/sign-in" />;
   // Admins have the board; this screen is the member's.
   if (!loading && isAdmin) return <Redirect href="/board" />;
   if (!loading && user && !isApproved) return <Redirect href="/pending" />;
