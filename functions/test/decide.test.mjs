@@ -10,6 +10,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  REJECTED_GAP_DAYS,
+  chaseGapFor,
   daysBetween,
   daysOverdue,
   decide,
@@ -185,4 +187,67 @@ test("overdue days are counted for the message copy", () => {
   assert.equal(daysOverdue(NINE_AM, NINE_AM), 0);
   assert.equal(daysOverdue(new Date(NINE_AM.getTime() + 3 * 86_400_000), NINE_AM), -3);
   assert.equal(daysOverdue(null, NINE_AM), 0);
+});
+
+// --- the review flow -------------------------------------------------------
+
+test("work that has been handed in stops the chasing", () => {
+  const base = {
+    id: "t1",
+    assigneeUid: "u1",
+    remindersSent: 0,
+    lastReminderAt: null,
+    assignedAt: new Date("2026-09-01T03:00:00Z"),
+  };
+  const now = new Date("2026-09-20T03:00:00Z");
+  const quiet = { enabled: false, from: 22, to: 8, sendQueuedAt: 9 };
+
+  // Open: long overdue, chased.
+  assert.equal(decide({ ...base, status: "open" }, [7, 4, 3, 2, 1], now, quiet).send, true);
+
+  // Submitted: the member has done their part; it is the admin who is late.
+  const submitted = decide({ ...base, status: "submitted" }, [7, 4, 3, 2, 1], now, quiet);
+  assert.equal(submitted.send, false);
+  assert.equal(submitted.reason, "not-open");
+
+  for (const status of ["approved", "paid"]) {
+    assert.equal(decide({ ...base, status }, [7, 4, 3, 2, 1], now, quiet).send, false, status);
+  }
+});
+
+test("a task sent back is chased every other day, not up the ladder", () => {
+  const plan = [7, 4, 3, 2, 1];
+  const rejected = {
+    id: "t1",
+    assigneeUid: "u1",
+    status: "open",
+    rejectedAt: new Date("2026-09-18T03:00:00Z"),
+    remindersSent: 0,
+    lastReminderAt: new Date("2026-09-18T03:00:00Z"),
+    assignedAt: new Date("2026-09-01T03:00:00Z"),
+  };
+  const quiet = { enabled: false, from: 22, to: 8, sendQueuedAt: 9 };
+
+  // One day later: the ladder's first gap is seven, but this is not the ladder.
+  assert.equal(decide(rejected, plan, new Date("2026-09-19T03:00:00Z"), quiet).send, false);
+  // Two days later: chased.
+  assert.equal(decide(rejected, plan, new Date("2026-09-20T03:00:00Z"), quiet).send, true);
+
+  // And it stays two days however many reminders have gone out.
+  const chased = { ...rejected, remindersSent: 9 };
+  assert.equal(decide(chased, plan, new Date("2026-09-19T03:00:00Z"), quiet).send, false);
+  assert.equal(decide(chased, plan, new Date("2026-09-20T03:00:00Z"), quiet).send, true);
+});
+
+test("the two gap rules agree with chaseGapFor", () => {
+  const plan = [7, 4, 3, 2, 1];
+  assert.equal(chaseGapFor({ id: "t", assigneeUid: "u", remindersSent: 0, lastReminderAt: null, assignedAt: null }, plan), 7);
+  assert.equal(
+    chaseGapFor(
+      { id: "t", assigneeUid: "u", status: "open", rejectedAt: new Date(), remindersSent: 0, lastReminderAt: null, assignedAt: null },
+      plan
+    ),
+    REJECTED_GAP_DAYS
+  );
+  assert.equal(REJECTED_GAP_DAYS, 2);
 });

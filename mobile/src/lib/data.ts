@@ -23,6 +23,7 @@ import {
 import { db } from "./firebase";
 import { toBool, toDate, toId, toNumber, toStringArray, toStringOrNull } from "./convert.ts";
 import { craftsFrom } from "./crafts";
+import { ratesFrom, taskStatusFrom, toAdvance, toPayment } from "./payment-convert.ts";
 import {
   DEFAULT_SETTINGS,
   type ChannelId,
@@ -32,6 +33,7 @@ import {
   type Task,
   type TeamMember,
 } from "./model";
+import type { Advance, Payment } from "./payments.ts";
 
 // ---------------------------------------------------------------------------
 // Converting what Firestore gives back
@@ -56,8 +58,15 @@ function toTask(snap: QueryDocumentSnapshot<DocumentData>): Task {
     assigneeUid: d.assigneeUid ?? "",
     type: d.type ?? "",
     dueDate: toDate(d.dueDate),
+    // Tasks written before the review flow existed carry only `done`, which
+    // meant "accepted" then and still does.
+    status: taskStatusFrom(d.status, d.done),
     done: toBool(d.done),
     doneAt: toDate(d.doneAt),
+    submittedAt: toDate(d.submittedAt),
+    rejectedAt: toDate(d.rejectedAt),
+    rejectionNote: toStringOrNull(d.rejectionNote),
+    rejectedCount: toNumber(d.rejectedCount),
     remindersSent: toNumber(d.remindersSent),
     lastReminderAt: toDate(d.lastReminderAt),
     assignedAt: toDate(d.assignedAt),
@@ -80,6 +89,8 @@ function toMember(snap: QueryDocumentSnapshot<DocumentData>): TeamMember {
     note: toStringOrNull(d.note),
     preferredChannel: (toStringOrNull(d.preferredChannel) as ChannelId | null) ?? null,
     accountless: d.accountless === true,
+    rates: ratesFrom(d.rates),
+    balance: toNumber(d.balance),
     createdAt: toDate(d.createdAt),
   };
 }
@@ -174,6 +185,30 @@ export function useTasks(options: { assigneeUid?: string; enabled?: boolean } = 
 /** Everyone, pending included. The Team screen filters; Requests does not. */
 export function useTeam(enabled = true): Live<TeamMember[]> {
   return useCollection("users", toMember, [], enabled);
+}
+
+/**
+ * Payments. An admin sees every one; a member may only ask for their own, and
+ * the rules reject a query that does not say so.
+ */
+export function usePayments(
+  options: { uid?: string; enabled?: boolean } = {}
+): Live<Payment[]> {
+  const { uid, enabled = true } = options;
+  const constraints = useMemo(() => (uid ? [where("uid", "==", uid)] : []), [uid]);
+  return useCollection("payments", toPayment, constraints, enabled);
+}
+
+/**
+ * Advances: money handed over before the work existed. Own or admin, like
+ * payments, and a member's query has to name the condition.
+ */
+export function useAdvances(
+  options: { uid?: string; enabled?: boolean } = {}
+): Live<Advance[]> {
+  const { uid, enabled = true } = options;
+  const constraints = useMemo(() => (uid ? [where("uid", "==", uid)] : []), [uid]);
+  return useCollection("advances", toAdvance, constraints, enabled);
 }
 
 export function useReminderFeed(count = 12, enabled = true): Live<ReminderLogEntry[]> {

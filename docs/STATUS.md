@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: **21 September 2026**
+Last updated: **21 September 2026** (payments)
 
 A running record of where this stands and what is left. Written to be read
 cold, after a gap, by someone who has forgotten the details.
@@ -34,9 +34,9 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 137 backend, 99 app.** All green. `npm test` at the root runs the
-backend suites (unit + rules + five emulator suites); `npm run verify` in
-`mobile/` runs typecheck, unit tests and a render of all 15 routes.
+**Tests: 180 backend, 149 app.** All green. `npm test` at the root runs the
+backend suites (unit + rules + six emulator suites); `npm run verify` in
+`mobile/` runs typecheck, unit tests and a render of all 17 routes.
 
 **Local gotcha:** `functions/.env` shadows the `OWNER_EMAILS` the test scripts
 set, so the auth suite fails on a machine that has one. `functions/.env.kahiniscope-demo`
@@ -157,6 +157,48 @@ Asked for on 21 September, built on `feat/contacts-crafts-and-messaging-docs`:
 Five new callables, all admin-gated: `addContact`, `updateContact`,
 `removeContact`, `contactTelegramLink`, `approveAndLinkContact`.
 
+## Submitting, reviewing and payments
+
+Asked for on 21 September, built on `feat/payments`. Full detail in
+`docs/13-payments.md`.
+
+- **Work is handed in, not closed.** `Mark done` became `Submit for review`.
+  A task is `open`, `submitted`, `approved` or `paid`, and only an admin moves
+  it past submitted. Reminders stop the moment work is submitted — the member
+  is no longer the one who is late.
+- **Rejection is not a state.** Sending work back puts the task at `open` with
+  `rejectedAt` and a required reason, which is what the escalation engine
+  reads to chase it **every other day** instead of climbing the ladder.
+- **Rates are per person.** Voice carries two (character and narration,
+  different figures for the same artist), sound design per minute, cover
+  design per cover. Everything else is a figure the admin types. A blank is
+  not zero — it means "no rate for this".
+- **Approving opens a payment** with the rate snapshotted, so raising
+  somebody's rate later cannot restate what past work was worth. The member
+  sees an estimate under a disclaimer; the admin sets the real figure when
+  paying, and it is allowed to differ.
+- **A Payments tab for both sides.** The admin gets a queue with the working
+  shown and an amount field pre-filled with the estimate. The member gets paid
+  all-time and pending-estimate, kept strictly apart.
+
+`done` still exists, written alongside the status and meaning what it always
+meant — accepted — so every percentage and the escalation query keep working.
+A task written before any of this reads as `approved`, and no migration runs.
+
+- **Advances.** An artist can be paid before the work exists. The money sits
+  on their record as a balance; approving their work spends it, all or
+  nothing, and the payment is created already paid with no queue entry. A
+  balance that does not cover the work is left alone. The balance is
+  server-owned — beyond an admin's reach as well as a member's — and both
+  paths that move it are transactions, because it is exactly the field two
+  admins could race on.
+- **Notifications on every admin action.** Approved, sent back, paid,
+  advanced. They ride the reminder chain, and a failed send never rolls back
+  the thing that caused it.
+
+Three new callables: `reviewTask`, `markPaymentPaid`, `addAdvance`. Two new
+collections, `payments` and `advances`, that no client may write.
+
 ---
 
 ## TBD
@@ -164,10 +206,12 @@ Five new callables, all admin-gated: `addContact`, `updateContact`,
 ### Blocking a real launch
 
 - [x] **Run the app on a phone.** Done 20–21 Sep.
-- [ ] **Deploy the contacts work.** The new callables and the rules change are
-      on a branch, not on `main`. Rules must go out with the functions: the
-      registration write list moved from `craft` to `crafts`, so a deployed
-      app writing `crafts` against the old rules is refused.
+- [x] **Deploy the contacts work.** Merged and deployed 21 Sep.
+- [ ] **Deploy the payments work**, rules and functions together. The member
+      write on `tasks` moved from `done` to `status`, so an app built from
+      this branch cannot submit anything against the old rules — and an old
+      build cannot mark anything done against the new ones. Ship the APK after
+      the deploy, not before.
 - [ ] **Confirm push on the device** with build `088d4596` — `fcmTokens`
       non-empty, then **Nudge now** buzzes.
 - [ ] **Telegram bot.** `TELEGRAM_BOT_TOKEN` is the placeholder `unset`, so

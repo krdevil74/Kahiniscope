@@ -203,7 +203,7 @@ test("an approved account is revoked, never declined", async () => {
   assert.equal(stillThere.exists(), true, "an approved account is not destroyed by a stray tap");
 });
 
-test("an approved member sees only their own work, and can close it", async () => {
+test("an approved member sees only their own work, and can hand it in", async () => {
   const c = client("member-dashboard");
   const user = await signIn(c, { sub: "member-1", email: "rizu@gmail.com", name: "Rizu Ahmed" });
   await waitForClaims(user, (cl) => cl.status === "pending", "pending claims");
@@ -216,8 +216,13 @@ test("an approved member sees only their own work, and can close it", async () =
     assigneeUid: user.uid,
     type: "Voice recording",
     dueDate: Timestamp.now(),
+    status: "open",
     done: false,
     doneAt: null,
+    submittedAt: null,
+    rejectedAt: null,
+    rejectionNote: null,
+    rejectedCount: 0,
     remindersSent: 3,
     lastReminderAt: null,
     assignedAt: serverTimestamp(),
@@ -228,8 +233,13 @@ test("an approved member sees only their own work, and can close it", async () =
     assigneeUid: "somebody-else",
     type: "Editing",
     dueDate: Timestamp.now(),
+    status: "open",
     done: false,
     doneAt: null,
+    submittedAt: null,
+    rejectedAt: null,
+    rejectionNote: null,
+    rejectedCount: 0,
     remindersSent: 0,
     lastReminderAt: null,
     assignedAt: serverTimestamp(),
@@ -246,12 +256,14 @@ test("an approved member sees only their own work, and can close it", async () =
   const episode = await getDoc(doc(c.db, "episodes", "ep41"));
   assert.equal(episode.data().title, "রক্তমুখী নীলা");
 
-  // Mark done — the one write they have.
+  // Handing it in — the one write they have. Accepting it is the admin's,
+  // because accepting it opens a payment.
   await assert.doesNotReject(() =>
-    updateDoc(doc(c.db, "tasks", mine.id), { done: true, doneAt: Timestamp.now() })
+    updateDoc(doc(c.db, "tasks", mine.id), { status: "submitted", submittedAt: Timestamp.now() })
   );
-  const closed = await getDoc(doc(owner.db, "tasks", mine.id));
-  assert.equal(closed.data().done, true, "the admin's board sees it closed");
+  const handed = await getDoc(doc(owner.db, "tasks", mine.id));
+  assert.equal(handed.data().status, "submitted", "the admin's review queue sees it");
+  await assert.rejects(() => updateDoc(doc(c.db, "tasks", mine.id), { done: true }));
 
   // And nothing else.
   await assert.rejects(() => getDoc(doc(c.db, "tasks", theirs.id)), /permission|PERMISSION/);

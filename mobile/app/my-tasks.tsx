@@ -12,16 +12,19 @@
 
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { Redirect } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText } from "../src/components/AppText";
+import { Button } from "../src/components/Button";
 import { Card } from "../src/components/Card";
 import { HeatBadge } from "../src/components/HeatBadge";
 import { ProgressBar } from "../src/components/ProgressBar";
 import { useSession } from "../src/lib/auth";
-import { doneToast, setTaskDone } from "../src/lib/actions";
+import { submitTask, submittedToast } from "../src/lib/review-actions.ts";
+import { isRejected, rejectionLabel, statusLabel, submitLabel } from "../src/lib/review.ts";
 import { memberChainSentence } from "../src/lib/channel-meta.ts";
+import { money } from "../src/lib/payments.ts";
 import { connectTelegram } from "../src/lib/telegram-link";
 import { byDueDate } from "../src/lib/completion.ts";
 import { indexBy, useEpisodes, useNow, useSettings, useTasks } from "../src/lib/data";
@@ -50,6 +53,7 @@ export default function MyTasks() {
     <MemberDashboard
       uid={user?.uid ?? ""}
       telegramConnected={Boolean(profile?.telegramChatId)}
+      balance={profile?.balance ?? 0}
       approved={isApproved}
       now={now}
       onToast={toast}
@@ -61,6 +65,7 @@ export default function MyTasks() {
 function MemberDashboard({
   uid,
   telegramConnected,
+  balance,
   approved,
   now,
   onToast,
@@ -68,6 +73,7 @@ function MemberDashboard({
 }: {
   uid: string;
   telegramConnected: boolean;
+  balance: number;
   approved: boolean;
   now: Date;
   onToast: (message: string) => void;
@@ -78,14 +84,15 @@ function MemberDashboard({
   const { data: episodes } = useEpisodes(approved);
   const { data: settings } = useSettings(approved);
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const byEpisode = useMemo(() => indexBy(episodes, (e) => e.id), [episodes]);
   const ordered = useMemo(() => byDueDate(tasks, now), [tasks, now]);
   const open = useMemo(() => tasks.filter((t) => !t.done).length, [tasks]);
 
   async function toggle(task: Task) {
-    await setTaskDone(task, !task.done);
-    onToast(doneToast(task.type, !task.done));
+    await submitTask(task.id);
+    onToast(submittedToast(task.type));
   }
 
   return (
@@ -123,7 +130,7 @@ function MemberDashboard({
           }}
         >
           {open
-            ? "Mark each one done and the reminders stop."
+            ? "Submit each one for review and the reminders stop."
             : "Nothing assigned to you right now. The admin will send it here."}
         </AppText>
       </View>
@@ -132,6 +139,20 @@ function MemberDashboard({
         contentContainerStyle={{ padding: spacing.screen, paddingBottom: 40, gap: 9 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* The member's way into the money. There is no tab bar on this
+            screen — it is the whole app for somebody who is not an admin — so
+            the link has to live in the one list they have. */}
+        <Button
+          label={balance > 0 ? `Your payments · ${money(balance)} available` : "Your payments"}
+          variant="ink"
+          onPress={() => router.push("/payments")}
+          accessibilityLabel={
+            balance > 0
+              ? `See what you have been paid. ${money(balance)} advanced and available.`
+              : "See what you have been paid"
+          }
+        />
+
         {ordered.map((task) => {
           const episode = byEpisode.get(task.episodeId);
           const heat = heatFor(task.remindersSent);
@@ -217,7 +238,45 @@ function MemberDashboard({
                   </AppText>
                 </View>
 
-                <MarkDone done={task.done} onPress={() => void toggle(task)} taskType={task.type} />
+                {/* Why it came back, in the admin's own words. This is the
+                    whole value of a rejection: "no" without a reason is a
+                    task somebody will hand in wrong a second time. */}
+                {isRejected(task) ? (
+                  <View
+                    style={{
+                      backgroundColor: colors.ink,
+                      borderRadius: radii.chipLarge,
+                      paddingVertical: 10,
+                      paddingHorizontal: 11,
+                      marginTop: 8,
+                    }}
+                  >
+                    <AppText
+                      style={{
+                        fontFamily: fontFamily.regular,
+                        fontSize: 11.5,
+                        lineHeight: 16.5,
+                        color: colors.white,
+                      }}
+                    >
+                      {rejectionLabel(task)}
+                    </AppText>
+                  </View>
+                ) : task.status !== "open" ? (
+                  <AppText
+                    style={{
+                      fontFamily: fontFamily.monoMedium,
+                      fontSize: 10.5,
+                      lineHeight: 14.2,
+                      color: "rgba(27,26,23,.5)",
+                      marginTop: 8,
+                    }}
+                  >
+                    {statusLabel(task)}
+                  </AppText>
+                ) : null}
+
+                <SubmitButton task={task} onPress={() => void toggle(task)} />
               </View>
             </Card>
           );
@@ -246,7 +305,7 @@ function MemberDashboard({
               textAlign: "center",
             }}
           >
-            {`${memberChainSentence(settings.channels)} Marking a task done stops them immediately.`}
+            {`${memberChainSentence(settings.channels)} Submitting a task stops them immediately.`}
           </AppText>
         </View>
 
@@ -326,25 +385,53 @@ function ConnectTelegram({ onToast }: { onToast: (message: string) => void }) {
 }
 
 /**
- * The one control a member has. Ink with yellow text while there is work to
- * do; outlined once it is closed, so reopening is possible but never the
- * obvious thing to tap.
+ * The one control a member has, and what it is allowed to say.
+ *
+ * Work is handed in, not closed. Once it has gone in there is nothing left to
+ * tap — a member cannot un-submit, because the admin may already be looking
+ * at it, and they cannot accept their own work at any price. So the button
+ * becomes a label, which is honest: this is somebody else's move now.
  */
-function MarkDone({
-  done,
-  onPress,
-  taskType,
-}: {
-  done: boolean;
-  onPress: () => void;
-  taskType: string;
-}) {
+function SubmitButton({ task, onPress }: { task: Task; onPress: () => void }) {
+  const waiting = task.status === "submitted";
+  const settled = task.status === "approved" || task.status === "paid";
+  const label = submitLabel(task);
+
+  if (waiting || settled) {
+    return (
+      <View
+        style={{
+          marginTop: 11,
+          paddingVertical: 14,
+          borderRadius: 10,
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: MIN_TAP_TARGET,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.hairlineStronger,
+        }}
+      >
+        <AppText
+          style={{
+            fontFamily: fontFamily.semibold,
+            fontSize: 13,
+            lineHeight: 14,
+            color: "rgba(27,26,23,.6)",
+          }}
+        >
+          {label}
+        </AppText>
+      </View>
+    );
+  }
+
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={done ? `Reopen ${taskType}` : `Mark ${taskType} done`}
-      android_ripple={{ color: done ? "rgba(27,26,23,.08)" : "rgba(255,194,10,.2)" }}
+      accessibilityLabel={`${label}: ${task.type}`}
+      android_ripple={{ color: "rgba(255,194,10,.2)" }}
       style={({ pressed }) => ({
         marginTop: 11,
         paddingVertical: 14,
@@ -352,9 +439,9 @@ function MarkDone({
         alignItems: "center",
         justifyContent: "center",
         minHeight: MIN_TAP_TARGET,
-        backgroundColor: done ? colors.surface : pressed ? "#332f28" : colors.ink,
+        backgroundColor: pressed ? "#332f28" : colors.ink,
         borderWidth: 1,
-        borderColor: done ? colors.hairlineStronger : colors.ink,
+        borderColor: colors.ink,
       })}
     >
       <AppText
@@ -362,10 +449,10 @@ function MarkDone({
           fontFamily: fontFamily.semibold,
           fontSize: 13,
           lineHeight: 14,
-          color: done ? "rgba(27,26,23,.6)" : colors.brandYellow,
+          color: colors.brandYellow,
         }}
       >
-        {done ? "Reopen task" : "Mark done"}
+        {label}
       </AppText>
     </Pressable>
   );

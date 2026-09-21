@@ -51,6 +51,9 @@ export async function runEscalation(now: Date = new Date()): Promise<RunSummary>
   const quiet: QuietHours = { ...DEFAULT_QUIET_HOURS, ...(settings.quietHours ?? {}) };
   const enabled = (settings.channels ?? {}) as Partial<Record<ChannelId, boolean>>;
 
+  // `done` is false for submitted work as well as open work, so this pulls
+  // slightly more than it needs and `decide` drops the rest. A second
+  // condition here would want a composite index for a handful of documents.
   const open = await db.collection("tasks").where("done", "==", false).get();
 
   const summary: RunSummary = { considered: open.size, sent: 0, skipped: {}, failures: 0 };
@@ -73,6 +76,8 @@ export async function runEscalation(now: Date = new Date()): Promise<RunSummary>
         remindersSent: task.remindersSent ?? 0,
         lastReminderAt: toDate(task.lastReminderAt),
         assignedAt: toDate(task.assignedAt),
+        status: task.status,
+        rejectedAt: toDate(task.rejectedAt),
       },
       plan,
       now,

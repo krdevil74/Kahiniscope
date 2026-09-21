@@ -39,6 +39,13 @@ export interface DueTask {
   remindersSent: number;
   lastReminderAt: Date | null;
   assignedAt: Date | null;
+  /**
+   * Where the work has got to. Only `open` is chased: once it has been handed
+   * in, chasing the person who handed it in is chasing the wrong person.
+   */
+  status?: string;
+  /** Set when an admin sent it back. Turns the ladder into a steady tap. */
+  rejectedAt?: Date | null;
 }
 
 export interface CalendarDay {
@@ -95,6 +102,32 @@ export function gapFor(remindersSent: number, plan: readonly number[]): number {
 }
 
 /**
+ * How often a task that was sent back is chased, in days.
+ *
+ * The same constant lives in mobile/src/lib/review.ts. They must agree, or
+ * the app draws a countdown to a reminder this job does not send.
+ */
+export const REJECTED_GAP_DAYS = 2;
+
+export function isRejected(task: Pick<DueTask, "status" | "rejectedAt">): boolean {
+  return (task.status ?? "open") === "open" && Boolean(task.rejectedAt);
+}
+
+/**
+ * The gap for this particular task: the ladder normally, a flat two days once
+ * it has been sent back.
+ *
+ * The ladder exists to get work in by a due date. Once work has been handed
+ * in and returned, that date is long past and there is nothing left to
+ * escalate towards — what is wanted is a steady, undramatic reminder until it
+ * comes back.
+ */
+export function chaseGapFor(task: DueTask, plan: readonly number[]): number {
+  if (isRejected(task)) return REJECTED_GAP_DAYS;
+  return gapFor(task.remindersSent, plan);
+}
+
+/**
  * Inside the quiet window? The window wraps midnight — 22:00 to 08:00 is
  * "late evening or early morning", not "between 22 and 8", which is empty.
  */
@@ -108,7 +141,7 @@ export function isQuietHour(now: Date, quiet: QuietHours, timeZone: string = TIM
 
 export type Decision =
   | { send: true; step: number; daysSince: number }
-  | { send: false; reason: "not-due" | "already-sent-today" | "quiet-hours" | "never-started" };
+  | { send: false; reason: "not-open" | "not-due" | "already-sent-today" | "quiet-hours" | "never-started" };
 
 /**
  * Should this task be chased right now?
@@ -124,6 +157,13 @@ export function decide(
   quiet: QuietHours,
   timeZone: string = TIME_ZONE
 ): Decision {
+  // Handed in, accepted or paid: not this person's problem any more. A
+  // member who has done the work and is waiting on an admin must not be
+  // chased for it.
+  if ((task.status ?? "open") !== "open") {
+    return { send: false, reason: "not-open" };
+  }
+
   // Safe to run twice in a day: a task already chased today is left alone,
   // whether by this job or by an admin tapping Nudge.
   if (task.lastReminderAt && sameDhakaDay(task.lastReminderAt, now, timeZone)) {
@@ -134,7 +174,7 @@ export function decide(
   if (!from) return { send: false, reason: "never-started" };
 
   const daysSince = daysBetween(from, now, timeZone);
-  if (daysSince < gapFor(task.remindersSent, plan)) {
+  if (daysSince < chaseGapFor(task, plan)) {
     return { send: false, reason: "not-due" };
   }
 

@@ -23,6 +23,8 @@ export { telegramWebhook } from "./telegram-webhook";
 export { nudgeTask, nudgeAllOpen } from "./nudge";
 export { welcomeOnApproval } from "./welcome";
 export { linkTelegram } from "./link-telegram";
+export { markPaymentPaid, reviewTask } from "./review";
+export { addAdvance } from "./advances";
 export {
   addContact,
   approveAndLinkContact,

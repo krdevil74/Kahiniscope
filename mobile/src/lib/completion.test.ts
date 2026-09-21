@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { EMPTY_RATES } from "./model.ts";
 import {
   boardStats,
   byAirDate,
@@ -28,7 +29,12 @@ function task(overrides: Partial<Task> = {}): Task {
     assigneeUid: "u1",
     type: "Voice recording",
     dueDate: daysFromNow(3),
+    status: "open",
     done: false,
+    submittedAt: null,
+    rejectedAt: null,
+    rejectionNote: null,
+    rejectedCount: 0,
     doneAt: null,
     remindersSent: 0,
     lastReminderAt: null,
@@ -46,6 +52,8 @@ function member(uid: string, name: string): TeamMember {
     phone: "+8801712344192",
     telegramChatId: null,
     accountless: false,
+    rates: EMPTY_RATES,
+    balance: 0,
   crafts: ["Voice"],
     status: "approved",
     role: "member",

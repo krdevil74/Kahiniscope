@@ -3,7 +3,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Pressable, Share, View } from "react-native";
+import { Pressable, Share, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { AppShell } from "../../src/components/AppShell";
@@ -14,6 +14,10 @@ import { EmptyState } from "../../src/components/EmptyState";
 import { HeatBadge } from "../../src/components/HeatBadge";
 import { craftLabel, toggleCraft } from "../../src/lib/crafts.ts";
 import { contactTelegramLink } from "../../src/lib/contact-actions.ts";
+import { addAdvance, advancedToast, setRates } from "../../src/lib/review-actions.ts";
+import { EMPTY_RATES, type Rates } from "../../src/lib/model";
+import { money } from "../../src/lib/payments.ts";
+import { firstName } from "../../src/lib/format.ts";
 import { SectionCaption } from "../../src/components/SectionCaption";
 import { CRAFTS } from "../../src/lib/model";
 import { useSession } from "../../src/lib/auth";
@@ -33,7 +37,7 @@ import { channelPinnedToast, setCrafts, setPreferredChannel } from "../../src/li
 import { maskPhone } from "../../src/lib/format.ts";
 import { type } from "../../src/theme/typography";
 import { useToast } from "../../src/lib/toast";
-import { colors, fontFamily, radii, spacing } from "../../src/theme/tokens";
+import { colors, fontFamily, radii, spacing, MIN_TAP_TARGET} from "../../src/theme/tokens";
 
 export default function PersonDetail() {
   const { uid } = useLocalSearchParams<{ uid: string }>();
@@ -68,6 +72,64 @@ export default function PersonDetail() {
   }
 
   const [savingCrafts, setSavingCrafts] = useState(false);
+  const [rateDraft, setRateDraft] = useState<Rates>(EMPTY_RATES);
+  const [ratesSeeded, setRatesSeeded] = useState(false);
+  const [ratesDirty, setRatesDirty] = useState(false);
+  const [savingRates, setSavingRates] = useState(false);
+  const [advanceAmount, setAdvanceAmount] = useState("");
+  const [advanceNote, setAdvanceNote] = useState("");
+  const [advancing, setAdvancing] = useState(false);
+
+  const advanceValue = Number(advanceAmount);
+  const advanceValid =
+    advanceAmount.trim() !== "" && Number.isFinite(advanceValue) && advanceValue > 0;
+
+  async function payAdvance() {
+    if (!member || !advanceValid || advancing) return;
+    setAdvancing(true);
+    try {
+      const { balance } = await addAdvance(
+        member.uid,
+        Math.round(advanceValue),
+        advanceNote.trim() || null
+      );
+      setAdvanceAmount("");
+      setAdvanceNote("");
+      toast(advancedToast(firstName(member.name), money(Math.round(advanceValue)), money(balance)));
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "That did not save.");
+    } finally {
+      setAdvancing(false);
+    }
+  }
+
+
+  // Seeded once. Re-seeding from the snapshot would wipe a half-typed rate
+  // every time anybody else on the team changed.
+  if (member && !ratesSeeded) {
+    setRateDraft(member.rates);
+    setRatesSeeded(true);
+  }
+
+  const patchRate = (next: Partial<Rates>) => {
+    setRateDraft((r) => ({ ...r, ...next }));
+    setRatesDirty(true);
+  };
+
+  async function saveRates() {
+    if (!member || savingRates) return;
+    setSavingRates(true);
+    try {
+      await setRates(member.uid, rateDraft);
+      setRatesDirty(false);
+      toast(`Rate card saved for ${firstName(member.name)}`);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "That did not save.");
+    } finally {
+      setSavingRates(false);
+    }
+  }
+
   const [inviting, setInviting] = useState(false);
 
   async function toggleMemberCraft(craft: string) {
@@ -231,6 +293,135 @@ export default function PersonDetail() {
         </View>
       ) : null}
 
+      {/* Money handed over before the work exists.
+          Kept next to the rate card because the two are one conversation —
+          what somebody earns, and what they have already had. */}
+      {member ? (
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.hairline,
+            paddingVertical: spacing.card,
+            paddingHorizontal: 16,
+            gap: spacing.chips,
+          }}
+        >
+          <SectionCaption>Advance</SectionCaption>
+
+          <View
+            style={{
+              backgroundColor: member.balance > 0 ? colors.ink : colors.surfaceSunken,
+              borderRadius: radii.chipLarge,
+              paddingVertical: 11,
+              paddingHorizontal: 12,
+            }}
+          >
+            <AppText
+              style={{
+                fontFamily: fontFamily.regular,
+                fontSize: 11.5,
+                lineHeight: 16,
+                color: member.balance > 0 ? "rgba(255,255,255,.82)" : "rgba(27,26,23,.55)",
+              }}
+            >
+              {member.balance > 0
+                ? `${money(member.balance)} advanced and not yet worked off. Approved work comes off this first and is paid on the spot.`
+                : "Nothing advanced. Work you approve will queue to be paid as normal."}
+            </AppText>
+          </View>
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}>
+            <TextInput
+              value={advanceAmount}
+              onChangeText={setAdvanceAmount}
+              keyboardType="numeric"
+              placeholder="Amount"
+              placeholderTextColor="rgba(27,26,23,.35)"
+              accessibilityLabel={`Amount to advance to ${member.name}`}
+              style={{
+                flex: 1,
+                minHeight: MIN_TAP_TARGET,
+                paddingHorizontal: 12,
+                borderRadius: radii.chipLarge,
+                borderWidth: 1,
+                borderColor: colors.hairlineStrong,
+                backgroundColor: colors.surface,
+                fontFamily: fontFamily.mono,
+                fontSize: 13,
+                color: colors.ink,
+              }}
+            />
+            <Button
+              label={advancing ? "Saving…" : "Pay advance"}
+              radius={radii.cardSmall}
+              disabled={advancing || !advanceValid}
+              onPress={() => void payAdvance()}
+              style={{ flex: 1 }}
+              accessibilityLabel={`Advance money to ${member.name}`}
+            />
+          </View>
+
+          <TextInput
+            value={advanceNote}
+            onChangeText={(next: string) => setAdvanceNote(next.slice(0, 300))}
+            placeholder="What it is for — optional"
+            placeholderTextColor="rgba(27,26,23,.35)"
+            accessibilityLabel="What the advance is for"
+            style={{
+              minHeight: MIN_TAP_TARGET,
+              paddingHorizontal: 12,
+              borderRadius: radii.chipLarge,
+              borderWidth: 1,
+              borderColor: colors.hairlineStrong,
+              backgroundColor: colors.surface,
+              fontFamily: fontFamily.regular,
+              fontSize: 13,
+              color: colors.ink,
+            }}
+          />
+        </View>
+      ) : null}
+
+      {/* What this person is paid per unit.
+          Two voice rates, because the same artist is worth a different figure
+          reading narration and performing a character — and the admin says
+          which at the moment they approve the work, not here.
+          A blank is not zero: it means there is no rate for that kind of work
+          and the admin types a figure at approval instead. */}
+      {member ? (
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.hairline,
+            paddingVertical: spacing.card,
+            paddingHorizontal: 16,
+            gap: spacing.chips,
+          }}
+        >
+          <SectionCaption>Rate card</SectionCaption>
+          <RateRow label="Voice · character" suffix="per minute" value={rateDraft.voiceCharacter} onChange={(v) => patchRate({ voiceCharacter: v })} />
+          <RateRow label="Voice · narration" suffix="per minute" value={rateDraft.voiceNarration} onChange={(v) => patchRate({ voiceNarration: v })} />
+          <RateRow label="Sound design" suffix="per minute" value={rateDraft.soundDesign} onChange={(v) => patchRate({ soundDesign: v })} />
+          <RateRow label="Cover design" suffix="per cover" value={rateDraft.cover} onChange={(v) => patchRate({ cover: v })} />
+
+          <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)" }]}>
+            Leave a rate blank where there isn't one — script writing and the
+            rest are a figure you type when you approve the work.
+          </AppText>
+
+          {ratesDirty ? (
+            <Button
+              label={savingRates ? "Saving…" : "Save rate card"}
+              radius={radii.cardSmall}
+              disabled={savingRates}
+              onPress={() => void saveRates()}
+            />
+          ) : null}
+        </View>
+      ) : null}
+
       {/* Somebody an admin typed in. Two things are different about them:
           there is no account to maintain its own details, and Telegram needs
           an invite because only they can create the chat id. */}
@@ -346,5 +537,60 @@ export default function PersonDetail() {
         })}
       </View>
     </AppShell>
+  );
+}
+
+/**
+ * One line of the rate card. The field is the number alone — the rupee sign
+ * and the unit are labels, because a text box somebody has to type "₹" into
+ * is a text box that collects "50rs" and "Rs.50".
+ */
+function RateRow({
+  label,
+  suffix,
+  value,
+  onChange,
+}: {
+  label: string;
+  suffix: string;
+  value: number | null;
+  onChange: (next: number | null) => void;
+}) {
+  const [text, setText] = useState(value === null ? "" : String(value));
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <AppText style={[type.bodySmall]}>{label}</AppText>
+        <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.45)", marginTop: 1 }]}>
+          {value === null ? `no rate · ${suffix}` : `${money(value)} ${suffix}`}
+        </AppText>
+      </View>
+      <TextInput
+        value={text}
+        onChangeText={(next: string) => {
+          setText(next);
+          const parsed = next.trim() === "" ? null : Number(next);
+          onChange(parsed !== null && Number.isFinite(parsed) && parsed > 0 ? parsed : null);
+        }}
+        keyboardType="numeric"
+        placeholder="—"
+        placeholderTextColor="rgba(27,26,23,.3)"
+        accessibilityLabel={`${label}, ${suffix}`}
+        style={{
+          width: 88,
+          minHeight: MIN_TAP_TARGET,
+          paddingHorizontal: 11,
+          borderRadius: radii.chipLarge,
+          borderWidth: 1,
+          borderColor: colors.hairlineStrong,
+          backgroundColor: colors.surface,
+          fontFamily: fontFamily.mono,
+          fontSize: 13,
+          color: colors.ink,
+          textAlign: "right",
+        }}
+      />
+    </View>
   );
 }

@@ -92,6 +92,32 @@ service cloud.firestore {
             || request.resource.data.fcmTokens is list);
     }
 
+    /**
+     * A rate card. Four optional numbers, each a rate per unit — per minute
+     * of audio, per cover. Null is "not on a rate for this, the admin types a
+     * figure instead", which is why null has to be allowed rather than
+     * treated as zero.
+     */
+    function validRates() {
+      return !('rates' in request.resource.data)
+        || (request.resource.data.rates is map
+            && request.resource.data.rates.keys().hasOnly([
+                 'voiceCharacter', 'voiceNarration', 'soundDesign', 'cover'
+               ])
+            && validRate('voiceCharacter')
+            && validRate('voiceNarration')
+            && validRate('soundDesign')
+            && validRate('cover'));
+    }
+
+    function validRate(key) {
+      return !(key in request.resource.data.rates)
+        || request.resource.data.rates[key] == null
+        || (request.resource.data.rates[key] is number
+            && request.resource.data.rates[key] >= 0
+            && request.resource.data.rates[key] <= 1000000);
+    }
+
     function changedKeys() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
@@ -127,8 +153,8 @@ service cloud.firestore {
         // page is where "she does the voices as well now" gets recorded.
         // Those three fields only: an admin cannot promote itself or anyone
         // else, and cannot rewrite somebody's name or number.
-        || (isAdmin() && onlyChanged(['status', 'preferredChannel', 'crafts'])
-            && validAdminEdit() && validProfile())
+        || (isAdmin() && onlyChanged(['status', 'preferredChannel', 'crafts', 'rates'])
+            && validAdminEdit() && validProfile() && validRates())
         // Registration. A pending applicant fills in their own profile —
         // this is the single write a pending account may make, and it cannot
         // touch role or status, so nobody approves or promotes themselves.
@@ -161,13 +187,56 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
 
       allow update: if isAdmin()
-        // A member may tick or untick their own task, and touch nothing else.
-        // remindersSent, lastReminderAt and dueDate stay server-owned.
+        // A member hands their own work in, and touches nothing else. They
+        // cannot accept it, price it or close it: `done`, the rejection note
+        // and every reminder field stay out of reach, and approving is a
+        // Cloud Function because it opens a payment record.
+        //
+        // The guard against re-submitting accepted work is `done`, not
+        // `status` — tasks written before the review flow existed carry only
+        // `done`, and a legacy closed task must not be reopenable.
         || (isApproved()
             && resource.data.assigneeUid == uid()
             && request.resource.data.assigneeUid == uid()
-            && onlyChanged(['done', 'doneAt'])
-            && request.resource.data.done is bool);
+            && onlyChanged(['status', 'submittedAt'])
+            // Every field is checked for presence before it is read: a task
+            // written by an older build of the app carries neither `status`
+            // nor, in the oldest ones, anything but `done` — and a missing
+            // key in a rules expression is an error, not a false.
+            && 'status' in request.resource.data
+            && request.resource.data.status == 'submitted'
+            && 'done' in resource.data
+            && resource.data.done == false
+            && (!('status' in resource.data) || resource.data.status == 'open'));
+    }
+
+    // ---- payments ---------------------------------------------------------
+    //
+    // Opened when an admin accepts work, closed when the money goes out. Both
+    // are Cloud Functions: a payment record a member could write would not be
+    // a payment record, and the amount is the whole point of the document.
+    //
+    // A member reads their own. As with tasks, a list has to name the
+    // condition — where('uid', '==', uid) — or Firestore rejects the query
+    // rather than filtering it.
+
+    match /payments/{paymentId} {
+      allow read: if isAdmin()
+        || (isApproved() && resource.data.uid == uid());
+      allow write: if false;
+    }
+
+    // ---- advances ---------------------------------------------------------
+    //
+    // Money handed over before the work existed. Each one is its own record
+    // so that "where did this balance come from" has an answer; the balance
+    // itself lives on the user document and is not in any rule a client can
+    // satisfy, which is what keeps it the server's.
+
+    match /advances/{advanceId} {
+      allow read: if isAdmin()
+        || (isApproved() && resource.data.uid == uid());
+      allow write: if false;
     }
 
     // ---- reminderLog ------------------------------------------------------
