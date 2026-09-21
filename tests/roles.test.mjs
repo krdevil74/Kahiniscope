@@ -74,7 +74,7 @@ async function approvedMember(owner, { sub, email, name }) {
   const ctx = client(`ctx-${sub}`);
   const user = await signIn(ctx, { sub, email, name });
   await waitForClaims(user, (c) => c.status === "pending", `${name} pending`);
-  await updateDoc(doc(owner.db, "users", user.uid), { status: "approved", craft: "Voice" });
+  await updateDoc(doc(owner.db, "users", user.uid), { status: "approved", crafts: ["Voice"] });
   await waitForClaims(user, (c) => c.status === "approved", `${name} approved`);
   return { ctx, user };
 }

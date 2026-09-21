@@ -9,10 +9,12 @@ import { useRouter } from "expo-router";
 
 import { AppShell } from "../src/components/AppShell";
 import { AppText } from "../src/components/AppText";
+import { Button } from "../src/components/Button";
 import { Avatar } from "../src/components/Avatar";
 import { Card } from "../src/components/Card";
 import { EmptyState } from "../src/components/EmptyState";
 import { HeatBadge } from "../src/components/HeatBadge";
+import { craftLabel } from "../src/lib/crafts";
 import { useSession } from "../src/lib/auth";
 import { bestChannelFor, channelLabel } from "../src/lib/channels.ts";
 import { openEpisodeCodes, openTasks, tasksForMember, worstStep } from "../src/lib/completion.ts";
@@ -44,9 +46,18 @@ export default function Team() {
         {approved.length === 0 && !loading ? (
           <EmptyState
             title="No approved members yet"
-            detail="Sign-ups from the Play Store land in Requests. Approve one and they appear here."
+            detail="Sign-ups from the Play Store land in Requests. Approve one and they appear here — or add somebody who has no app below."
           />
         ) : null}
+
+        {/* The other way onto the team. Not everybody will install anything,
+            and work assigned to nobody is work nobody chases. */}
+        <Button
+          label="Add someone without the app"
+          variant="outline"
+          onPress={() => router.push("/contact")}
+          accessibilityLabel="Add someone who has not installed the app"
+        />
 
         {approved.map((member) => {
           const mine = openTasks(tasksForMember(tasks, member.uid));
@@ -81,7 +92,7 @@ export default function Team() {
                     marginTop: 3,
                   }}
                 >
-                  {`${member.craft ?? "no craft"} · ${codes.length ? codes.join(", ") : "nothing open"}`}
+                  {`${craftLabel(member.crafts)} · ${codes.length ? codes.join(", ") : "nothing open"}`}
                 </AppText>
               </View>
 

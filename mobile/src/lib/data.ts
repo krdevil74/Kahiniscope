@@ -22,6 +22,7 @@ import {
 
 import { db } from "./firebase";
 import { toBool, toDate, toId, toNumber, toStringArray, toStringOrNull } from "./convert.ts";
+import { craftsFrom } from "./crafts";
 import {
   DEFAULT_SETTINGS,
   type ChannelId,
@@ -72,12 +73,13 @@ function toMember(snap: QueryDocumentSnapshot<DocumentData>): TeamMember {
     email: d.email ?? "",
     phone: toStringOrNull(d.phone),
     telegramChatId: toStringOrNull(d.telegramChatId),
-    craft: toStringOrNull(d.craft),
+    crafts: craftsFrom(d.crafts, d.craft),
     status: d.status === "approved" ? "approved" : "pending",
     role: d.role === "owner" || d.role === "admin" ? d.role : "member",
     fcmTokens: toStringArray(d.fcmTokens),
     note: toStringOrNull(d.note),
     preferredChannel: (toStringOrNull(d.preferredChannel) as ChannelId | null) ?? null,
+    accountless: d.accountless === true,
     createdAt: toDate(d.createdAt),
   };
 }

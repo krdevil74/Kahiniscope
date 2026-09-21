@@ -25,9 +25,11 @@ import {
   isComplete,
   isEpisodeValid,
   ladderBars,
+  COLLAPSED_PEOPLE,
   ladderNote,
   missingFrom,
   nextEpisodeCode,
+  searchPeople,
   stepDueDays,
   submitLabel,
   type AssignDraft,
@@ -71,6 +73,28 @@ export default function Assign() {
 
   const patch = (next: Partial<AssignDraft>) => setDraft((d) => ({ ...d, ...next }));
 
+  const [personQuery, setPersonQuery] = useState("");
+  const [peopleExpanded, setPeopleExpanded] = useState(false);
+
+  const matchingPeople = useMemo(
+    () => searchPeople(approved, personQuery),
+    [approved, personQuery]
+  );
+
+  /**
+   * Collapsed by default, but never hiding the person already chosen — a row
+   * that does not show your own selection reads as having lost it.
+   */
+  const visiblePeople = useMemo(() => {
+    if (peopleExpanded || personQuery.trim()) return matchingPeople;
+    const head = matchingPeople.slice(0, COLLAPSED_PEOPLE);
+    const chosen = matchingPeople.find((m) => m.uid === draft.assigneeUid);
+    if (chosen && !head.includes(chosen)) return [...head.slice(0, COLLAPSED_PEOPLE - 1), chosen];
+    return head;
+  }, [matchingPeople, peopleExpanded, personQuery, draft.assigneeUid]);
+
+  const hiddenPeople = matchingPeople.length - visiblePeople.length;
+
   const person = approved.find((m) => m.uid === draft.assigneeUid);
   const blocked = missingFrom(draft);
   const canSubmit = isComplete(draft) && !busy;
@@ -105,14 +129,53 @@ export default function Assign() {
       <View style={{ padding: 16, gap: 18 }}>
         {/* Assign to */}
         <View>
-          <SectionCaption style={{ marginBottom: 9 }}>Assign to</SectionCaption>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 9,
+              gap: spacing.chips,
+            }}
+          >
+            <SectionCaption>Assign to</SectionCaption>
+            {/* The search box earns its place only once the row would wrap
+                past a screenful. Below that it is one more thing to look at. */}
+            {approved.length > COLLAPSED_PEOPLE ? (
+              <TextInput
+                value={personQuery}
+                onChangeText={setPersonQuery}
+                placeholder="Search people"
+                placeholderTextColor="rgba(27,26,23,.38)"
+                accessibilityLabel="Search people"
+                style={{
+                  flex: 1,
+                  maxWidth: 180,
+                  minHeight: 34,
+                  paddingHorizontal: 11,
+                  borderRadius: radii.pill,
+                  borderWidth: 1,
+                  borderColor: colors.hairlineStrong,
+                  backgroundColor: colors.surface,
+                  fontFamily: fontFamily.regular,
+                  fontSize: 11.5,
+                  color: colors.ink,
+                }}
+              />
+            ) : null}
+          </View>
           {approved.length === 0 ? (
             <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.5)" }]}>
-              Nobody is approved yet. Approve a registration first.
+              Nobody is approved yet. Approve a registration, or add someone who
+              has not installed the app from the Team tab.
+            </AppText>
+          ) : visiblePeople.length === 0 ? (
+            <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.5)" }]}>
+              {`Nobody matches "${personQuery.trim()}".`}
             </AppText>
           ) : (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.chips }}>
-              {approved.map((member) => {
+              {visiblePeople.map((member) => {
                 const on = member.uid === draft.assigneeUid;
                 return (
                   <Pressable
@@ -151,6 +214,31 @@ export default function Assign() {
               })}
             </View>
           )}
+
+          {/* Everyone is still reachable without typing: the row collapses
+              rather than scrolling off, and the selected person is never
+              among the ones hidden. */}
+          {hiddenPeople > 0 || (peopleExpanded && !personQuery.trim()) ? (
+            <Pressable
+              onPress={() => setPeopleExpanded((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                peopleExpanded ? "Show fewer people" : `Show all ${matchingPeople.length} people`
+              }
+              style={{ minHeight: MIN_TAP_TARGET, justifyContent: "center", paddingTop: 4 }}
+            >
+              <AppText
+                style={{
+                  fontFamily: fontFamily.medium,
+                  fontSize: 11,
+                  lineHeight: 13,
+                  color: "rgba(27,26,23,.6)",
+                }}
+              >
+                {peopleExpanded ? "Show fewer" : `+ ${hiddenPeople} more`}
+              </AppText>
+            </Pressable>
+          ) : null}
         </View>
 
         {/* Episode */}

@@ -59,17 +59,27 @@ Caution to surface to the user: if that Gmail account is lost, admin access is l
 
 ## Data model (Firestore)
 
+> Two fields differ from the original brief, and both are recorded in
+> `docs/12-messaging-integration.md`. `craft` became `crafts`, a list, because
+> one person is rarely one thing. `accountless` marks somebody an admin added
+> against a phone number who has no Firebase Auth account behind them at all —
+> assignable and remindable, but never able to sign in until they register for
+> themselves. Records written before either change are still read correctly: a
+> lone `craft` string reads as a list of one.
+
+
 ```
 users/{uid}
   name          string
   email         string
   phone         string            // E.164, e.g. +8801712344192
   telegramChatId string|null      // captured by the bot webhook
-  craft         string            // "Script" | "Translation" | "Voice" | "Post / mix" | "Graphics" | "Proofreading" | "Editing"
+  crafts        string[]          // up to 5 of "Script" | "Translation" | "Voice" | "Post / mix" | "Graphics" | "Proofreading" | "Editing"
   status        "pending" | "approved"
   role          "owner" | "admin" | "member"
   fcmTokens     string[]
   note          string|null       // free text the applicant typed at registration
+  accountless   boolean           // true: added by an admin against a phone number, no auth account
   createdAt     timestamp
 
 episodes/{id}

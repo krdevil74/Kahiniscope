@@ -40,6 +40,16 @@ export async function setPreferredChannel(
   await updateDoc(doc(db, "users", uid), { preferredChannel: channel });
 }
 
+/**
+ * Keeping somebody's crafts right. The rules allow an admin exactly three
+ * fields on another person's record — this, the channel, and status — so the
+ * person page can record "she does the voices as well now" without a
+ * round trip through a Cloud Function.
+ */
+export async function setCrafts(uid: string, crafts: string[]): Promise<void> {
+  await updateDoc(doc(db, "users", uid), { crafts });
+}
+
 export async function declineRegistration(member: TeamMember): Promise<void> {
   const call = httpsCallable<{ uid: string }, { name: string }>(appFunctions(), "declineRegistration");
   await call({ uid: member.uid });
@@ -48,12 +58,12 @@ export async function declineRegistration(member: TeamMember): Promise<void> {
 /** An applicant completing their own registration — the one write they may make. */
 export async function submitRegistration(
   uid: string,
-  details: { name?: string; phone: string; craft: string; note: string }
+  details: { name?: string; phone: string; crafts: string[]; note: string }
 ): Promise<void> {
   await updateDoc(doc(db, "users", uid), {
     ...(details.name ? { name: details.name } : {}),
     phone: details.phone,
-    craft: details.craft,
+    crafts: details.crafts,
     note: details.note || null,
   });
 }
@@ -62,8 +72,8 @@ export async function submitRegistration(
 // Copy
 // ---------------------------------------------------------------------------
 
-export function approvedToast(name: string, craft: string | null): string {
-  return `${name} approved as ${craft ?? "member"} — dashboard unlocked`;
+export function approvedToast(name: string, crafts: string[]): string {
+  return `${name} approved as ${crafts.length ? crafts.join(" · ") : "member"} — dashboard unlocked`;
 }
 
 export function declinedToast(name: string): string {

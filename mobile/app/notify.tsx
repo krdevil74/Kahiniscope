@@ -16,6 +16,7 @@ import { AppText } from "../src/components/AppText";
 import { Avatar } from "../src/components/Avatar";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { Toggle } from "../src/components/Toggle";
+import { craftLabel } from "../src/lib/crafts";
 import { useSession } from "../src/lib/auth";
 import {
   CHANNEL_META,
@@ -198,7 +199,7 @@ export default function Notify() {
                       >
                         {isMemberAdmin
                           ? "Admin · can approve and assign"
-                          : `${member.craft ?? "no craft"} · member`}
+                          : `${craftLabel(member.crafts)} · member`}
                       </AppText>
                     </View>
 

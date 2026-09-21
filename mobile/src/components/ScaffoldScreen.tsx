@@ -11,6 +11,7 @@ import { ScrollView, View } from "react-native";
 
 import { AppText } from "./AppText";
 import { ScreenHeader } from "./ScreenHeader";
+import { craftLabel } from "../lib/crafts";
 import { useSession } from "../lib/auth";
 import { colors, radii, spacing } from "../theme/tokens";
 import { type } from "../theme/typography";
@@ -31,7 +32,7 @@ export function ScaffoldScreen({ title, subtitle, step, onBack }: ScaffoldScreen
     ["uid", user?.uid ?? "—"],
     ["role claim", role],
     ["status claim", status],
-    ["user doc", profile ? `${profile.name} · ${profile.craft ?? "no craft yet"}` : "—"],
+    ["user doc", profile ? `${profile.name} · ${craftLabel(profile.crafts ?? [])}` : "—"],
   ];
 
   return (

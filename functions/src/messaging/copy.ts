@@ -62,7 +62,8 @@ export function digestShort(tasks: readonly TaskLine[]): string {
 }
 
 /** The welcome a member gets the moment they are approved. */
-export function welcomeBody(name: string, craft: string | null): string {
+export function welcomeBody(name: string, crafts: readonly string[] | null): string {
+  const craft = crafts && crafts.length > 0 ? crafts.join(" · ") : null;
   const greeting = name ? `${name.split(" ")[0]}, ` : "";
   return (
     `${greeting}you are approved${craft ? ` as ${craft}` : ""} on Kahiniscope. ` +

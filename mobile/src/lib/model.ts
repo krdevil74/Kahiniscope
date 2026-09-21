@@ -68,7 +68,8 @@ export interface TeamMember {
   email: string;
   phone: string | null;
   telegramChatId: string | null;
-  craft: string | null;
+  /** What this person works in. Several are allowed — see lib/crafts.ts. */
+  crafts: string[];
   status: AccountStatus;
   role: Role;
   fcmTokens: string[];
@@ -79,6 +80,13 @@ export interface TeamMember {
    * "whatever reaches them first".
    */
   preferredChannel: ChannelId | null;
+  /**
+   * Added by an admin against a phone number, with no Firebase Auth account
+   * behind it: somebody who does the work but has not installed the app.
+   * Assignable and remindable like anyone else, but never signs in, so push
+   * is not a channel that can reach them.
+   */
+  accountless: boolean;
   createdAt: Date | null;
 }
 

@@ -21,6 +21,7 @@ import { Button } from "../src/components/Button";
 import { Logo } from "../src/components/Logo";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { useSession } from "../src/lib/auth";
+import { craftLabel, MAX_CRAFTS, toggleCraft } from "../src/lib/crafts";
 import { CRAFTS } from "../src/lib/model";
 import { normalisePhone } from "../src/lib/phone.ts";
 import { submitRegistration } from "../src/lib/registrations";
@@ -38,15 +39,15 @@ export default function Pending() {
 
   // The form is done once a craft is on the record — that is the field the
   // approval queue reads.
-  const registered = Boolean(profile?.craft);
+  const registered = (profile?.crafts?.length ?? 0) > 0;
 
-  if (!profile) return <Waiting craft={null} />;
-  return registered ? <Waiting craft={profile.craft} /> : <RegistrationForm uid={profile.uid} name={profile.name} email={user?.email ?? ""} onSignOut={signOut} />;
+  if (!profile) return <Waiting crafts={[]} />;
+  return registered ? <Waiting crafts={profile.crafts} /> : <RegistrationForm uid={profile.uid} name={profile.name} email={user?.email ?? ""} onSignOut={signOut} />;
 }
 
 // ---------------------------------------------------------------------------
 
-function Waiting({ craft }: { craft: string | null }) {
+function Waiting({ crafts }: { crafts: string[] }) {
   return (
     <View
       style={{
@@ -105,7 +106,7 @@ function Waiting({ craft }: { craft: string | null }) {
         <AppText
           style={{ fontFamily: fontFamily.monoMedium, fontSize: 10.5, lineHeight: 12, color: colors.ink }}
         >
-          {`Registered as ${craft ?? "member"} · pending`}
+          {`Registered as ${crafts.length ? craftLabel(crafts) : "member"} · pending`}
         </AppText>
       </View>
 
@@ -139,7 +140,7 @@ function RegistrationForm({
   onSignOut: () => Promise<void>;
 }) {
   const toast = useToast();
-  const [craft, setCraft] = useState<string | null>(null);
+  const [crafts, setCrafts] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -148,13 +149,13 @@ function RegistrationForm({
   // a Bangladeshi number typed the local way is accepted and normalised.
   const normalisedPhone = useMemo(() => normalisePhone(phone), [phone]);
   const phoneValid = normalisedPhone !== null;
-  const canSubmit = Boolean(craft) && phoneValid && !busy;
+  const canSubmit = crafts.length > 0 && phoneValid && !busy;
 
   async function submit() {
-    if (!canSubmit || !craft || !normalisedPhone) return;
+    if (!canSubmit || crafts.length === 0 || !normalisedPhone) return;
     setBusy(true);
     try {
-      await submitRegistration(uid, { phone: normalisedPhone, craft, note: note.trim() });
+      await submitRegistration(uid, { phone: normalisedPhone, crafts, note: note.trim() });
       // No navigation: the snapshot on our own document brings the holding
       // screen in by itself.
     } catch (err) {
@@ -190,14 +191,18 @@ function RegistrationForm({
 
       <View style={{ gap: spacing.chips }}>
         <SectionCaption>What you do</SectionCaption>
+        {/* Several are allowed: one person is rarely one thing. */}
+        <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.5)", marginTop: -4 }]}>
+          Pick everything you do — up to {MAX_CRAFTS}.
+        </AppText>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.chipsTight }}>
           {CRAFTS.map((option) => {
-            const on = option === craft;
+            const on = crafts.includes(option);
             return (
               <Pressable
                 key={option}
-                onPress={() => setCraft(option)}
-                accessibilityRole="radio"
+                onPress={() => setCrafts((c) => toggleCraft(c, option))}
+                accessibilityRole="checkbox"
                 accessibilityState={{ selected: on }}
                 style={{
                   paddingVertical: 9,
