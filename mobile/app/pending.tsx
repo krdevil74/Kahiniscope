@@ -14,6 +14,7 @@
 
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Redirect } from "expo-router";
 
 import { AppText } from "../src/components/AppText";
 import { Button } from "../src/components/Button";
@@ -28,7 +29,12 @@ import { colors, fontFamily, layout, radii, spacing, MIN_TAP_TARGET } from "../s
 import { type } from "../src/theme/typography";
 
 export default function Pending() {
-  const { profile, user, signOut } = useSession();
+  const { profile, user, signOut, loading, isApproved, isAdmin } = useSession();
+
+  // The approval re-mints the claim and the snapshot above fires, but a
+  // route does not leave itself — this is what makes the holding screen give
+  // way to the dashboard without anybody signing out.
+  if (!loading && isApproved) return <Redirect href={isAdmin ? "/board" : "/my-tasks"} />;
 
   // The form is done once a craft is on the record — that is the field the
   // approval queue reads.

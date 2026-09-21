@@ -29,6 +29,25 @@ const options: FirebaseOptions = {
 };
 
 /**
+ * A bundle built without the EXPO_PUBLIC_* variables gets an empty config,
+ * and the auth initialisation below then dies at module load — which in a
+ * release build is an instant crash back to the launcher with nothing to
+ * read anywhere. EAS builds from a git archive and .env is gitignored, so
+ * this is the shape a remote build fails in when the variables were never
+ * set on the project. Say which ones are missing instead.
+ */
+const REQUIRED = ["apiKey", "authDomain", "projectId", "appId"] as const;
+const missing = REQUIRED.filter((key) => !options[key]);
+if (missing.length > 0) {
+  throw new Error(
+    `Firebase config is missing: ${missing.join(", ")}. The EXPO_PUBLIC_FIREBASE_* ` +
+      "variables were not present when this bundle was built. Locally they come " +
+      "from mobile/.env (see .env.example); for anything built on EAS they have " +
+      "to be set on the project with `eas env:set`."
+  );
+}
+
+/**
  * Emulators are a development-only affordance. Gating on __DEV__ as well as
  * the flag means a release build cannot be pointed at a local backend even if
  * the variable is set at build time.
