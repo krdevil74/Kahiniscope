@@ -17,6 +17,7 @@ import { Avatar } from "../src/components/Avatar";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { Toggle } from "../src/components/Toggle";
 import { craftLabel } from "../src/lib/crafts";
+import { ThemePicker } from "../src/components/ThemePicker";
 import { useSession } from "../src/lib/auth";
 import {
   CHANNEL_META,
@@ -28,7 +29,7 @@ import {
 import { useSettings, useTeam } from "../src/lib/data";
 import { roleToast, savePlan, saveChannel, saveQuietHours, setMemberRole } from "../src/lib/settings-actions";
 import { useToast } from "../src/lib/toast";
-import { colors, fontFamily, heat, radii, spacing, MIN_TAP_TARGET } from "../src/theme/tokens";
+import { colors, fontFamily, radii, spacing, MIN_TAP_TARGET, heatFor } from "../src/theme/tokens";
 import { type } from "../src/theme/typography";
 
 export default function Notify() {
@@ -62,6 +63,12 @@ export default function Notify() {
   return (
     <AppShell title="Notifications" subtitle="Channels and escalation" activeTab="notify">
       <View style={{ padding: 16, gap: 18 }}>
+        {/* ---- Appearance ---------------------------------------------- */}
+        <View>
+          <SectionCaption style={{ marginBottom: 9 }}>Appearance</SectionCaption>
+          <ThemePicker />
+        </View>
+
         {/* ---- Admin access ------------------------------------------- */}
         <View>
           <SectionCaption style={{ marginBottom: 9 }}>Admin access</SectionCaption>
@@ -429,7 +436,7 @@ export default function Notify() {
                       borderRadius: radii.pill,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: (heat[index] ?? heat[heat.length - 1]).fg,
+                      backgroundColor: heatFor(index).fg,
                     }}
                   >
                     <AppText

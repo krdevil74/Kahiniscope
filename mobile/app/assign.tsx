@@ -39,7 +39,7 @@ import { useEpisodes, useNow, useSettings, useTeam } from "../src/lib/data";
 import { airLabel, firstName } from "../src/lib/format.ts";
 import { TASK_TYPES, type ChannelId } from "../src/lib/model";
 import { useToast } from "../src/lib/toast";
-import { colors, fontFamily, heat, radii, spacing, MIN_TAP_TARGET } from "../src/theme/tokens";
+import { colors, fontFamily, radii, spacing, MIN_TAP_TARGET, heatFor } from "../src/theme/tokens";
 import { type } from "../src/theme/typography";
 
 const CHANNEL_TILES: { id: ChannelId; name: string; note: string }[] = [
@@ -473,7 +473,7 @@ export default function Assign() {
                       height: bar.height,
                       borderTopLeftRadius: radii.badge,
                       borderTopRightRadius: radii.badge,
-                      backgroundColor: (heat[bar.step] ?? heat[heat.length - 1]).fg,
+                      backgroundColor: heatFor(bar.step).fg,
                     }}
                   />
                   <AppText

@@ -1,74 +1,56 @@
 /**
- * Design tokens, transcribed from the handoff.
+ * Design tokens.
  *
- * Colours, typography, spacing and radii are final, so this file is the only
- * place any of them are written down. Nothing in the app hard-codes a hex
- * value or a pixel size that appears here.
+ * Colours are no longer constants: the app carries a light and a dark theme
+ * and either can be chosen at runtime, so `colors` is a live object whose
+ * contents are swapped by `applyPalette` when the choice changes.
+ *
+ * That is a deliberate trade, and worth being honest about. The textbook
+ * answer is a `useTheme()` hook — but 308 references across 34 files read
+ * `colors.x` directly, several of them from style helpers that sit outside a
+ * component and cannot call a hook at all. Rewriting every one of those to
+ * thread a theme through would have been a far larger and riskier change
+ * than the feature warranted, and a half-converted app is worse than either
+ * end of it.
+ *
+ * What makes the swap safe is that nothing here is captured: every screen
+ * reads `colors.x` during render, into an inline style object, so a mutation
+ * followed by a re-render is picked up everywhere at once. ThemeProvider does
+ * exactly that — mutate, then bump a context value that re-renders the tree.
+ * The one thing to avoid is hoisting a style object to module scope with a
+ * colour baked into it; do that and it will not follow the theme.
+ *
+ * Sizes and spacing are genuinely final and stay constants.
  */
 
-export const colors = {
-  /** Text, header bar, nav bar, primary buttons, progress fill. */
-  ink: "#1b1a17",
-  /** Accent, FAB, primary action buttons, member header, verified badge. */
-  brandYellow: "#ffc20a",
-  /** Pressed state on yellow. */
-  yellowHover: "#ffd451",
-  /** Episode codes, links. */
-  yellowDeep: "#b57f00",
-  /** Canvas behind the phones. */
-  page: "#f4f1ea",
-  /** Cards. */
-  surface: "#ffffff",
-  /** Screen background, inset chips. */
-  surfaceAlt: "#f7f5f0",
-  /** Quote blocks, done rows. */
-  surfaceSunken: "#f9f7f2",
-  /** Stepper squares, unselected avatars. */
-  fill: "#f0ece2",
-  /** Card borders. */
-  hairline: "#e8e3d8",
-  /** Input borders. */
-  hairlineStrong: "#e0dacd",
-  /** Tick boxes. */
-  hairlineStronger: "#ddd5c4",
-  /** Stat cell gutters. */
-  gutter: "#e6e1d6",
-  /** Overdue counts. */
-  danger: "#a3210f",
-  /** Done / clear badges. */
-  successFg: "#2f6b45",
-  successBg: "#edf3ee",
-  /** Selected episode row on the Assign form. */
-  selectedFill: "#fff8e3",
-  /** Header subtitle, on ink. */
-  onInkMuted: "rgba(255,255,255,.5)",
-  white: "#ffffff",
-} as const;
+import { DARK, DARK_HEAT, LIGHT, LIGHT_HEAT, type HeatStep, type Palette } from "./palettes.ts";
+
+export type { HeatStep, Palette };
+export type ColorScheme = "light" | "dark";
+
+/** Live. Read during render; never destructured into module scope. */
+export const colors: Palette = { ...DARK };
+
+let heatSteps: readonly HeatStep[] = DARK_HEAT;
+
+/** Swap the palette in place. ThemeProvider re-renders the tree afterwards. */
+export function applyPalette(scheme: ColorScheme): void {
+  Object.assign(colors, scheme === "light" ? LIGHT : DARK);
+  heatSteps = scheme === "light" ? LIGHT_HEAT : DARK_HEAT;
+}
 
 /**
  * The escalation heat scale, indexed by reminders sent. Step 4 is the last
  * entry and every step past it reuses that entry — the ladder caps at daily.
  */
-export interface HeatStep {
-  bg: string;
-  fg: string;
-  label: string;
-  /** Fill width of the 3px heat bar, as a fraction. */
-  bar: number;
-}
-
-export const heat: readonly HeatStep[] = [
-  { bg: "#eef1f4", fg: "#3f5261", label: "On track", bar: 0.12 },
-  { bg: "#fff4d6", fg: "#8a6400", label: "Reminded", bar: 0.32 },
-  { bg: "#ffe7cd", fg: "#8d4500", label: "Chasing", bar: 0.56 },
-  { bg: "#ffdbd0", fg: "#94331a", label: "Escalated", bar: 0.8 },
-  { bg: "#fdd0cc", fg: "#a3210f", label: "Daily", bar: 1 },
-] as const;
+/** The active heat scale. Swapped with the palette. */
+export const heat = { get steps(): readonly HeatStep[] { return heatSteps; } };
 
 /** The heat for a task, capped at the last step. */
 export function heatFor(remindersSent: number): HeatStep {
-  const index = Math.min(Math.max(Math.trunc(remindersSent) || 0, 0), heat.length - 1);
-  return heat[index];
+  const steps = heatSteps;
+  const index = Math.min(Math.max(Math.trunc(remindersSent) || 0, 0), steps.length - 1);
+  return steps[index];
 }
 
 export const radii = {

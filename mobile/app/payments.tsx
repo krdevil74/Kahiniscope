@@ -22,6 +22,7 @@ import { Button } from "../src/components/Button";
 import { Card } from "../src/components/Card";
 import { EmptyState } from "../src/components/EmptyState";
 import { MemberTabs } from "../src/components/MemberTabs";
+import { ThemePicker } from "../src/components/ThemePicker";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { useSession } from "../src/lib/auth";
@@ -494,6 +495,13 @@ function MemberPayments() {
             style={{ borderColor: colors.hairlineStrong }}
           />
         ) : null}
+
+        {/* A member has no settings screen — this is the one page they have
+            that is not a list of work, so the theme lives at the foot of it. */}
+        <View style={{ marginTop: 18, gap: spacing.chips }}>
+          <SectionCaption>Appearance</SectionCaption>
+          <ThemePicker />
+        </View>
       </ScrollView>
     </View>
   );

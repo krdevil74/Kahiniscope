@@ -7,6 +7,7 @@ import {
   approvedBody,
   digestBody,
   digestShort,
+  greet,
   overduePhrase,
   paidBody,
   paidShort,
@@ -41,8 +42,8 @@ test("one day is singular, today is today, and early is early", () => {
 
 test("the body opens with a first name and closes with the action", () => {
   const body = reminderBody("Rizu Ahmed", TASK);
-  assert.match(body, /^Rizu, /);
-  assert.match(body, /Tap Mark done when it is finished\.$/);
+  assert.match(body, /^Hi Rizu — /);
+  assert.match(body, /Submit it in the app when it is ready\.$/);
   assert.match(body, /রক্তমুখী নীলা/, "the Bengali title survives");
 });
 
@@ -59,7 +60,7 @@ test("Nudge all sends one message listing everything", () => {
   const second = { ...TASK, taskType: "Editing", episodeCode: "EP-42", daysOverdue: 0 };
   const body = digestBody("Rizu Ahmed", [TASK, second]);
 
-  assert.match(body, /^Rizu, you have 2 open tasks:/);
+  assert.match(body, /^Hi Rizu — you have 2 open tasks:/);
   assert.match(body, /• Voice recording — EP-41 রক্তমুখী নীলা \(4 days overdue\)/);
   assert.match(body, /• Editing — EP-42 রক্তমুখী নীলা \(due today\)/);
 });
@@ -79,14 +80,14 @@ test("the digest headline counts what is actually late", () => {
 });
 
 test("the welcome names the craft it was approved as", () => {
-  assert.match(welcomeBody("Shuvo Karim", ["Editing"]), /^Shuvo, you are approved as Editing/);
-  assert.match(welcomeBody("Shuvo Karim", null), /^Shuvo, you are approved on Kahiniscope/);
-  assert.match(welcomeBody("Shuvo Karim", []), /^Shuvo, you are approved on Kahiniscope/);
+  assert.match(welcomeBody("Shuvo Karim", ["Editing"]), /^Hi Shuvo — you are approved as Editing/);
+  assert.match(welcomeBody("Shuvo Karim", null), /^Hi Shuvo — you are approved on Kahiniscope/);
+  assert.match(welcomeBody("Shuvo Karim", []), /^Hi Shuvo — you are approved on Kahiniscope/);
   // One person is rarely one thing, and the welcome should say what they
   // were actually approved for.
   assert.match(
     welcomeBody("Rizu Ahmed", ["Voice", "Editing"]),
-    /^Rizu, you are approved as Voice · Editing/
+    /^Hi Rizu — you are approved as Voice · Editing/
   );
 });
 
@@ -98,7 +99,7 @@ test("an approval settled from an advance reads as payment, not as a promise", (
     amount: 600,
     balanceAfter: 4400,
   });
-  assert.match(body, /^Rizu, your Voice recording has been approved\./);
+  assert.match(body, /^Hi Rizu — your Voice recording has been approved\./);
   assert.match(body, /₹600 has been taken off the advance/);
   assert.match(body, /leaving ₹4,400/);
 });
@@ -137,4 +138,33 @@ test("being paid, and being advanced, say which is which", () => {
   const body = advanceBody("Rizu Ahmed", 5000, 5000, "Before EP-61");
   assert.match(body, /₹5,000 has been advanced to you \(Before EP-61\)/);
   assert.match(body, /balance is ₹5,000, and approved work is taken off it/);
+});
+
+test("every message opens with their name", () => {
+  // These land on a lock screen among thirty others. One that opens with a
+  // task type reads like a system alert; one that opens with a name reads
+  // like a person asking, which is what it is.
+  assert.equal(greet("Rizu Ahmed"), "Hi Rizu — ");
+  assert.equal(greet("rizu"), "Hi rizu — ");
+});
+
+test("no name is a plain opening, never \"Hi , \"", () => {
+  for (const nothing of ["", "   ", null, undefined]) {
+    assert.equal(greet(nothing), "", JSON.stringify(nothing));
+  }
+});
+
+test("a reminder names the person and the button that exists", () => {
+  const body = reminderBody("Rizu Ahmed", TASK);
+  assert.match(body, /^Hi Rizu — /);
+  // "Mark done" has not been the member's button since work started being
+  // reviewed. Telling somebody to press a button that is gone is worse than
+  // telling them nothing.
+  assert.doesNotMatch(body, /Mark done/);
+  assert.match(body, /Submit it in the app/);
+});
+
+test("a digest names them too, however many tasks there are", () => {
+  assert.match(digestBody("Rizu Ahmed", []), /^Hi Rizu — nothing is open/);
+  assert.match(digestBody("Rizu Ahmed", [TASK, TASK]), /^Hi Rizu — you have 2 open tasks/);
 });
