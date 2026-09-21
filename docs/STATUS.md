@@ -214,14 +214,15 @@ collections, `payments` and `advances`, that no client may write.
       the deploy, not before.
 - [ ] **Confirm push on the device** with build `088d4596` — `fcmTokens`
       non-empty, then **Nudge now** buzzes.
-- [ ] **Telegram bot — part done, 21 Sep.** The bot is `@Kahiniscope_bot`.
-      `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` both hold a real
-      value in Secret Manager (version 2, enabled), and the bot name is set
-      both in `functions/.env` and as the repository **variable**
-      `TELEGRAM_BOT_USERNAME` that `deploy.yml` reads. Two steps left:
-      **redeploy the functions** so they bind the new secret versions — a
-      secret reaches the code only at deploy time — and then `setWebhook`.
-      See `docs/12`.
+- [x] **Telegram bot — live, 21 Sep.** `@Kahiniscope_bot`. Both secrets hold
+      real values in Secret Manager, the bot name is set in `functions/.env`
+      and as the repository **variable** `TELEGRAM_BOT_USERNAME`, the
+      functions were redeployed to bind the secret versions, and `setWebhook`
+      returned `ok:true`. Verified end to end: `/start` to the bot answers
+      with the connect prompt, which proves the token, the webhook, the
+      secret header and the outbound send all work. Still unproven on a
+      phone: an invite link actually writing a `telegramChatId`, and a
+      reminder arriving in Telegram with its **Mark done** button.
 - [ ] **Watch the first real `escalateDaily` run** at 09:00 Dhaka. It has
       never fired against real data.
 - [ ] **Play Console**: developer account, identity verification (days), then
