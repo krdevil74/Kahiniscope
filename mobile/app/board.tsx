@@ -15,6 +15,7 @@ import { Card } from "../src/components/Card";
 import { EmptyState } from "../src/components/EmptyState";
 import { HeatBadge } from "../src/components/HeatBadge";
 import { ProgressBar } from "../src/components/ProgressBar";
+import { reviewQueueLabel, submittedTasks } from "../src/lib/review.ts";
 import { useSession } from "../src/lib/auth";
 import { channelWord, nudgeFailedToast, nudgeTask, nudgeToast } from "../src/lib/actions";
 import { CHANNEL_TAGS } from "../src/lib/channels.ts";
@@ -32,7 +33,7 @@ import { boardDateLabel, feedTimeLabel } from "../src/lib/format.ts";
 import { byChaseOrder, countdownLabel, dueLabel } from "../src/lib/escalation.ts";
 import type { ChannelId, Task } from "../src/lib/model";
 import { useToast } from "../src/lib/toast";
-import { colors, fontFamily, heatFor, layout, radii, spacing } from "../src/theme/tokens";
+import { colors, fontFamily, heatFor, layout, radii, spacing, MIN_TAP_TARGET} from "../src/theme/tokens";
 import { type } from "../src/theme/typography";
 
 export default function Board() {
@@ -54,6 +55,7 @@ export default function Board() {
   const stats = useMemo(() => boardStats(tasks, now), [tasks, now]);
   const chase = useMemo(() => byChaseOrder(openTasks(tasks), now), [tasks, now]);
   const pending = useMemo(() => team.filter((m) => m.status === "pending"), [team]);
+  const review = useMemo(() => submittedTasks(tasks), [tasks]);
 
   async function nudge(task: Task) {
     const code = byEpisode.get(task.episodeId)?.code ?? "";
@@ -82,6 +84,38 @@ export default function Board() {
         <StatCell value={stats.open} label="Open tasks" />
         <StatCell value={stats.done} label="Done" />
       </View>
+
+      {/* Work handed in and waiting on a decision. Above the registrations
+          banner on purpose: somebody who has finished a job and is waiting to
+          be paid for it is a more pressing queue than somebody who has just
+          installed the app. */}
+      {review.length > 0 ? (
+        <Pressable
+          onPress={() => router.push("/review")}
+          accessibilityRole="button"
+          accessibilityLabel={reviewQueueLabel(review.length)}
+          android_ripple={{ color: "rgba(27,26,23,.08)" }}
+          style={{
+            marginTop: 8,
+            marginHorizontal: spacing.screen,
+            backgroundColor: colors.brandYellow,
+            borderRadius: radii.cardLarge,
+            paddingVertical: 12,
+            paddingHorizontal: 13,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            minHeight: MIN_TAP_TARGET,
+          }}
+        >
+          <AppText weight="semibold" style={{ fontFamily: fontFamily.semibold, fontSize: 12.5, lineHeight: 15 }}>
+            {reviewQueueLabel(review.length)}
+          </AppText>
+          <AppText style={{ fontFamily: fontFamily.mono, fontSize: 11, color: "rgba(27,26,23,.6)" }}>
+            Review
+          </AppText>
+        </Pressable>
+      ) : null}
 
       {pending.length > 0 ? (
         <Pressable

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { bestChannelFor, channelLabel, reachableChannels } from "./channels.ts";
 import { DEFAULT_SETTINGS } from "./model.ts";
+import { EMPTY_RATES } from "./model.ts";
 import type { Settings, TeamMember } from "./model";
 
 function member(overrides: Partial<TeamMember> = {}): TeamMember {
@@ -13,6 +14,7 @@ function member(overrides: Partial<TeamMember> = {}): TeamMember {
     phone: null,
     telegramChatId: null,
     accountless: false,
+  rates: EMPTY_RATES,
   crafts: ["Voice"],
     status: "approved",
     role: "member",

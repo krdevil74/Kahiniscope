@@ -10,6 +10,48 @@ export type Role = "owner" | "admin" | "member";
 export type AccountStatus = "pending" | "approved";
 export type ChannelId = "push" | "telegram" | "whatsapp" | "sms";
 
+/**
+ * Where a piece of work has got to.
+ *
+ *   open      → nobody has handed anything in. Reminders climb the ladder.
+ *   submitted → handed in, waiting on an admin. Reminders stop: the member
+ *               has done their part and chasing them would be wrong.
+ *   approved  → accepted. A payment record exists and is pending.
+ *   paid      → the money has gone out.
+ *
+ * Rejection is not a state: it puts the task back to `open` and leaves
+ * `rejectedAt` and `rejectionNote` behind, which is what turns the ladder
+ * into the every-other-day chase.
+ */
+export type TaskStatus = "open" | "submitted" | "approved" | "paid";
+
+/** Everything is in rupees. One currency, no conversion anywhere. */
+export const CURRENCY = "₹";
+
+/**
+ * What one person is paid per unit. Null means they are not on a rate for
+ * that kind of work, and the admin types a figure instead. Lives here
+ * because it is part of the shape of a person; the arithmetic is in
+ * lib/payments.ts.
+ */
+export interface Rates {
+  /** Per minute of finished audio, performing a character. */
+  voiceCharacter: number | null;
+  /** Per minute of finished audio, reading narration. */
+  voiceNarration: number | null;
+  /** Per minute, for the mix. */
+  soundDesign: number | null;
+  /** Per cover delivered. */
+  cover: number | null;
+}
+
+export const EMPTY_RATES: Rates = {
+  voiceCharacter: null,
+  voiceNarration: null,
+  soundDesign: null,
+  cover: null,
+};
+
 /** The nine task types, exactly as written. */
 export const TASK_TYPES = [
   "Script writing",
@@ -53,8 +95,22 @@ export interface Task {
   assigneeUid: string;
   type: string;
   dueDate: Date | null;
+  status: TaskStatus;
+  /**
+   * Accepted work: `status` is approved or paid. Stored alongside the status
+   * rather than derived on the fly, because every percentage on every screen
+   * and the escalation job's own query were written against it, and a
+   * rewrite of all of them would have been a much larger change than this
+   * feature is.
+   */
   done: boolean;
   doneAt: Date | null;
+  submittedAt: Date | null;
+  /** Set when an admin sent it back. Cleared on the next submission. */
+  rejectedAt: Date | null;
+  rejectionNote: string | null;
+  /** How many times it has come back. Shown to both sides; never reset. */
+  rejectedCount: number;
   /** 0-based escalation step: how many reminders have gone out. */
   remindersSent: number;
   lastReminderAt: Date | null;
@@ -80,6 +136,8 @@ export interface TeamMember {
    * "whatever reaches them first".
    */
   preferredChannel: ChannelId | null;
+  /** What this person is paid per unit. See lib/payments.ts. */
+  rates: Rates;
   /**
    * Added by an admin against a phone number, with no Firebase Auth account
    * behind it: somebody who does the work but has not installed the app.

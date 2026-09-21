@@ -17,7 +17,7 @@ import { TabBar, type TabItem } from "./TabBar";
 import { useSession } from "../lib/auth";
 import { colors } from "../theme/tokens";
 
-export type TabKey = "board" | "episodes" | "team" | "notify";
+export type TabKey = "board" | "episodes" | "team" | "payments" | "notify";
 
 export interface AppShellProps {
   title: string;
@@ -55,6 +55,7 @@ export function AppShell({
     { key: "board", label: "Board", onPress: () => router.replace("/board") },
     { key: "episodes", label: "Episodes", onPress: () => router.replace("/episodes") },
     { key: "team", label: "Team", onPress: () => router.replace("/team") },
+    { key: "payments", label: "Payments", onPress: () => router.replace("/payments") },
     { key: "notify", label: "Notify", onPress: () => router.replace("/notify") },
   ];
 

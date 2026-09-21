@@ -10,7 +10,7 @@ import {
   matchingContactFor,
   missingFromContact,
 } from "./contacts.ts";
-import type { TeamMember } from "./model.ts";
+import { EMPTY_RATES, type TeamMember } from "./model.ts";
 
 function member(overrides: Partial<TeamMember>): TeamMember {
   return {
@@ -26,6 +26,7 @@ function member(overrides: Partial<TeamMember>): TeamMember {
     note: null,
     preferredChannel: null,
     accountless: false,
+    rates: EMPTY_RATES,
     createdAt: null,
     ...overrides,
   };

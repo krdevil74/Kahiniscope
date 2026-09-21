@@ -88,6 +88,13 @@ beforeEach(async () => {
 
     await setDoc(doc(db, "tasks", "t-mine"), task({ assigneeUid: MEMBER, type: "Voice recording" }));
     await setDoc(doc(db, "tasks", "t-theirs"), task({ assigneeUid: OTHER_MEMBER, type: "Editing" }));
+    // Accepted before the review flow existed: only `done`, no status at all.
+    const legacy = task({ assigneeUid: MEMBER, type: "Editing" });
+    delete legacy.status;
+    await setDoc(doc(db, "tasks", "t-done"), { ...legacy, done: true, doneAt: Timestamp.now() });
+
+    await setDoc(doc(db, "payments", "pay-mine"), payment({ uid: MEMBER }));
+    await setDoc(doc(db, "payments", "pay-theirs"), payment({ uid: OTHER_MEMBER }));
 
     await setDoc(doc(db, "reminderLog", "log1"), {
       taskId: doc(db, "tasks", "t-mine"),
@@ -122,14 +129,37 @@ function user(overrides) {
   };
 }
 
+function payment(overrides) {
+  return {
+    taskId: "t-mine",
+    uid: MEMBER,
+    episodeId: "ep41",
+    taskType: "Voice recording",
+    status: "pending",
+    unit: "voice-narration",
+    quantity: 12,
+    rate: 35,
+    estimatedAmount: 420,
+    finalAmount: null,
+    approvedAt: Timestamp.now(),
+    paidAt: null,
+    ...overrides,
+  };
+}
+
 function task(overrides) {
   return {
     episodeId: "ep41",
     assigneeUid: MEMBER,
     type: "Voice recording",
     dueDate: Timestamp.now(),
+    status: "open",
     done: false,
     doneAt: null,
+    submittedAt: null,
+    rejectedAt: null,
+    rejectionNote: null,
+    rejectedCount: 0,
     remindersSent: 0,
     lastReminderAt: null,
     assignedAt: Timestamp.now(),
@@ -234,10 +264,11 @@ test("member: reads episodes and the ladder, so countdowns compute", async () =>
   await assertSucceeds(getDoc(doc(db, "settings", "global")));
 });
 
-test("member: marks its own task done, and nothing more", async () => {
+test("member: touches nothing on its own task but the submission", async () => {
   const db = asMember();
-  await assertSucceeds(updateDoc(doc(db, "tasks", "t-mine"), { done: true, doneAt: Timestamp.now() }));
-  await assertSucceeds(updateDoc(doc(db, "tasks", "t-mine"), { done: false, doneAt: null }));
+  // Marking work done used to be the member's to do. Accepting work is the
+  // admin's now, because accepting it opens a payment.
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { done: true, doneAt: Timestamp.now() }));
 
   // Values that genuinely differ from the seeded document: the rule works off
   // diff().affectedKeys(), so rewriting a field with the value it already has
@@ -338,8 +369,13 @@ test("admin: assigns a task exactly the way the Assign form writes one", async (
       assigneeUid: MEMBER,
       type: "Upload & SEO",
       dueDate: Timestamp.now(),
+      status: "open",
       done: false,
       doneAt: null,
+      submittedAt: null,
+      rejectedAt: null,
+      rejectionNote: null,
+      rejectedCount: 0,
       remindersSent: 0,
       lastReminderAt: null,
       assignedAt: serverTimestamp(),
@@ -351,10 +387,12 @@ test("admin: assigns a task exactly the way the Assign form writes one", async (
   assert.equal(back.data().episodeId.id, "ep41");
   assert.equal(back.data().assignedAt instanceof Timestamp, true);
 
-  // And the member it was given to can see it, and tick it.
+  // And the member it was given to can see it, and hand it in.
   const mine = asMember();
   await assertSucceeds(getDoc(doc(mine, "tasks", created.id)));
-  await assertSucceeds(updateDoc(doc(mine, "tasks", created.id), { done: true, doneAt: Timestamp.now() }));
+  await assertSucceeds(
+    updateDoc(doc(mine, "tasks", created.id), { status: "submitted", submittedAt: Timestamp.now() })
+  );
 });
 
 test("a member cannot assign work, to themselves or anyone", async () => {
@@ -448,4 +486,73 @@ test("members and contacts are not writable by a member", async () => {
   // nobody can quietly reassign one to themselves.
   await assertFails(updateDoc(doc(db, "users", OTHER_MEMBER), { crafts: ["Voice"] }));
   await assertFails(updateDoc(doc(db, "users", OTHER_MEMBER), { accountless: false }));
+});
+
+// ---------------------------------------------------------------------------
+// Handing work in, and being paid for it
+// ---------------------------------------------------------------------------
+
+test("member: hands their own work in, and nothing more", async () => {
+  const db = asMember();
+  await assertSucceeds(
+    updateDoc(doc(db, "tasks", "t-mine"), { status: "submitted", submittedAt: Timestamp.now() })
+  );
+});
+
+test("member: cannot accept, price or close their own work", async () => {
+  const db = asMember();
+  // Approving is the admin's, and it opens a payment record.
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { status: "approved" }));
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { status: "paid" }));
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { done: true }));
+  // Nor invent a reason it was sent back, nor rewind the reminder clock.
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { status: "submitted", rejectionNote: "looks fine to me" }));
+  await assertFails(updateDoc(doc(db, "tasks", "t-mine"), { status: "submitted", remindersSent: 7 }));
+});
+
+test("member: cannot hand in somebody else's work", async () => {
+  const db = asMember();
+  await assertFails(
+    updateDoc(doc(db, "tasks", "t-theirs"), { status: "submitted", submittedAt: Timestamp.now() })
+  );
+});
+
+test("member: cannot reopen work that has already been accepted", async () => {
+  const db = asMember();
+  await assertFails(
+    updateDoc(doc(db, "tasks", "t-done"), { status: "submitted", submittedAt: Timestamp.now() })
+  );
+});
+
+test("payments: a member reads their own and writes none of them", async () => {
+  const db = asMember();
+  await assertSucceeds(getDoc(doc(db, "payments", "pay-mine")));
+  await assertFails(getDoc(doc(db, "payments", "pay-theirs")));
+  // The amount is the whole point of the document.
+  await assertFails(updateDoc(doc(db, "payments", "pay-mine"), { finalAmount: 99999 }));
+  await assertFails(setDoc(doc(db, "payments", "pay-new"), { uid: MEMBER, status: "paid" }));
+});
+
+test("payments: an admin reads everybody's, and still writes none", async () => {
+  const db = asAdmin();
+  await assertSucceeds(getDoc(doc(db, "payments", "pay-mine")));
+  await assertFails(updateDoc(doc(db, "payments", "pay-mine"), { status: "paid" }));
+});
+
+test("admin: sets a rate card, but only a rate card", async () => {
+  const db = asAdmin();
+  await assertSucceeds(
+    updateDoc(doc(db, "users", MEMBER), {
+      rates: { voiceCharacter: 50, voiceNarration: 35, soundDesign: null, cover: null },
+    })
+  );
+  // Rates are numbers, and only the four the app knows about.
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { rates: { voiceCharacter: "50" } }));
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { rates: { voiceCharacter: -1 } }));
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { rates: { perEpisode: 500 } }));
+});
+
+test("member: cannot set their own rate", async () => {
+  const db = asMember();
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { rates: { voiceCharacter: 5000 } }));
 });
