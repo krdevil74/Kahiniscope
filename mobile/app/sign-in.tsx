@@ -10,6 +10,7 @@ import { Redirect } from "expo-router";
 
 import { AppText } from "../src/components/AppText";
 import { Logo } from "../src/components/Logo";
+import { PosterWall } from "../src/components/PosterWall";
 import { useSession } from "../src/lib/auth";
 import { usingEmulators } from "../src/lib/firebase";
 import {
@@ -65,106 +66,131 @@ export default function SignIn() {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={{
-        flexGrow: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        padding: spacing.screen,
-        backgroundColor: colors.surfaceAlt,
-        gap: spacing.cards,
-      }}
-    >
-      <Logo size={layout.pendingLogo} />
+    <View style={{ flex: 1, backgroundColor: colors.surfaceAlt }}>
+      {/* What this app is for, said before anybody has signed in. */}
+      <PosterWall />
 
-      <AppText weight="semibold" style={[type.h2, { marginTop: spacing.cardTight }]}>
-        Kahiniscope Production
-      </AppText>
-
-      <AppText
-        style={[
-          type.body,
-          { color: "rgba(27,26,23,.6)", textAlign: "center", maxWidth: 280 },
-        ]}
-      >
-        Sign in with the Google account you use for the channel. New sign-ups go
-        to the admin for approval.
-      </AppText>
-
-      <Pressable
-        disabled={disabled}
-        onPress={() => run(signInWithGoogle)}
-        accessibilityRole="button"
-        style={({ pressed }) => ({
-          alignSelf: "stretch",
-          minHeight: MIN_TAP_TARGET,
-          marginTop: spacing.cards,
-          padding: 16,
-          borderRadius: radii.buttonLarge,
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: pressed ? colors.yellowHover : colors.brandYellow,
-          opacity: disabled ? 0.6 : 1,
-        })}
+          padding: spacing.screen,
+        }}
       >
-        {busy ? (
-          <ActivityIndicator color={colors.ink} />
-        ) : (
-          <AppText weight="semibold" style={[type.h4, { fontSize: 14, lineHeight: 14 }]}>
-            Continue with Google
-          </AppText>
-        )}
-      </Pressable>
-
-      {/* Development only, twice over: `usingEmulators` is gated on __DEV__,
-          and the addresses come from .env rather than from source — the owner
-          address must not appear in the app bundle at all, and a string
-          literal survives minification even inside dead code. Set
-          EXPO_PUBLIC_EMULATOR_OWNER and EXPO_PUBLIC_EMULATOR_MEMBER locally
-          to get these buttons; the member one matches the demo seed. */}
-      {usingEmulators && emulatorAccounts.length > 0 ? (
-        <View style={{ alignSelf: "stretch", flexDirection: "row", gap: spacing.chipsTight }}>
-          {emulatorAccounts.map((account) => (
-            <Pressable
-              key={account.label}
-              disabled={disabled}
-              onPress={() =>
-                run(() => signInWithEmulator(account.email, { name: account.name }))
-              }
-              style={({ pressed }) => ({
-                flex: 1,
-                minHeight: MIN_TAP_TARGET,
-                padding: 14,
-                borderRadius: radii.button,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 1,
-                borderColor: colors.hairlineStronger,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <AppText style={[type.meta, { color: "rgba(27,26,23,.6)" }]}>
-                {`emulator · ${account.label}`}
-              </AppText>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-
-      {error ? (
+        {/* The form sits on its own card. Readable text over moving artwork
+            needs something solid under it — dimming the wall far enough to
+            read through would have left nothing worth looking at. */}
         <View
           style={{
-            alignSelf: "stretch",
-            padding: spacing.cardTight,
-            borderRadius: radii.chipLarge,
-            backgroundColor: colors.surfaceSunken,
+            width: "100%",
+            maxWidth: 380,
+            alignItems: "center",
+            gap: spacing.cards,
+            padding: 22,
+            borderRadius: radii.cardHero,
+            backgroundColor: colors.surface,
             borderWidth: 1,
             borderColor: colors.hairline,
+            elevation: 8,
+            shadowColor: colors.ink,
+            shadowOpacity: 0.12,
+            shadowRadius: 26,
+            shadowOffset: { width: 0, height: 10 },
           }}
         >
-          <AppText style={[type.bodySmall, { color: colors.danger }]}>{error}</AppText>
+          <Logo size={layout.pendingLogo} />
+
+          <AppText weight="semibold" style={[type.h2, { marginTop: spacing.cardTight }]}>
+            Kahiniscope Production
+          </AppText>
+
+          <AppText
+            style={[
+              type.body,
+              { color: "rgba(27,26,23,.6)", textAlign: "center", maxWidth: 280 },
+            ]}
+          >
+            Sign in with the Google account you use for the channel. New sign-ups go
+            to the admin for approval.
+          </AppText>
+
+          <Pressable
+            disabled={disabled}
+            onPress={() => run(signInWithGoogle)}
+            accessibilityRole="button"
+            style={({ pressed }) => ({
+              alignSelf: "stretch",
+              minHeight: MIN_TAP_TARGET,
+              marginTop: spacing.cards,
+              padding: 16,
+              borderRadius: radii.buttonLarge,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: pressed ? colors.yellowHover : colors.brandYellow,
+              opacity: disabled ? 0.6 : 1,
+            })}
+          >
+            {busy ? (
+              <ActivityIndicator color={colors.ink} />
+            ) : (
+              <AppText weight="semibold" style={[type.h4, { fontSize: 14, lineHeight: 14 }]}>
+                Continue with Google
+              </AppText>
+            )}
+          </Pressable>
+
+          {/* Development only, twice over: `usingEmulators` is gated on __DEV__,
+              and the addresses come from .env rather than from source — the owner
+              address must not appear in the app bundle at all, and a string
+              literal survives minification even inside dead code. Set
+              EXPO_PUBLIC_EMULATOR_OWNER and EXPO_PUBLIC_EMULATOR_MEMBER locally
+              to get these buttons; the member one matches the demo seed. */}
+          {usingEmulators && emulatorAccounts.length > 0 ? (
+            <View style={{ alignSelf: "stretch", flexDirection: "row", gap: spacing.chipsTight }}>
+              {emulatorAccounts.map((account) => (
+                <Pressable
+                  key={account.label}
+                  disabled={disabled}
+                  onPress={() =>
+                    run(() => signInWithEmulator(account.email, { name: account.name }))
+                  }
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    minHeight: MIN_TAP_TARGET,
+                    padding: 14,
+                    borderRadius: radii.button,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 1,
+                    borderColor: colors.hairlineStronger,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <AppText style={[type.meta, { color: "rgba(27,26,23,.6)" }]}>
+                    {`emulator · ${account.label}`}
+                  </AppText>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+
+        {error ? (
+            <View
+              style={{
+                alignSelf: "stretch",
+                padding: spacing.cardTight,
+                borderRadius: radii.chipLarge,
+                backgroundColor: colors.surfaceSunken,
+                borderWidth: 1,
+                borderColor: colors.hairline,
+              }}
+            >
+              <AppText style={[type.bodySmall, { color: colors.danger }]}>{error}</AppText>
+            </View>
+          ) : null}
         </View>
-      ) : null}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
