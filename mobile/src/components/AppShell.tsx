@@ -45,7 +45,7 @@ export function AppShell({
   scroll = true,
 }: AppShellProps) {
   const router = useRouter();
-  const { isAdmin, loading } = useSession();
+  const { isAdmin, loading, signOut } = useSession();
 
   // The rules would refuse the reads anyway; this keeps a member from ever
   // seeing an empty admin screen if they somehow land on one.
@@ -64,7 +64,15 @@ export function AppShell({
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surfaceAlt }}>
-      <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} />
+      {/* Every admin screen is tabbed, so every admin screen carries the way
+          out. Before this there was none anywhere: the member dashboard had
+          one and the admin side simply did not. */}
+      <ScreenHeader
+        title={title}
+        subtitle={subtitle}
+        onBack={onBack}
+        onSignOut={() => void signOut()}
+      />
 
       {scroll ? (
         <ScrollView

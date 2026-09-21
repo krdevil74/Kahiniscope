@@ -4,6 +4,7 @@
  * rather than tabbed — a yellow-outlined Back pill on the right.
  */
 
+import { useState } from "react";
 import { Pressable, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -18,11 +19,21 @@ export interface ScreenHeaderProps {
   subtitle?: string;
   /** Episode detail, person detail, Assign and Requests carry a Back pill. */
   onBack?: () => void;
+  /**
+   * The tabbed screens carry Sign out instead. The two never appear together:
+   * a screen you can go back from is one you arrived at from somewhere else,
+   * and the way out is behind you.
+   */
+  onSignOut?: () => void;
   style?: ViewStyle;
 }
 
-export function ScreenHeader({ title, subtitle, onBack, style }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, onBack, onSignOut, style }: ScreenHeaderProps) {
   const insets = useSafeAreaInsets();
+  // Two taps, not a dialog. A modal to leave a screen is heavier than the
+  // thing it is guarding, and a single tap on a control that sits on every
+  // screen would eventually be pressed by accident.
+  const [confirming, setConfirming] = useState(false);
 
   return (
     <View
@@ -64,6 +75,45 @@ export function ScreenHeader({ title, subtitle, onBack, style }: ScreenHeaderPro
           </AppText>
         ) : null}
       </View>
+
+      {!onBack && onSignOut ? (
+        <Pressable
+          onPress={() => {
+            if (confirming) {
+              setConfirming(false);
+              onSignOut();
+            } else {
+              setConfirming(true);
+            }
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={confirming ? "Confirm sign out" : "Sign out"}
+          accessibilityHint={confirming ? undefined : "Asks you to confirm"}
+          hitSlop={8}
+          style={({ pressed }) => ({
+            minHeight: MIN_TAP_TARGET - 16,
+            justifyContent: "center",
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            borderRadius: radii.pill,
+            borderWidth: 1,
+            borderColor: confirming ? colors.brandYellow : "rgba(255,255,255,.28)",
+            backgroundColor: confirming ? colors.brandYellow : "transparent",
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <AppText
+            style={{
+              fontFamily: fontFamily.medium,
+              fontSize: 11,
+              lineHeight: 11,
+              color: confirming ? colors.ink : colors.onInkMuted,
+            }}
+          >
+            {confirming ? "Sure?" : "Sign out"}
+          </AppText>
+        </Pressable>
+      ) : null}
 
       {onBack ? (
         <Pressable
