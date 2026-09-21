@@ -6,6 +6,7 @@
 
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { Redirect } from "expo-router";
 
 import { AppText } from "../src/components/AppText";
 import { Logo } from "../src/components/Logo";
@@ -28,7 +29,7 @@ const emulatorAccounts = [
 );
 
 export default function SignIn() {
-  const { loading } = useSession();
+  const { loading, user, isApproved, isAdmin } = useSession();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,8 +38,8 @@ export default function SignIn() {
     setError(null);
     try {
       await work();
-      // The session provider takes it from here: the gate redirects as soon
-      // as the claims land.
+      // The session provider takes it from here: the redirect below fires as
+      // soon as the claims land.
     } catch (err) {
       setError(
         err instanceof SignInUnavailableError
@@ -53,6 +54,15 @@ export default function SignIn() {
   }, []);
 
   const disabled = busy || loading;
+
+  // Signing in does not move the router by itself: this screen is a route,
+  // not the gate, and the gate only runs at `/`. Without this the credential
+  // lands, the session updates, and the person is left looking at the button
+  // they just pressed. Same three destinations the gate uses.
+  if (!loading && user) {
+    if (!isApproved) return <Redirect href="/pending" />;
+    return <Redirect href={isAdmin ? "/board" : "/my-tasks"} />;
+  }
 
   return (
     <ScrollView

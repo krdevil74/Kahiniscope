@@ -12,11 +12,15 @@
  */
 
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 
 type Notifications = typeof import("expo-notifications");
 
 function loadNotifications(): Notifications | null {
+  // The web build resolves a shim whose methods throw on call, so absence is
+  // not enough to detect — the platform has to be ruled out first.
+  if (Platform.OS === "web") return null;
   try {
     return require("expo-notifications");
   } catch {
