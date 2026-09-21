@@ -47,7 +47,7 @@ function claimsFor(access: Access) {
 /**
  * Create users/{uid} for a sign-in we have not seen before.
  *
- * Only the fields we can know from the Google token are filled. Phone, craft
+ * Only the fields we can know from the Google token are filled. Phone, crafts
  * and the applicant's note are typed into the registration form afterwards
  * and written by the client onto its own document, which is the one write a
  * pending account is allowed to make.
@@ -68,7 +68,7 @@ async function createUserDocument(
         email: (user.email ?? "").toLowerCase(),
         phone: user.phoneNumber ?? null,
         telegramChatId: null,
-        craft: null,
+        crafts: [],
         status: access.status,
         role: access.role,
         fcmTokens: [],
@@ -76,7 +76,7 @@ async function createUserDocument(
         createdAt: FieldValue.serverTimestamp(),
       },
       // merge, so a re-run after a partial failure never clobbers a note or
-      // a craft the applicant has already submitted.
+      // the crafts an applicant has already submitted.
       { merge: true }
     );
 }
@@ -189,6 +189,15 @@ export const syncClaimsOnUserWrite = onDocumentWritten(
     if (!after?.exists) {
       // Declined or deleted. Nothing to mint; the decline path deletes the
       // auth user itself.
+      return;
+    }
+
+    if (after.data()?.accountless === true) {
+      // A person an admin typed in against a phone number. There is no auth
+      // user to carry a claim, and never will be until they sign in for
+      // themselves — at which point they arrive as their own registration.
+      // Returning here keeps the log clean: without it every edit to a
+      // contact reports a missing auth user.
       return;
     }
 

@@ -15,9 +15,12 @@ import { AppText } from "../src/components/AppText";
 import { Avatar } from "../src/components/Avatar";
 import { Button } from "../src/components/Button";
 import { SectionCaption } from "../src/components/SectionCaption";
+import { approveLabel, craftLabel } from "../src/lib/crafts";
+import { approveAndLinkContact } from "../src/lib/contact-actions.ts";
+import { contactMatchNote, linkedToast, matchingContactFor } from "../src/lib/contacts.ts";
 import { useSession } from "../src/lib/auth";
-import { useNow, useTeam } from "../src/lib/data";
-import { maskPhone, relativeTime } from "../src/lib/format.ts";
+import { useNow, useTasks, useTeam } from "../src/lib/data";
+import { firstName, maskPhone, relativeTime } from "../src/lib/format.ts";
 import type { TeamMember } from "../src/lib/model";
 import {
   approveRegistration,
@@ -37,6 +40,13 @@ export default function Requests() {
   const now = useNow();
   const { isAdmin, user } = useSession();
   const { data: team } = useTeam(isAdmin);
+  // Only to say how much work would move with a merge — worth a sentence
+  // before somebody presses the button that moves it.
+  const { data: tasks } = useTasks({ enabled: isAdmin });
+
+  const contactFor = (applicant: TeamMember) => matchingContactFor(applicant, team);
+  const openTasksFor = (uid: string) =>
+    tasks.filter((task) => task.assigneeUid === uid && !task.done).length;
 
   /** uids with a request in flight, so a double tap cannot double-fire. */
   const [busy, setBusy] = useState<string[]>([]);
@@ -59,6 +69,23 @@ export default function Requests() {
     try {
       await work();
       toast(message);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "That did not work. Try again.");
+    } finally {
+      setBusy((b) => b.filter((uid) => uid !== member.uid));
+    }
+  }
+
+  /**
+   * Approve, and merge the contact record the admin was already using for
+   * this person: their tasks move to the real account in the same commit.
+   */
+  async function approveAndLink(member: TeamMember, contact: TeamMember) {
+    if (busy.includes(member.uid)) return;
+    setBusy((b) => [...b, member.uid]);
+    try {
+      const { tasks } = await approveAndLinkContact(member.uid, contact.uid);
+      toast(linkedToast(member.name, tasks));
     } catch (err) {
       toast(err instanceof Error ? err.message : "That did not work. Try again.");
     } finally {
@@ -171,6 +198,43 @@ export default function Requests() {
               </AppText>
             </View>
 
+            {/* Somebody who was already doing the work, finally installing
+                the app. Approving them as a new person would leave their
+                tasks on a record nobody can reach. */}
+            {contactFor(member) ? (
+              <View
+                style={{
+                  backgroundColor: colors.ink,
+                  borderRadius: radii.chipLarge,
+                  paddingVertical: 11,
+                  paddingHorizontal: 12,
+                  marginTop: 11,
+                  gap: 9,
+                }}
+              >
+                <AppText
+                  style={{
+                    fontFamily: fontFamily.regular,
+                    fontSize: 11,
+                    lineHeight: 16.5,
+                    color: "rgba(255,255,255,.82)",
+                  }}
+                >
+                  {contactMatchNote(
+                    contactFor(member)!.name,
+                    openTasksFor(contactFor(member)!.uid)
+                  )}
+                </AppText>
+                <Button
+                  label={`Approve & link to ${firstName(contactFor(member)!.name)}`}
+                  radius={radii.cardSmall}
+                  disabled={busy.includes(member.uid)}
+                  onPress={() => void approveAndLink(member, contactFor(member)!)}
+                  accessibilityLabel={`Approve ${member.name} and merge the contact record for ${contactFor(member)!.name}`}
+                />
+              </View>
+            ) : null}
+
             <View style={{ flexDirection: "row", gap: spacing.chips, marginTop: 11 }}>
               <Button
                 label="Decline"
@@ -185,13 +249,17 @@ export default function Requests() {
               <Button
                 // The craft is what the admin is agreeing to, so it is on the
                 // button rather than buried in the card.
-                label={member.craft ? `Approve as ${member.craft}` : "Approve"}
+                label={
+                  matchingContactFor(member, team)
+                    ? "Approve as a new person"
+                    : approveLabel(member.crafts)
+                }
                 radius={radii.cardSmall}
                 onPress={() =>
                   void run(
                     member,
                     () => approveRegistration(member),
-                    approvedToast(member.name, member.craft)
+                    approvedToast(member.name, member.crafts)
                   )
                 }
                 style={{ flex: 2 }}
@@ -282,7 +350,7 @@ export default function Requests() {
                   color: "rgba(27,26,23,.45)",
                 }}
               >
-                {member.role === "owner" || member.role === "admin" ? member.role : member.craft ?? "—"}
+                {member.role === "owner" || member.role === "admin" ? member.role : craftLabel(member.crafts)}
               </AppText>
 
               <Pressable

@@ -118,3 +118,34 @@ export interface EpisodeDraft {
 export function isEpisodeValid(draft: EpisodeDraft): boolean {
   return draft.code.trim().length > 0 && draft.title.trim().length > 0 && draft.airInDays >= 0;
 }
+
+// ---------------------------------------------------------------------------
+// Finding a person once there are more than a screenful
+// ---------------------------------------------------------------------------
+
+/**
+ * How many people the "Assign to" row shows before it collapses behind a
+ * "+ n more". Six is two comfortable rows of chips on a narrow phone; past
+ * that the row starts pushing the rest of the form off the screen, which is
+ * the actual problem — not the number of people.
+ */
+export const COLLAPSED_PEOPLE = 6;
+
+/**
+ * Match on name or craft, because "who does the voices" is as natural a way
+ * to look somebody up as their name. Case and surrounding space are ignored;
+ * an empty query is not a filter.
+ *
+ * Pure: no React, no Firebase. Unit tested.
+ */
+export function searchPeople<T extends { name: string; crafts: string[] }>(
+  people: readonly T[],
+  query: string
+): T[] {
+  const needle = (query ?? "").trim().toLowerCase();
+  if (!needle) return [...people];
+  return people.filter((person) => {
+    const haystack = [person.name, ...person.crafts].join(" ").toLowerCase();
+    return haystack.includes(needle);
+  });
+}

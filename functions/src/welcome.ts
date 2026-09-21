@@ -46,7 +46,7 @@ export const welcomeOnApproval = onDocumentUpdated(
       to,
       {
         short: "You are approved on Kahiniscope",
-        body: welcomeBody(to.name, after.craft ?? null),
+        body: welcomeBody(to.name, Array.isArray(after.crafts) ? after.crafts : null),
         taskIds: [],
         actionableTaskId: null,
         template: null,

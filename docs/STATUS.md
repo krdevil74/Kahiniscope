@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: **19 September 2026**
+Last updated: **21 September 2026**
 
 A running record of where this stands and what is left. Written to be read
 cold, after a gap, by someone who has forgotten the details.
@@ -9,10 +9,10 @@ cold, after a gap, by someone who has forgotten the details.
 
 ## One-line summary
 
-The backend is built, tested and **live in production**. CI and deployment are
-automatic. The Android app is complete in code but **has never run on a
-phone** — the first development build was queued on 19 September and is the
-next thing to check.
+The backend is live and the app **runs on a phone**: signed in, assigning
+work, reminders reaching the device. The first-run list was worked on 20–21
+September and turned up four real bugs, all fixed and merged. The work since
+is features, not commissioning.
 
 ---
 
@@ -34,9 +34,14 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 113 backend, 75 app.** All green. `npm test` at the root runs the
-backend suites (unit + five emulator suites); `npm run verify` in `mobile/`
-runs typecheck, unit tests and a render of every route.
+**Tests: 137 backend, 99 app.** All green. `npm test` at the root runs the
+backend suites (unit + rules + five emulator suites); `npm run verify` in
+`mobile/` runs typecheck, unit tests and a render of all 15 routes.
+
+**Local gotcha:** `functions/.env` shadows the `OWNER_EMAILS` the test scripts
+set, so the auth suite fails on a machine that has one. `functions/.env.kahiniscope-demo`
+(gitignored, project-scoped, holds `owner@kahiniscope.test`) fixes it. CI never
+hit this because `functions/.env` is not in the repo.
 
 ## Live infrastructure
 
@@ -49,7 +54,8 @@ runs typecheck, unit tests and a render of every route.
   `REGION` = asia-south2 (Firestore triggers must sit with the database),
   `BLOCKING_REGION` = asia-south2, `SCHEDULER_REGION` = **asia-south1**
   because Cloud Scheduler does not exist in asia-south2.
-- **13 functions deployed**, rules and indexes released.
+- **13 functions deployed**, rules and indexes released. The contacts work
+  adds five more, not yet deployed.
 - **Two scheduled jobs are armed and have never been observed running:**
   `escalateDaily` at 09:00 Asia/Dhaka, `purgeOldData` Sundays at 03:00.
 - **GitHub: `krdevil74/Kahiniscope`, public.** Push to `main` → CI → deploy,
@@ -65,34 +71,91 @@ is wiped, these are what has to be recreated:
 | `functions/.env` | `OWNER_EMAILS` (two addresses), `TELEGRAM_BOT_USERNAME` |
 | `mobile/.env` | the `EXPO_PUBLIC_*` Firebase web config + Google web client id |
 | `mobile/google-services.json` | from the Firebase console, Android app |
+| `functions/.env.kahiniscope-demo` | `OWNER_EMAILS=owner@kahiniscope.test`, so `npm test` passes locally |
 
 `mobile/.env.example` and `functions/.env.example` document every key. The
 deployed backend does not depend on the local copies — GitHub secrets
 (`OWNER_EMAILS`, `FIREBASE_SERVICE_ACCOUNT`) drive the deploy.
 
-## Immediately next
+## What the first run turned up
 
-1. **Check the development build.** Queued 19 Sep, id
-   `ca6dbc22-006c-4d82-9432-d87979d91cee`:
-   `cd mobile && npx eas-cli@latest build:view ca6dbc22-006c-4d82-9432-d87979d91cee`
-2. Install the APK on an Android phone, then `npx expo start --dev-client`.
-3. Work the test list below.
+Four bugs that could only appear on a device, all fixed in PR #1
+(`9562f60`, merged, deployed):
 
-### First-run test list
+1. **Sign-in never left its own screen.** The gate lives in `app/index.tsx`
+   and only runs at `/`. Signing in updated the session and moved nothing, so
+   the credential landed and the person sat looking at the button they had
+   pressed. `app/pending.tsx` had the same bug: an approval arriving while the
+   holding screen was open could not move them either.
+2. **`expo-notifications` resolves a shim on web** rather than being absent,
+   and its methods throw when called — so the module-present check was not
+   enough and `getLastNotificationResponseAsync` took the web render down.
+3. **A bundle built without the `EXPO_PUBLIC_*` variables** got an empty
+   Firebase config and died at module load: an instant crash back to the
+   launcher with nothing to read. `firebase.ts` now names the missing keys.
+4. **No `google-services.json` in the APK.** It is gitignored, EAS builds from
+   a git archive, and no EAS secret was set — so the native Firebase app never
+   initialised and FCM could not issue a token.
 
-1. Sign in with an owner address → should land on **Board**, not the holding
-   screen.
-2. Allow notifications → registers the FCM token into `users/{uid}.fcmTokens`.
-3. **+ → New episode** → check the Bengali title renders rather than showing
-   boxes.
-4. Assign yourself a task due in 1 day.
-5. **Nudge now** → the toast names the channel; the phone should buzz (push).
-6. Sign in on a second account → lands pending, appears in **Requests**.
-7. Mark done → strikes through, reminders stop.
+### What EAS needs, and now has
+
+Both remote-build failures were the same shape: a gitignored file is not on
+the build server. Set on the EAS project (all three environments):
+
+- `GOOGLE_SERVICES_JSON` — file type, secret
+- the seven `EXPO_PUBLIC_*` values — string, plaintext (they are public
+  identifiers; the boundary is the rules and the claims)
+
+Do **not** put `EXPO_PUBLIC_EMULATOR_OWNER` there: `docs/10` records the owner
+address leaking into the bundle through it once already.
+
+The GitHub Actions build path (`android-build.yml`) wants the same values as
+repo secrets and still has none — `EXPO_TOKEN` and `GOOGLE_SERVICES_JSON` are
+both unset, so that workflow has never run. CLI builds are the working path.
+
+### First-run test list — worked, 21 Sep
+
+Sign-in, the board, adding an episode with a Bengali title, assigning, and
+**Nudge now** all confirmed on a real phone. Still unproven on a device: a
+second account registering and being approved, and push actually arriving
+(the rebuild carrying `google-services.json` is `088d4596`).
 
 Known failure modes: `DEVELOPER_ERROR` at sign-in means the SHA-1 does not
 match (verified correct as of 16 Sep — cert `c616e477…706b`); silent push
 means `fcmTokens` is empty.
+
+## Since the first run: what was added
+
+Asked for on 21 September, built on `feat/contacts-crafts-and-messaging-docs`:
+
+- **A person has several crafts, not one.** `craft: string` became
+  `crafts: string[]`, capped at five, editable by the person at registration
+  and by an admin on the person page. Old records read as a list of one, so
+  there is no migration to run.
+- **The "Assign to" row scales.** Search by name or craft, and the chips
+  collapse behind "+ n more" past six people — the selected person is never
+  among the ones hidden.
+- **People with no app.** An admin adds somebody against a phone number from
+  **Team → Add someone without the app**. They are assignable immediately and
+  the board counts them. Marked `accountless: true`, with no Firebase Auth
+  user behind them; the phone number is the identity, normalised on the server
+  and unique across every user record. Push is not on their chain — there is
+  no device — so the admin picks WhatsApp, Telegram or SMS.
+- **Telegram for somebody with no app.** Only they can create a chat id, so
+  the person page mints an invite link and hands it to the share sheet. The
+  same single-use token and the same webhook as the app's own Connect
+  Telegram.
+- **Merging a contact into a real account.** When they finally install the
+  app and register with the same number, the approval queue says so — naming
+  the contact and its open tasks — and offers **Approve & link**, which moves
+  the tasks, carries the crafts and the channel over, deletes the contact and
+  approves the account in one commit. Deliberately an admin decision: a number
+  typed into a form is a claim, not a proof.
+- **`docs/12-messaging-integration.md`** — WhatsApp and Telegram end to end,
+  including the contact flow and the troubleshooting tables.
+
+Five new callables, all admin-gated: `addContact`, `updateContact`,
+`removeContact`, `contactTelegramLink`, `approveAndLinkContact`.
 
 ---
 
@@ -100,7 +163,13 @@ means `fcmTokens` is empty.
 
 ### Blocking a real launch
 
-- [ ] **Run the app on a phone.** Nothing below matters until this happens.
+- [x] **Run the app on a phone.** Done 20–21 Sep.
+- [ ] **Deploy the contacts work.** The new callables and the rules change are
+      on a branch, not on `main`. Rules must go out with the functions: the
+      registration write list moved from `craft` to `crafts`, so a deployed
+      app writing `crafts` against the old rules is refused.
+- [ ] **Confirm push on the device** with build `088d4596` — `fcmTokens`
+      non-empty, then **Nudge now** buzzes.
 - [ ] **Telegram bot.** `TELEGRAM_BOT_TOKEN` is the placeholder `unset`, so
       the channel reports itself unconfigured and is skipped. Needs
       `@BotFather` → `/newbot`, then `firebase functions:secrets:set

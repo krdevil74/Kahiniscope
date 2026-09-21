@@ -105,7 +105,7 @@ test("a registration goes into the queue with the applicant's own words", async 
 
   // The one write a pending account may make.
   await updateDoc(doc(c.db, "users", user.uid), {
-    craft: "Editing",
+    crafts: ["Editing"],
     phone: "+8801712344192",
     note: "Worked on EP-33 to EP-36 editing with Tanmoy.",
   });
@@ -115,7 +115,7 @@ test("a registration goes into the queue with the applicant's own words", async 
   const applicant = queue.docs.find((d) => d.id === user.uid);
   assert.ok(applicant, "the applicant is in the queue");
   assert.equal(applicant.data().status, "pending");
-  assert.equal(applicant.data().craft, "Editing");
+  assert.deepEqual(applicant.data().crafts, ["Editing"]);
   assert.equal(applicant.data().name, "Shuvo Karim");
   assert.match(applicant.data().note, /EP-33/);
 
@@ -127,7 +127,7 @@ test("approving unlocks that session — no sign-out, no second visit", async ()
   const c = client("applicant-approved");
   const user = await signIn(c, { sub: "applicant-2", email: "mahi@gmail.com", name: "Mahi Chowdhury" });
   await waitForClaims(user, (claims) => claims.status === "pending", "pending claims");
-  await updateDoc(doc(c.db, "users", user.uid), { craft: "Voice", phone: "+8801919997730" });
+  await updateDoc(doc(c.db, "users", user.uid), { crafts: ["Voice"], phone: "+8801919997730" });
 
   // What the Approve button does: one field.
   await updateDoc(doc(owner.db, "users", user.uid), { status: "approved" });
@@ -207,7 +207,7 @@ test("an approved member sees only their own work, and can close it", async () =
   const c = client("member-dashboard");
   const user = await signIn(c, { sub: "member-1", email: "rizu@gmail.com", name: "Rizu Ahmed" });
   await waitForClaims(user, (cl) => cl.status === "pending", "pending claims");
-  await updateDoc(doc(owner.db, "users", user.uid), { status: "approved", craft: "Voice" });
+  await updateDoc(doc(owner.db, "users", user.uid), { status: "approved", crafts: ["Voice"] });
   await waitForClaims(user, (cl) => cl.status === "approved", "approval");
 
   // Two tasks: one theirs, one somebody else's.

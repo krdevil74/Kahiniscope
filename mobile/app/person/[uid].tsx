@@ -3,7 +3,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { View } from "react-native";
+import { Pressable, Share, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { AppShell } from "../../src/components/AppShell";
@@ -12,6 +12,10 @@ import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
 import { EmptyState } from "../../src/components/EmptyState";
 import { HeatBadge } from "../../src/components/HeatBadge";
+import { craftLabel, toggleCraft } from "../../src/lib/crafts.ts";
+import { contactTelegramLink } from "../../src/lib/contact-actions.ts";
+import { SectionCaption } from "../../src/components/SectionCaption";
+import { CRAFTS } from "../../src/lib/model";
 import { useSession } from "../../src/lib/auth";
 import {
   channelWord,
@@ -25,7 +29,9 @@ import { indexBy, useEpisodes, useNow, useSettings, useTasks, useTeam } from "..
 import { countdownLabel, dueLabel } from "../../src/lib/escalation.ts";
 import type { ChannelId } from "../../src/lib/model";
 import { ChannelPicker } from "../../src/components/ChannelPicker";
-import { channelPinnedToast, setPreferredChannel } from "../../src/lib/registrations";
+import { channelPinnedToast, setCrafts, setPreferredChannel } from "../../src/lib/registrations";
+import { maskPhone } from "../../src/lib/format.ts";
+import { type } from "../../src/theme/typography";
 import { useToast } from "../../src/lib/toast";
 import { colors, fontFamily, radii, spacing } from "../../src/theme/tokens";
 
@@ -61,6 +67,41 @@ export default function PersonDetail() {
     }
   }
 
+  const [savingCrafts, setSavingCrafts] = useState(false);
+  const [inviting, setInviting] = useState(false);
+
+  async function toggleMemberCraft(craft: string) {
+    if (!member || savingCrafts) return;
+    setSavingCrafts(true);
+    try {
+      await setCrafts(member.uid, toggleCraft(member.crafts, craft));
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "That did not save.");
+    } finally {
+      setSavingCrafts(false);
+    }
+  }
+
+  /**
+   * The chat id can only come from Telegram, so the most an admin can do is
+   * hand this person the link. The share sheet is the point: it goes out over
+   * whatever they already talk on.
+   */
+  async function inviteToTelegram() {
+    if (!member || inviting) return;
+    setInviting(true);
+    try {
+      const url = await contactTelegramLink(member.uid);
+      await Share.share({
+        message: `Kahiniscope reminders for you, ${member.name}: open this and press Start.\n${url}`,
+      });
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Could not make an invite link.");
+    } finally {
+      setInviting(false);
+    }
+  }
+
   async function nudgeAll() {
     if (!member || busy) return;
     setBusy(true);
@@ -83,7 +124,7 @@ export default function PersonDetail() {
   return (
     <AppShell
       title={member?.name ?? "Member"}
-      subtitle={`${member?.craft ?? "no craft"} · reminders via ${channelLabel(channel)}`}
+      subtitle={`${craftLabel(member?.crafts ?? [])} · reminders via ${channelLabel(channel)}`}
       activeTab="team"
       showFab
       assignHref={`/assign?uid=${uid}`}
@@ -133,6 +174,106 @@ export default function PersonDetail() {
             busy={pinning}
             onChange={(channel) => void pinChannel(channel)}
           />
+        </View>
+      ) : null}
+
+      {member ? (
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.hairline,
+            paddingVertical: spacing.card,
+            paddingHorizontal: 16,
+            gap: spacing.chips,
+          }}
+        >
+          <SectionCaption>What they do</SectionCaption>
+          {/* One person is rarely one thing, and what they do changes. This
+              is the record the assign screen searches on. */}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.chipsTight }}>
+            {CRAFTS.map((option) => {
+              const on = member.crafts.includes(option);
+              return (
+                <Pressable
+                  key={option}
+                  disabled={savingCrafts}
+                  onPress={() => void toggleMemberCraft(option)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={option}
+                  style={{
+                    paddingVertical: 9,
+                    paddingHorizontal: 13,
+                    borderRadius: radii.pill,
+                    borderWidth: 1,
+                    borderColor: on ? colors.ink : colors.hairlineStronger,
+                    backgroundColor: on ? colors.ink : "transparent",
+                    minHeight: 36,
+                    justifyContent: "center",
+                    opacity: savingCrafts ? 0.5 : 1,
+                  }}
+                >
+                  <AppText
+                    style={{
+                      fontFamily: fontFamily.medium,
+                      fontSize: 11,
+                      lineHeight: 13,
+                      color: on ? colors.white : "rgba(27,26,23,.6)",
+                    }}
+                  >
+                    {option}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
+
+      {/* Somebody an admin typed in. Two things are different about them:
+          there is no account to maintain its own details, and Telegram needs
+          an invite because only they can create the chat id. */}
+      {member?.accountless ? (
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.hairline,
+            paddingVertical: spacing.card,
+            paddingHorizontal: 16,
+            gap: spacing.chips,
+          }}
+        >
+          <SectionCaption>No app on their phone</SectionCaption>
+          <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.6)" }]}>
+            {member.telegramChatId
+              ? "Telegram is connected — reminders arrive there, and they can close a task from the chat."
+              : member.preferredChannel === "telegram"
+                ? "Telegram is not connected yet. Only they can start the chat, so send them the invite below."
+                : `Reminders go to ${maskPhone(member.phone)}.`}
+          </AppText>
+
+          <View style={{ flexDirection: "row", gap: spacing.cardsTight }}>
+            <Button
+              label="Edit details"
+              variant="ink"
+              radius={radii.cardSmall}
+              style={{ flex: 1 }}
+              onPress={() => router.push(`/contact?uid=${member.uid}`)}
+            />
+            {member.telegramChatId ? null : (
+              <Button
+                label={inviting ? "Making a link…" : "Telegram invite"}
+                variant="outline"
+                radius={radii.cardSmall}
+                disabled={inviting}
+                style={{ flex: 1 }}
+                onPress={() => void inviteToTelegram()}
+                accessibilityLabel={`Send ${member.name} a Telegram invite link`}
+              />
+            )}
+          </View>
         </View>
       ) : null}
 

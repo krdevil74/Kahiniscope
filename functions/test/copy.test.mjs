@@ -73,6 +73,13 @@ test("the digest headline counts what is actually late", () => {
 });
 
 test("the welcome names the craft it was approved as", () => {
-  assert.match(welcomeBody("Shuvo Karim", "Editing"), /^Shuvo, you are approved as Editing/);
+  assert.match(welcomeBody("Shuvo Karim", ["Editing"]), /^Shuvo, you are approved as Editing/);
   assert.match(welcomeBody("Shuvo Karim", null), /^Shuvo, you are approved on Kahiniscope/);
+  assert.match(welcomeBody("Shuvo Karim", []), /^Shuvo, you are approved on Kahiniscope/);
+  // One person is rarely one thing, and the welcome should say what they
+  // were actually approved for.
+  assert.match(
+    welcomeBody("Rizu Ahmed", ["Voice", "Editing"]),
+    /^Rizu, you are approved as Voice · Editing/
+  );
 });

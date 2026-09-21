@@ -75,9 +75,9 @@ beforeEach(async () => {
 
     await setDoc(doc(db, "users", OWNER), user({ name: "Kahiniscope", email: "owner@kahiniscope.test", role: "owner", status: "approved" }));
     await setDoc(doc(db, "users", ADMIN), user({ name: "Admin", email: "admin@gmail.com", role: "admin", status: "approved" }));
-    await setDoc(doc(db, "users", MEMBER), user({ name: "Rizu Ahmed", email: "rizu@gmail.com", craft: "Voice" }));
-    await setDoc(doc(db, "users", OTHER_MEMBER), user({ name: "Tanvir", email: "tanvir@gmail.com", craft: "Editing" }));
-    await setDoc(doc(db, "users", PENDING), user({ name: "Newcomer", email: "newcomer@gmail.com", status: "pending", craft: null }));
+    await setDoc(doc(db, "users", MEMBER), user({ name: "Rizu Ahmed", email: "rizu@gmail.com", crafts: ["Voice"] }));
+    await setDoc(doc(db, "users", OTHER_MEMBER), user({ name: "Tanvir", email: "tanvir@gmail.com", crafts: ["Editing"] }));
+    await setDoc(doc(db, "users", PENDING), user({ name: "Newcomer", email: "newcomer@gmail.com", status: "pending", crafts: [] }));
 
     await setDoc(doc(db, "episodes", "ep41"), {
       code: "EP-41",
@@ -112,7 +112,7 @@ function user(overrides) {
     email: "someone@gmail.com",
     phone: "+8801712344192",
     telegramChatId: null,
-    craft: "Script",
+    crafts: ["Script"],
     status: "approved",
     role: "member",
     fcmTokens: [],
@@ -163,7 +163,7 @@ test("pending: completes its own registration form", async () => {
     updateDoc(doc(db, "users", PENDING), {
       name: "Newcomer Ahmed",
       phone: "+8801712344192",
-      craft: "Script",
+      crafts: ["Script", "Proofreading"],
       note: "I have done three episodes of narration before.",
     })
   );
@@ -174,7 +174,7 @@ test("pending: cannot approve or promote itself", async () => {
   await assertFails(updateDoc(doc(db, "users", PENDING), { status: "approved" }));
   await assertFails(updateDoc(doc(db, "users", PENDING), { role: "admin" }));
   await assertFails(updateDoc(doc(db, "users", PENDING), { role: "owner", status: "approved" }));
-  await assertFails(updateDoc(doc(db, "users", PENDING), { craft: "Script", status: "approved" }));
+  await assertFails(updateDoc(doc(db, "users", PENDING), { crafts: ["Script"], status: "approved" }));
 });
 
 test("pending: cannot touch anyone else, or create work", async () => {
@@ -187,7 +187,14 @@ test("pending: cannot touch anyone else, or create work", async () => {
 
 test("pending: an invalid craft is rejected", async () => {
   const db = asPending();
-  await assertFails(updateDoc(doc(db, "users", PENDING), { craft: "Executive Producer" }));
+  await assertFails(updateDoc(doc(db, "users", PENDING), { crafts: ["Executive Producer"] }));
+  await assertFails(updateDoc(doc(db, "users", PENDING), { crafts: ["Voice", "Executive Producer"] }));
+  await assertFails(
+    updateDoc(doc(db, "users", PENDING), {
+      crafts: ["Script", "Translation", "Voice", "Post / mix", "Graphics", "Editing"],
+    })
+  );
+  await assertFails(updateDoc(doc(db, "users", PENDING), { crafts: "Voice" }));
   await assertFails(updateDoc(doc(db, "users", PENDING), { note: "x".repeat(501) }));
 });
 
@@ -309,7 +316,6 @@ test("admin: cannot promote anyone, itself included", async () => {
   await assertFails(updateDoc(doc(db, "users", MEMBER), { role: "admin" }));
   await assertFails(updateDoc(doc(db, "users", ADMIN), { role: "owner" }));
   await assertFails(updateDoc(doc(db, "users", PENDING), { status: "approved", role: "admin" }));
-  await assertFails(updateDoc(doc(db, "users", MEMBER), { craft: "Script" }));
   await assertFails(updateDoc(doc(db, "users", PENDING), { status: "banned" }));
 });
 
@@ -423,4 +429,23 @@ test("nobody creates a user document from a client", async () => {
 test("unknown collections are closed", async () => {
   await assertFails(getDocs(collection(asOwner(), "secrets")));
   await assertFails(setDoc(doc(asOwner(), "secrets", "x"), { a: 1 }));
+});
+
+test("admin: keeps a person's crafts right, and nothing else about them", async () => {
+  const db = asAdmin();
+  // The person page is where "she does the voices as well now" is recorded.
+  await assertSucceeds(updateDoc(doc(db, "users", MEMBER), { crafts: ["Voice", "Editing"] }));
+  // Still only a craft the app offers, and still capped.
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { crafts: ["Executive Producer"] }));
+  // Identity is not an admin's to edit.
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { name: "Someone Else" }));
+  await assertFails(updateDoc(doc(db, "users", MEMBER), { phone: "+8801700000000" }));
+});
+
+test("members and contacts are not writable by a member", async () => {
+  const db = asMember();
+  // A contact record is an ordinary user document: the same rules hold, so
+  // nobody can quietly reassign one to themselves.
+  await assertFails(updateDoc(doc(db, "users", OTHER_MEMBER), { crafts: ["Voice"] }));
+  await assertFails(updateDoc(doc(db, "users", OTHER_MEMBER), { accountless: false }));
 });

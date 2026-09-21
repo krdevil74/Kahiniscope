@@ -2,15 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  INITIAL_DRAFT,
   assignedToast,
   dueDateFrom,
-  INITIAL_DRAFT,
   isComplete,
   isEpisodeValid,
   ladderBars,
   ladderNote,
   missingFrom,
   nextEpisodeCode,
+  searchPeople,
   stepDueDays,
   submitLabel,
 } from "./assign.ts";
@@ -98,4 +99,30 @@ test("an episode needs a code and a title", () => {
   assert.equal(isEpisodeValid({ code: "EP-44", title: "নতুন গল্প", airInDays: 7 }), true);
   assert.equal(isEpisodeValid({ code: "  ", title: "নতুন গল্প", airInDays: 7 }), false);
   assert.equal(isEpisodeValid({ code: "EP-44", title: "   ", airInDays: 7 }), false);
+});
+
+test("searching people matches on name, case and spacing aside", () => {
+  const people = [
+    { name: "Rizu Ahmed", crafts: ["Voice"] },
+    { name: "Nabanita Roy", crafts: ["Translation"] },
+  ];
+  assert.deepEqual(searchPeople(people, "  rIzU "), [people[0]]);
+});
+
+test("searching people matches on craft, because that is how work is remembered", () => {
+  const people = [
+    { name: "Rizu Ahmed", crafts: ["Voice", "Editing"] },
+    { name: "Nabanita Roy", crafts: ["Translation"] },
+  ];
+  assert.deepEqual(searchPeople(people, "editing"), [people[0]]);
+});
+
+test("an empty query is not a filter", () => {
+  const people = [{ name: "Rizu Ahmed", crafts: ["Voice"] }];
+  assert.deepEqual(searchPeople(people, "   "), people);
+});
+
+test("no match returns nothing rather than everything", () => {
+  const people = [{ name: "Rizu Ahmed", crafts: ["Voice"] }];
+  assert.deepEqual(searchPeople(people, "zzz"), []);
 });

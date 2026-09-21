@@ -77,12 +77,17 @@ service cloud.firestore {
             || request.resource.data.note == null
             || (request.resource.data.note is string
                 && request.resource.data.note.size() <= 500))
-        && (!('craft' in request.resource.data)
-            || request.resource.data.craft == null
-            || request.resource.data.craft in [
-                 'Script', 'Translation', 'Voice', 'Post / mix',
-                 'Graphics', 'Proofreading', 'Editing'
-               ])
+        // One person is rarely one thing, so this is a list. Capped at five
+        // because the chips have to fit on a phone, and every entry has to be
+        // one of the crafts the app offers — a free-text craft would be a
+        // filter nobody could ever match.
+        && (!('crafts' in request.resource.data)
+            || (request.resource.data.crafts is list
+                && request.resource.data.crafts.size() <= 5
+                && request.resource.data.crafts.hasOnly([
+                     'Script', 'Translation', 'Voice', 'Post / mix',
+                     'Graphics', 'Proofreading', 'Editing'
+                   ])))
         && (!('fcmTokens' in request.resource.data)
             || request.resource.data.fcmTokens is list);
     }
@@ -106,7 +111,9 @@ service cloud.firestore {
       allow get: if signedIn() && (userId == uid() || isAdmin());
       allow list: if isAdmin();
 
-      // Created only by the blocking auth trigger (admin SDK, bypasses rules).
+      // Created only by the blocking auth trigger on a first sign-in, or by
+      // the addContact callable for somebody who has no account at all. Both
+      // use the admin SDK and bypass rules; no client creates a user.
       allow create: if false;
 
       allow update: if
@@ -115,17 +122,19 @@ service cloud.firestore {
         // matching custom claim — but the rule stays open so the owner is
         // never locked out of their own data.
         isOwner()
-        // Admins approve and revoke registrations, and choose which channel
-        // a person is reminded on. Those two fields only: an admin cannot
-        // promote itself or anyone else.
-        || (isAdmin() && onlyChanged(['status', 'preferredChannel'])
-            && validAdminEdit())
+        // Admins approve and revoke registrations, choose which channel a
+        // person is reminded on, and keep their crafts right — the person
+        // page is where "she does the voices as well now" gets recorded.
+        // Those three fields only: an admin cannot promote itself or anyone
+        // else, and cannot rewrite somebody's name or number.
+        || (isAdmin() && onlyChanged(['status', 'preferredChannel', 'crafts'])
+            && validAdminEdit() && validProfile())
         // Registration. A pending applicant fills in their own profile —
         // this is the single write a pending account may make, and it cannot
         // touch role or status, so nobody approves or promotes themselves.
         // The same rule lets an approved account maintain its FCM tokens.
         || (signedIn() && userId == uid()
-            && onlyChanged(['name', 'phone', 'craft', 'note', 'fcmTokens'])
+            && onlyChanged(['name', 'phone', 'crafts', 'note', 'fcmTokens'])
             && validProfile());
 
       // Decline. The declineRegistration callable also deletes the auth user;

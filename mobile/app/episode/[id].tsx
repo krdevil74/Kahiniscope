@@ -15,6 +15,7 @@ import { EmptyState } from "../../src/components/EmptyState";
 import { HeatBadge } from "../../src/components/HeatBadge";
 import { ProgressBar } from "../../src/components/ProgressBar";
 import { SectionCaption } from "../../src/components/SectionCaption";
+import { craftLabel } from "../../src/lib/crafts";
 import { useSession } from "../../src/lib/auth";
 import {
   channelWord,
@@ -178,7 +179,7 @@ export default function EpisodeDetail() {
                     marginTop: 3,
                   }}
                 >
-                  {`${member.craft ?? "no craft"} · ${own.done}/${own.total} done · via ${channelLabel(
+                  {`${craftLabel(member.crafts)} · ${own.done}/${own.total} done · via ${channelLabel(
                     bestChannelFor(member, settings)
                   )}`}
                 </AppText>

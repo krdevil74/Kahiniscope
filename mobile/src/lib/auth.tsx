@@ -30,7 +30,7 @@ export interface UserDoc {
   email: string;
   phone: string | null;
   telegramChatId: string | null;
-  craft: string | null;
+  crafts: string[];
   status: AccountStatus;
   role: Role;
   fcmTokens: string[];

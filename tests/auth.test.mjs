@@ -201,7 +201,7 @@ test("a second Google account lands pending and can read nothing", async () => {
 
   // It can, however, finish its registration.
   await updateDoc(doc(c.db, "users", user.uid), {
-    craft: "Voice",
+    crafts: ["Voice"],
     phone: "+8801712344192",
     note: "Available evenings.",
   });
