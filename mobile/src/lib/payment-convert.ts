@@ -10,7 +10,7 @@ import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore";
 
 import { toDate, toNumber, toStringOrNull } from "./convert.ts";
 import { EMPTY_RATES, type Rates, type TaskStatus } from "./model.ts";
-import type { Payment, PaymentStatus, PayUnit } from "./payments.ts";
+import type { Advance, Payment, PaymentStatus, PayUnit } from "./payments.ts";
 
 const UNITS: PayUnit[] = [
   "voice-character",
@@ -72,8 +72,17 @@ export function toPayment(snap: QueryDocumentSnapshot<DocumentData>): Payment {
     comment: toStringOrNull(d.comment),
     approvedAt: toDate(d.approvedAt),
     paidAt: toDate(d.paidAt),
+    settledFromAdvance: d.settledFromAdvance === true,
   };
 }
 
-/** Unused here but kept beside its siblings for the next converter. */
-export const _numbers = { toNumber };
+export function toAdvance(snap: QueryDocumentSnapshot<DocumentData>): Advance {
+  const d = snap.data();
+  return {
+    id: snap.id,
+    uid: d.uid ?? "",
+    amount: toNumber(d.amount),
+    note: toStringOrNull(d.note),
+    createdAt: toDate(d.createdAt),
+  };
+}

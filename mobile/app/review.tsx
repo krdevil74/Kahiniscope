@@ -36,8 +36,8 @@ import {
   type PayUnit,
 } from "../src/lib/payments.ts";
 import {
+  approvalToast,
   approveTask,
-  approvedToast,
   rejectTask,
   rejectedToast,
 } from "../src/lib/review-actions.ts";
@@ -108,6 +108,7 @@ function ReviewCard({
 
   const rates = member?.rates ?? null;
   const rate = rates ? rateFor(rates, unit) : null;
+  const balance = member?.balance ?? 0;
 
   const quantity = needsRecordingTime(unit)
     ? minutes.trim() === ""
@@ -130,14 +131,19 @@ function ReviewCard({
     if (!canApprove) return;
     setBusy(true);
     try {
-      const { estimatedAmount } = await approveTask(task.id, {
+      const result = await approveTask(task.id, {
         unit,
         recordingMinutes: needsRecordingTime(unit) ? quantity : null,
         wordCount: words.trim() === "" ? null : Number(words),
         comment: comment.trim() || null,
         amount: typed !== null && Number.isFinite(typed) ? Math.round(typed) : null,
       });
-      toast(approvedToast(member?.name ?? "them", money(estimatedAmount)));
+      toast(
+        approvalToast(member?.name ?? "them", money(result.estimatedAmount), {
+          settledFromAdvance: result.settledFromAdvance,
+          balanceAfter: result.balanceAfter,
+        })
+      );
     } catch (err) {
       toast(err instanceof Error ? err.message : "That did not save.");
       setBusy(false);
@@ -295,6 +301,17 @@ function ReviewCard({
               {shown === null ? "—" : money(shown)}
             </AppText>
           </View>
+
+          {/* Said before the button is pressed, not after: approving this one
+              hands over money that has already been paid, and no payment will
+              appear in the queue afterwards. */}
+          {balance > 0 && shown !== null ? (
+            <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.55)" }]}>
+              {shown <= balance
+                ? `Comes off the ${money(balance)} advance — paid on approval, leaving ${money(balance - shown)}.`
+                : `${money(balance)} advanced, which does not cover this. It will queue to be paid as normal.`}
+            </AppText>
+          ) : null}
 
           <View style={{ flexDirection: "row", gap: spacing.chips }}>
             <Button

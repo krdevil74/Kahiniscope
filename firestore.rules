@@ -226,6 +226,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- advances ---------------------------------------------------------
+    //
+    // Money handed over before the work existed. Each one is its own record
+    // so that "where did this balance come from" has an answer; the balance
+    // itself lives on the user document and is not in any rule a client can
+    // satisfy, which is what keeps it the server's.
+
+    match /advances/{advanceId} {
+      allow read: if isAdmin()
+        || (isApproved() && resource.data.uid == uid());
+      allow write: if false;
+    }
+
     // ---- reminderLog ------------------------------------------------------
     //
     // Written by Cloud Functions only. Feeds the Board's reminder feed and is

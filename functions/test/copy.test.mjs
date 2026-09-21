@@ -2,9 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  advanceBody,
+  advanceShort,
+  approvedBody,
   digestBody,
   digestShort,
   overduePhrase,
+  paidBody,
+  paidShort,
+  rejectedBody,
   reminderBody,
   reminderShort,
   taskSentence,
@@ -82,4 +88,53 @@ test("the welcome names the craft it was approved as", () => {
     welcomeBody("Rizu Ahmed", ["Voice", "Editing"]),
     /^Rizu, you are approved as Voice · Editing/
   );
+});
+
+// --- what an admin just did to somebody's work -----------------------------
+
+test("an approval settled from an advance reads as payment, not as a promise", () => {
+  const body = approvedBody("Rizu Ahmed", "Voice recording", {
+    settledFromAdvance: true,
+    amount: 600,
+    balanceAfter: 4400,
+  });
+  assert.match(body, /^Rizu, your Voice recording has been approved\./);
+  assert.match(body, /₹600 has been taken off the advance/);
+  assert.match(body, /leaving ₹4,400/);
+});
+
+test("an approval that is not settled says plainly that the figure can move", () => {
+  const body = approvedBody("Rizu Ahmed", "Voice recording", {
+    settledFromAdvance: false,
+    amount: 600,
+    balanceAfter: 0,
+  });
+  assert.match(body, /₹600 is now pending/);
+  assert.match(body, /can differ depending on what the work needed/);
+});
+
+test("an approval with no figure behind it promises nothing", () => {
+  const body = approvedBody("Rizu", "Editing", {
+    settledFromAdvance: false,
+    amount: null,
+    balanceAfter: 0,
+  });
+  assert.match(body, /settled by the admin/);
+  assert.doesNotMatch(body, /₹/);
+});
+
+test("a rejection carries the reason, because that is the whole message", () => {
+  const body = rejectedBody("Rizu Ahmed", "Voice recording", "Levels are too hot from 4:10.");
+  assert.match(body, /come back for changes: Levels are too hot from 4:10\./);
+  assert.match(body, /Submit it again/);
+});
+
+test("being paid, and being advanced, say which is which", () => {
+  assert.equal(paidShort(1250), "₹1,250 paid");
+  assert.match(paidBody("Rizu Ahmed", "Voice recording", 550), /₹550 has been paid to you/);
+
+  assert.equal(advanceShort(5000), "₹5,000 advanced");
+  const body = advanceBody("Rizu Ahmed", 5000, 5000, "Before EP-61");
+  assert.match(body, /₹5,000 has been advanced to you \(Before EP-61\)/);
+  assert.match(body, /balance is ₹5,000, and approved work is taken off it/);
 });

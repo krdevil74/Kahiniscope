@@ -103,6 +103,7 @@ function AdminPayments() {
             key={payment.id}
             payment={payment}
             name={byUid.get(payment.uid)?.name ?? "Somebody"}
+            balance={byUid.get(payment.uid)?.balance ?? 0}
             episodeCode={byEpisode.get(payment.episodeId)?.code ?? ""}
             onPaid={(amount) => {
               toast(paidToast(byUid.get(payment.uid)?.name ?? "them", money(amount)));
@@ -145,6 +146,7 @@ function AdminPayments() {
 function PendingCard({
   payment,
   name,
+  balance,
   episodeCode,
   onPaid,
   onError,
@@ -152,6 +154,7 @@ function PendingCard({
 }: {
   payment: Payment;
   name: string;
+  balance: number;
   episodeCode: string;
   onPaid: (amount: number) => void;
   onError: (message: string) => void;
@@ -193,6 +196,15 @@ function PendingCard({
       </View>
 
       <WorkingNote payment={payment} />
+
+      {/* If they are carrying an advance, this one did not come off it —
+          otherwise it would never have reached the queue. Worth saying, since
+          the obvious next thought is "haven't I already paid them?". */}
+      {balance > 0 ? (
+        <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)" }]}>
+          {`${money(balance)} still advanced to ${name.split(" ")[0]} — this was too big to come off it.`}
+        </AppText>
+      ) : null}
 
       {payment.comment ? (
         <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.6)" }]}>
@@ -280,10 +292,11 @@ function WorkingNote({ payment }: { payment: Payment }) {
 
 function MemberPayments() {
   const router = useRouter();
-  const { user, isApproved } = useSession();
+  const { user, isApproved, profile } = useSession();
   const { data: payments } = usePayments({ uid: user?.uid, enabled: Boolean(user) && isApproved });
 
   const summary = useMemo(() => earningsFor(payments), [payments]);
+  const balance = profile?.balance ?? 0;
   const ordered = useMemo(
     () =>
       [...payments].sort(
@@ -301,6 +314,42 @@ function MemberPayments() {
           <Logo size={44} />
           <AppText weight="semibold" style={[type.h3]}>Your payments</AppText>
         </View>
+
+        {/* An advance is money already in their hand. It goes above
+            everything else, because "what can I draw on" is the question
+            somebody opens this screen to answer. */}
+        {balance > 0 ? (
+          <Card radius={13} style={{ padding: 16, gap: 4, backgroundColor: colors.ink, borderColor: colors.ink }}>
+            <AppText
+              style={{
+                fontFamily: fontFamily.monoMedium,
+                fontSize: 10,
+                lineHeight: 12,
+                letterSpacing: 0.6,
+                color: "rgba(255,255,255,.6)",
+              }}
+            >
+              AVAILABLE BALANCE
+            </AppText>
+            <AppText
+              weight="semibold"
+              style={{ fontFamily: fontFamily.semibold, fontSize: 30, lineHeight: 36, color: colors.white }}
+            >
+              {money(balance)}
+            </AppText>
+            <AppText
+              style={{
+                fontFamily: fontFamily.regular,
+                fontSize: 11.5,
+                lineHeight: 16,
+                color: "rgba(255,255,255,.7)",
+              }}
+            >
+              Advanced to you already. Work that gets approved is paid out of
+              this first, and the balance goes down.
+            </AppText>
+          </Card>
+        ) : null}
 
         <Card radius={13} style={{ padding: 16, gap: 4 }}>
           <SectionCaption>Paid to you, all time</SectionCaption>
@@ -366,7 +415,11 @@ function MemberPayments() {
               <View style={{ flex: 1, minWidth: 0 }}>
                 <AppText weight="semibold" style={[type.bodySmall]}>{payment.taskType}</AppText>
                 <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)", marginTop: 2 }]}>
-                  {payment.status === "paid" ? "Paid" : "Waiting to be paid"}
+                  {payment.status !== "paid"
+                  ? "Waiting to be paid"
+                  : payment.settledFromAdvance
+                    ? "Paid from your advance"
+                    : "Paid"}
                 </AppText>
               </View>
               <View style={{ alignItems: "flex-end" }}>

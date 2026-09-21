@@ -23,12 +23,31 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 
 import { REGION } from "./config";
+import { TELEGRAM_BOT_TOKEN } from "./messaging/telegram";
+import { TEXTBELT_KEY, WHATSAPP_PHONE_ID, WHATSAPP_TOKEN } from "./messaging/pending-channels";
+
+/**
+ * Both of these tell somebody what just happened to their work, which means
+ * both of them reach for the channel chain — and a function that has not
+ * declared a secret cannot read it.
+ */
+const SECRETS = [TELEGRAM_BOT_TOKEN, WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, TEXTBELT_KEY];
+import {
+  approvedBody,
+  approvedShort,
+  paidBody,
+  paidShort,
+  rejectedBody,
+  rejectedShort,
+} from "./messaging/copy";
+import { notifyMember } from "./notify-member";
 import {
   estimateFor,
   PAY_UNITS,
   quantityFor,
   rateFor,
   ratesFrom,
+  settleFromBalance,
   unitsForTaskType,
   type PayUnit,
 } from "./payments";
@@ -65,127 +84,182 @@ function text(value: unknown, max: number): string | null {
   return trimmed ? trimmed.slice(0, max) : null;
 }
 
-export const reviewTask = onCall<ReviewRequest>({ region: REGION }, async (request) => {
-  assertAdmin(request.auth);
+export const reviewTask = onCall<ReviewRequest>(
+  { region: REGION, secrets: SECRETS },
+  async (request) => {
+    assertAdmin(request.auth);
 
-  const taskId = request.data?.taskId;
-  const decision = request.data?.decision;
-  if (!taskId || typeof taskId !== "string") {
-    throw new HttpsError("invalid-argument", "A task is required.");
-  }
-  if (decision !== "approve" && decision !== "reject") {
-    throw new HttpsError("invalid-argument", "Approve it or send it back.");
-  }
-
-  const db = getFirestore();
-  const taskRef = db.collection("tasks").doc(taskId);
-  const task = await taskRef.get();
-  if (!task.exists) throw new HttpsError("not-found", "That task is gone.");
-
-  const data = task.data() ?? {};
-  if (data.status !== "submitted") {
-    // Two admins looking at the same queue is the ordinary case, so this is a
-    // race worth naming rather than a state worth panicking about.
-    throw new HttpsError(
-      "failed-precondition",
-      "That task is not waiting for review — somebody may have got to it first."
-    );
-  }
-
-  if (decision === "reject") {
-    const note = text(request.data?.note, 500);
-    if (!note) {
-      // The whole point of sending work back is saying what is wrong with it.
-      throw new HttpsError("invalid-argument", "Say why it is going back.");
+    const taskId = request.data?.taskId;
+    const decision = request.data?.decision;
+    if (!taskId || typeof taskId !== "string") {
+      throw new HttpsError("invalid-argument", "A task is required.");
+    }
+    if (decision !== "approve" && decision !== "reject") {
+      throw new HttpsError("invalid-argument", "Approve it or send it back.");
     }
 
-    await taskRef.set(
-      {
-        status: "open",
-        done: false,
-        doneAt: null,
-        rejectedAt: Timestamp.now(),
-        rejectionNote: note,
-        rejectedCount: FieldValue.increment(1),
-        // The clock restarts, not the ladder: `rejectedAt` is what makes the
-        // engine chase this every other day from here.
-        remindersSent: 0,
-        lastReminderAt: null,
-      },
-      { merge: true }
-    );
+    const db = getFirestore();
+    const taskRef = db.collection("tasks").doc(taskId);
+    const task = await taskRef.get();
+    if (!task.exists) throw new HttpsError("not-found", "That task is gone.");
 
-    logger.info("Task sent back", { taskId, by: request.auth?.uid });
-    return { status: "open" };
+    const data = task.data() ?? {};
+    if (data.status !== "submitted") {
+      // Two admins looking at the same queue is the ordinary case, so this is a
+      // race worth naming rather than a state worth panicking about.
+      throw new HttpsError(
+        "failed-precondition",
+        "That task is not waiting for review — somebody may have got to it first."
+      );
+    }
+
+    if (decision === "reject") {
+      const note = text(request.data?.note, 500);
+      if (!note) {
+        // The whole point of sending work back is saying what is wrong with it.
+        throw new HttpsError("invalid-argument", "Say why it is going back.");
+      }
+
+      await taskRef.set(
+        {
+          status: "open",
+          done: false,
+          doneAt: null,
+          rejectedAt: Timestamp.now(),
+          rejectionNote: note,
+          rejectedCount: FieldValue.increment(1),
+          // The clock restarts, not the ladder: `rejectedAt` is what makes the
+          // engine chase this every other day from here.
+          remindersSent: 0,
+          lastReminderAt: null,
+        },
+        { merge: true }
+      );
+
+      logger.info("Task sent back", { taskId, by: request.auth?.uid });
+
+      const assignee = await db.collection("users").doc(String(data.assigneeUid ?? "")).get();
+      await notifyMember(String(data.assigneeUid ?? ""), {
+        short: rejectedShort(String(data.type ?? "Your task")),
+        body: rejectedBody(String(assignee.data()?.name ?? ""), String(data.type ?? "task"), note),
+      });
+
+      return { status: "open" };
+    }
+
+    // --- approve ------------------------------------------------------------
+
+    const allowed = unitsForTaskType(String(data.type ?? ""));
+    const unit = (request.data?.unit ?? allowed[0]) as PayUnit;
+    if (!PAY_UNITS.includes(unit) || !allowed.includes(unit)) {
+      throw new HttpsError(
+        "invalid-argument",
+        `That is not a way this kind of task is paid. Expected one of: ${allowed.join(", ")}.`
+      );
+    }
+
+    const recordingMinutes = positive(request.data?.recordingMinutes);
+    const wordCount = positive(request.data?.wordCount);
+    const comment = text(request.data?.comment, 500);
+    const typedAmount = positive(request.data?.amount);
+
+    const assigneeUid = String(data.assigneeUid ?? "");
+    const userRef = db.collection("users").doc(assigneeUid);
+    const paymentRef = db.collection("payments").doc();
+
+    /**
+     * One transaction, because the balance is the thing two approvals could
+     * race on: both read ₹600 left, both settle ₹600 of work, and the artist
+     * has been paid twice out of money that existed once.
+     */
+    const outcome = await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(taskRef);
+      if (fresh.data()?.status !== "submitted") {
+        throw new HttpsError(
+          "failed-precondition",
+          "That task is not waiting for review — somebody may have got to it first."
+        );
+      }
+
+      const assignee = await tx.get(userRef);
+      const rates = ratesFrom(assignee.data()?.rates);
+
+      // Snapshotted on purpose: raising somebody's rate next month must not
+      // restate what this work was worth when it was accepted.
+      const rateValue = rateFor(rates, unit);
+      const quantity = quantityFor(unit, recordingMinutes);
+      const estimatedAmount = estimateFor(quantity, rateValue) ?? typedAmount;
+
+      const balance = Number(assignee.data()?.balance ?? 0);
+      const settlement = settleFromBalance(estimatedAmount, balance);
+
+      tx.set(
+        taskRef,
+        {
+          // Settled from an advance is already paid — there is nothing for an
+          // admin to do about it later, so it does not queue as though there is.
+          status: settlement.settled ? "paid" : "approved",
+          done: true,
+          doneAt: Timestamp.now(),
+          rejectionNote: null,
+        },
+        { merge: true }
+      );
+
+      tx.set(paymentRef, {
+        taskId,
+        uid: assigneeUid,
+        episodeId: data.episodeId ?? "",
+        taskType: data.type ?? "",
+        status: settlement.settled ? "paid" : "pending",
+        unit,
+        quantity,
+        rate: rateValue,
+        estimatedAmount,
+        finalAmount: settlement.settled ? estimatedAmount : null,
+        recordingMinutes,
+        wordCount,
+        comment,
+        approvedAt: FieldValue.serverTimestamp(),
+        approvedBy: request.auth?.uid ?? null,
+        paidAt: settlement.settled ? FieldValue.serverTimestamp() : null,
+        settledFromAdvance: settlement.settled,
+      });
+
+      if (settlement.settled) {
+        tx.set(userRef, { balance: settlement.balanceAfter }, { merge: true });
+      }
+
+      return { estimatedAmount, settlement, name: String(assignee.data()?.name ?? "") };
+    });
+
+    logger.info("Task approved", {
+      taskId,
+      paymentId: paymentRef.id,
+      unit,
+      estimatedAmount: outcome.estimatedAmount,
+      settledFromAdvance: outcome.settlement.settled,
+      by: request.auth?.uid,
+    });
+
+    await notifyMember(assigneeUid, {
+      short: approvedShort(String(data.type ?? "Your task")),
+      body: approvedBody(outcome.name, String(data.type ?? "task"), {
+        settledFromAdvance: outcome.settlement.settled,
+        amount: outcome.estimatedAmount,
+        balanceAfter: outcome.settlement.balanceAfter,
+      }),
+    });
+
+    return {
+      status: outcome.settlement.settled ? "paid" : "approved",
+      paymentId: paymentRef.id,
+      estimatedAmount: outcome.estimatedAmount,
+      settledFromAdvance: outcome.settlement.settled,
+      balanceAfter: outcome.settlement.balanceAfter,
+    };
   }
-
-  // --- approve ------------------------------------------------------------
-
-  const allowed = unitsForTaskType(String(data.type ?? ""));
-  const unit = (request.data?.unit ?? allowed[0]) as PayUnit;
-  if (!PAY_UNITS.includes(unit) || !allowed.includes(unit)) {
-    throw new HttpsError(
-      "invalid-argument",
-      `That is not a way this kind of task is paid. Expected one of: ${allowed.join(", ")}.`
-    );
-  }
-
-  const recordingMinutes = positive(request.data?.recordingMinutes);
-  const wordCount = positive(request.data?.wordCount);
-  const comment = text(request.data?.comment, 500);
-  const typedAmount = positive(request.data?.amount);
-
-  const assigneeUid = String(data.assigneeUid ?? "");
-  const assignee = await db.collection("users").doc(assigneeUid).get();
-  const rates = ratesFrom(assignee.data()?.rates);
-
-  // Snapshotted on purpose: raising somebody's rate next month must not
-  // restate what this work was worth when it was accepted.
-  const rateValue = rateFor(rates, unit);
-  const quantity = quantityFor(unit, recordingMinutes);
-  const estimatedAmount = estimateFor(quantity, rateValue) ?? typedAmount;
-
-  const paymentRef = db.collection("payments").doc();
-  const batch = db.batch();
-
-  batch.set(taskRef, {
-    status: "approved",
-    done: true,
-    doneAt: Timestamp.now(),
-    rejectionNote: null,
-  }, { merge: true });
-
-  batch.set(paymentRef, {
-    taskId,
-    uid: assigneeUid,
-    episodeId: data.episodeId ?? "",
-    taskType: data.type ?? "",
-    status: "pending",
-    unit,
-    quantity,
-    rate: rateValue,
-    estimatedAmount,
-    finalAmount: null,
-    recordingMinutes,
-    wordCount,
-    comment,
-    approvedAt: FieldValue.serverTimestamp(),
-    approvedBy: request.auth?.uid ?? null,
-    paidAt: null,
-  });
-
-  await batch.commit();
-
-  logger.info("Task approved, payment opened", {
-    taskId,
-    paymentId: paymentRef.id,
-    unit,
-    estimatedAmount,
-    by: request.auth?.uid,
-  });
-
-  return { status: "approved", paymentId: paymentRef.id, estimatedAmount };
-});
+);
 
 /**
  * The money has gone out.
@@ -195,7 +269,7 @@ export const reviewTask = onCall<ReviewRequest>({ region: REGION }, async (reque
  * that is the whole reason the app says so wherever it shows an estimate.
  */
 export const markPaymentPaid = onCall<{ paymentId?: string; amount?: number }>(
-  { region: REGION },
+  { region: REGION, secrets: SECRETS },
   async (request) => {
     assertAdmin(request.auth);
 
@@ -236,6 +310,18 @@ export const markPaymentPaid = onCall<{ paymentId?: string; amount?: number }>(
     await batch.commit();
 
     logger.info("Payment marked paid", { paymentId, amount, by: request.auth?.uid });
+
+    const uid = String(payment.data()?.uid ?? "");
+    const assignee = await db.collection("users").doc(uid).get();
+    await notifyMember(uid, {
+      short: paidShort(amount),
+      body: paidBody(
+        String(assignee.data()?.name ?? ""),
+        String(payment.data()?.taskType ?? "your work"),
+        amount
+      ),
+    });
+
     return { amount };
   }
 );

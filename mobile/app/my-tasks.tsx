@@ -24,6 +24,7 @@ import { useSession } from "../src/lib/auth";
 import { submitTask, submittedToast } from "../src/lib/review-actions.ts";
 import { isRejected, rejectionLabel, statusLabel, submitLabel } from "../src/lib/review.ts";
 import { memberChainSentence } from "../src/lib/channel-meta.ts";
+import { money } from "../src/lib/payments.ts";
 import { connectTelegram } from "../src/lib/telegram-link";
 import { byDueDate } from "../src/lib/completion.ts";
 import { indexBy, useEpisodes, useNow, useSettings, useTasks } from "../src/lib/data";
@@ -52,6 +53,7 @@ export default function MyTasks() {
     <MemberDashboard
       uid={user?.uid ?? ""}
       telegramConnected={Boolean(profile?.telegramChatId)}
+      balance={profile?.balance ?? 0}
       approved={isApproved}
       now={now}
       onToast={toast}
@@ -63,6 +65,7 @@ export default function MyTasks() {
 function MemberDashboard({
   uid,
   telegramConnected,
+  balance,
   approved,
   now,
   onToast,
@@ -70,6 +73,7 @@ function MemberDashboard({
 }: {
   uid: string;
   telegramConnected: boolean;
+  balance: number;
   approved: boolean;
   now: Date;
   onToast: (message: string) => void;
@@ -139,10 +143,14 @@ function MemberDashboard({
             screen — it is the whole app for somebody who is not an admin — so
             the link has to live in the one list they have. */}
         <Button
-          label="Your payments"
+          label={balance > 0 ? `Your payments · ${money(balance)} available` : "Your payments"}
           variant="ink"
           onPress={() => router.push("/payments")}
-          accessibilityLabel="See what you have been paid"
+          accessibilityLabel={
+            balance > 0
+              ? `See what you have been paid. ${money(balance)} advanced and available.`
+              : "See what you have been paid"
+          }
         />
 
         {ordered.map((task) => {

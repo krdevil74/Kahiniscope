@@ -139,6 +139,14 @@ export interface TeamMember {
   /** What this person is paid per unit. See lib/payments.ts. */
   rates: Rates;
   /**
+   * Money already handed over and not yet worked off, in rupees.
+   *
+   * An advance is paid before the work exists, so it cannot be attached to a
+   * task. It sits here as a credit, and approving that person's work spends
+   * it — which is why the balance is server-owned and no client may write it.
+   */
+  balance: number;
+  /**
    * Added by an admin against a phone number, with no Firebase Auth account
    * behind it: somebody who does the work but has not installed the app.
    * Assignable and remindable like anyone else, but never signs in, so push

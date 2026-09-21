@@ -34,7 +34,7 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 164 backend, 142 app.** All green. `npm test` at the root runs the
+**Tests: 180 backend, 149 app.** All green. `npm test` at the root runs the
 backend suites (unit + rules + six emulator suites); `npm run verify` in
 `mobile/` runs typecheck, unit tests and a render of all 17 routes.
 
@@ -185,8 +185,19 @@ Asked for on 21 September, built on `feat/payments`. Full detail in
 meant — accepted — so every percentage and the escalation query keep working.
 A task written before any of this reads as `approved`, and no migration runs.
 
-Two new callables: `reviewTask`, `markPaymentPaid`. One new collection,
-`payments`, that no client may write.
+- **Advances.** An artist can be paid before the work exists. The money sits
+  on their record as a balance; approving their work spends it, all or
+  nothing, and the payment is created already paid with no queue entry. A
+  balance that does not cover the work is left alone. The balance is
+  server-owned — beyond an admin's reach as well as a member's — and both
+  paths that move it are transactions, because it is exactly the field two
+  admins could race on.
+- **Notifications on every admin action.** Approved, sent back, paid,
+  advanced. They ride the reminder chain, and a failed send never rolls back
+  the thing that caused it.
+
+Three new callables: `reviewTask`, `markPaymentPaid`, `addAdvance`. Two new
+collections, `payments` and `advances`, that no client may write.
 
 ---
 

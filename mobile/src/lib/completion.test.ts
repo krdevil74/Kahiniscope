@@ -53,6 +53,7 @@ function member(uid: string, name: string): TeamMember {
     telegramChatId: null,
     accountless: false,
     rates: EMPTY_RATES,
+    balance: 0,
   crafts: ["Voice"],
     status: "approved",
     role: "member",

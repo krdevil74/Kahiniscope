@@ -106,3 +106,35 @@ export function quantityFor(unit: PayUnit, recordingMinutes: number | null): num
   if (unit === "cover") return 1;
   return null;
 }
+
+
+// ---------------------------------------------------------------------------
+// Advances
+// ---------------------------------------------------------------------------
+
+export interface Settlement {
+  settled: boolean;
+  spent: number;
+  balanceAfter: number;
+}
+
+/**
+ * Can this approval be paid out of money already advanced?
+ *
+ * All or nothing, deliberately. Splitting one approval across an advance and
+ * a later transfer would leave a payment record carrying two amounts and two
+ * dates, and nobody reading it a month later could say what had actually been
+ * handed over. A balance that does not cover the work stays where it is and
+ * the admin pays normally.
+ *
+ * The same rule is in mobile/src/lib/payments.ts, tested against the same
+ * examples. This one is the one that counts: it decides what is written.
+ */
+export function settleFromBalance(amount: number | null, balance: number): Settlement {
+  const available = Number.isFinite(balance) && balance > 0 ? balance : 0;
+  if (amount === null || !Number.isFinite(amount) || amount <= 0) {
+    return { settled: false, spent: 0, balanceAfter: available };
+  }
+  if (available < amount) return { settled: false, spent: 0, balanceAfter: available };
+  return { settled: true, spent: amount, balanceAfter: available - amount };
+}

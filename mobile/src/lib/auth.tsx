@@ -31,6 +31,8 @@ export interface UserDoc {
   phone: string | null;
   telegramChatId: string | null;
   crafts: string[];
+  /** Advanced and not yet worked off. Server-owned; see lib/payments.ts. */
+  balance: number;
   status: AccountStatus;
   role: Role;
   fcmTokens: string[];

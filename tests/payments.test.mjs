@@ -317,3 +317,115 @@ test("only work that is waiting can be reviewed", async () => {
     /not waiting for review/
   );
 });
+
+// ---------------------------------------------------------------------------
+// Advances
+// ---------------------------------------------------------------------------
+
+const balanceOf = async (uid) => Number((await read("users", uid)).balance ?? 0);
+
+test("an advance is money now, against work that does not exist yet", async () => {
+  const before = await balanceOf(artistUser.uid);
+
+  const { data } = await call(owner, "addAdvance", {
+    uid: artistUser.uid,
+    amount: 5000,
+    note: "Before EP-61",
+  });
+
+  assert.equal(data.balance, before + 5000);
+  assert.equal(await balanceOf(artistUser.uid), before + 5000);
+
+  // And it is its own record, because "where did this balance come from" is a
+  // question somebody will ask.
+  const advance = await read("advances", data.advanceId);
+  assert.equal(advance.uid, artistUser.uid);
+  assert.equal(advance.amount, 5000);
+  assert.equal(advance.note, "Before EP-61");
+});
+
+test("nothing is advanced without a figure, and not by a member", async () => {
+  await assert.rejects(() => call(owner, "addAdvance", { uid: artistUser.uid }), /how much/i);
+  await assert.rejects(
+    () => call(owner, "addAdvance", { uid: artistUser.uid, amount: 0 }),
+    /how much/i
+  );
+  await assert.rejects(
+    () => call(artist, "addAdvance", { uid: artistUser.uid, amount: 100 }),
+    /admin/
+  );
+});
+
+test("approved work comes straight off the balance, and is paid on the spot", async () => {
+  const before = await balanceOf(artistUser.uid);
+  assert.ok(before >= 600, "the earlier advance is what this spends");
+
+  const taskId = await newTask();
+  await updateDoc(doc(artist.db, "tasks", taskId), { status: "submitted", submittedAt: Timestamp.now() });
+
+  // 12 minutes in character. The rate was raised to ₹80 by an earlier test.
+  const { data } = await call(owner, "reviewTask", {
+    taskId,
+    decision: "approve",
+    unit: "voice-character",
+    recordingMinutes: 5,
+  });
+
+  const expected = 5 * 80;
+  assert.equal(data.settledFromAdvance, true);
+  assert.equal(data.estimatedAmount, expected);
+  assert.equal(data.balanceAfter, before - expected);
+  assert.equal(await balanceOf(artistUser.uid), before - expected);
+
+  // No queue entry: there is nothing left for an admin to do about it.
+  const payment = await read("payments", data.paymentId);
+  assert.equal(payment.status, "paid");
+  assert.equal(payment.finalAmount, expected);
+  assert.equal(payment.settledFromAdvance, true);
+  assert.ok(payment.paidAt);
+
+  assert.equal((await read("tasks", taskId)).status, "paid");
+});
+
+test("a balance that does not cover the work is left alone", async () => {
+  // Spend it down to something small, then approve something bigger.
+  const balance = await balanceOf(artistUser.uid);
+  const taskId = await newTask("Script writing");
+  await updateDoc(doc(artist.db, "tasks", taskId), { status: "submitted", submittedAt: Timestamp.now() });
+
+  const { data } = await call(owner, "reviewTask", {
+    taskId,
+    decision: "approve",
+    unit: "manual",
+    amount: balance + 1000,
+  });
+
+  assert.equal(data.settledFromAdvance, false, "all or nothing: never part-spent");
+  assert.equal(await balanceOf(artistUser.uid), balance, "untouched");
+  assert.equal((await read("payments", data.paymentId)).status, "pending");
+  assert.equal((await read("tasks", taskId)).status, "approved");
+});
+
+test("work with no figure behind it cannot be settled from an advance", async () => {
+  const balance = await balanceOf(artistUser.uid);
+  const taskId = await newTask("Editing");
+  await updateDoc(doc(artist.db, "tasks", taskId), { status: "submitted", submittedAt: Timestamp.now() });
+
+  // No rate for editing, and no amount typed: there is nothing to spend.
+  const { data } = await call(owner, "reviewTask", { taskId, decision: "approve", unit: "manual" });
+
+  assert.equal(data.settledFromAdvance, false);
+  assert.equal(data.estimatedAmount, null);
+  assert.equal(await balanceOf(artistUser.uid), balance);
+});
+
+test("a member reads their own advances and nobody else's", async () => {
+  const mine = await getDocs(
+    query(collection(artist.db, "advances"), where("uid", "==", artistUser.uid))
+  );
+  assert.ok(mine.size > 0);
+  await assert.rejects(() => getDocs(collection(artist.db, "advances")));
+  await assert.rejects(() =>
+    updateDoc(doc(artist.db, "users", artistUser.uid), { balance: 999999 })
+  );
+});

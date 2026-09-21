@@ -4,6 +4,7 @@ import test from "node:test";
 import { EMPTY_RATES } from "./model.ts";
 import {
   amountToShow,
+  balanceLabel,
   earningsFor,
   estimateFor,
   isEstimateOnly,
@@ -12,6 +13,7 @@ import {
   needsWordCount,
   rateFor,
   rateLabel,
+  settleFromBalance,
   unitsForTaskType,
   type Payment,
 } from "./payments.ts";
@@ -34,6 +36,7 @@ function payment(overrides: Partial<Payment>): Payment {
     comment: null,
     approvedAt: null,
     paidAt: null,
+    settledFromAdvance: false,
     ...overrides,
   };
 }
@@ -148,4 +151,59 @@ test("a rate reads as a sentence", () => {
   assert.equal(rateLabel(50, "voice-character"), "₹50 per minute");
   assert.equal(rateLabel(700, "cover"), "₹700 per cover");
   assert.equal(rateLabel(null, "cover"), "no rate set");
+});
+
+// ---------------------------------------------------------------------------
+// Advances
+// ---------------------------------------------------------------------------
+
+test("an approval the balance covers is settled outright", () => {
+  assert.deepEqual(settleFromBalance(600, 5000), {
+    settled: true,
+    spent: 600,
+    balanceAfter: 4400,
+  });
+});
+
+test("a balance that exactly covers it is spent to nothing", () => {
+  assert.deepEqual(settleFromBalance(600, 600), { settled: true, spent: 600, balanceAfter: 0 });
+});
+
+test("all or nothing: a short balance is left alone rather than part-spent", () => {
+  // Splitting one approval across an advance and a later transfer would leave
+  // a payment record carrying two amounts and two dates.
+  assert.deepEqual(settleFromBalance(600, 400), {
+    settled: false,
+    spent: 0,
+    balanceAfter: 400,
+  });
+});
+
+test("nothing to settle against, or nothing to settle", () => {
+  assert.equal(settleFromBalance(600, 0).settled, false);
+  assert.equal(settleFromBalance(null, 5000).settled, false, "no figure to spend");
+  assert.equal(settleFromBalance(0, 5000).settled, false, "a zero payment spends nothing");
+});
+
+test("a nonsense balance is treated as none, not as a licence", () => {
+  assert.equal(settleFromBalance(600, Number.NaN).balanceAfter, 0);
+  assert.equal(settleFromBalance(600, -500).settled, false);
+});
+
+test("the balance line says what the money is", () => {
+  assert.equal(balanceLabel(0), "No advance on your account");
+  assert.equal(balanceLabel(-10), "No advance on your account");
+  assert.match(balanceLabel(4400), /₹4,400 advanced to you/);
+});
+
+test("a payment settled from an advance is paid, and says where from", () => {
+  const settled = payment({
+    status: "paid",
+    finalAmount: 600,
+    settledFromAdvance: true,
+  });
+  assert.equal(isEstimateOnly(settled), false);
+  assert.equal(amountToShow(settled), 600);
+  // And it counts towards what the person has actually been paid.
+  assert.equal(earningsFor([settled]).paid, 600);
 });

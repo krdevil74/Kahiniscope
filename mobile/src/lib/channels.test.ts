@@ -15,6 +15,7 @@ function member(overrides: Partial<TeamMember> = {}): TeamMember {
     telegramChatId: null,
     accountless: false,
   rates: EMPTY_RATES,
+    balance: 0,
   crafts: ["Voice"],
     status: "approved",
     role: "member",

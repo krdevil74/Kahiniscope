@@ -14,7 +14,7 @@ import { EmptyState } from "../../src/components/EmptyState";
 import { HeatBadge } from "../../src/components/HeatBadge";
 import { craftLabel, toggleCraft } from "../../src/lib/crafts.ts";
 import { contactTelegramLink } from "../../src/lib/contact-actions.ts";
-import { setRates } from "../../src/lib/review-actions.ts";
+import { addAdvance, advancedToast, setRates } from "../../src/lib/review-actions.ts";
 import { EMPTY_RATES, type Rates } from "../../src/lib/model";
 import { money } from "../../src/lib/payments.ts";
 import { firstName } from "../../src/lib/format.ts";
@@ -76,6 +76,33 @@ export default function PersonDetail() {
   const [ratesSeeded, setRatesSeeded] = useState(false);
   const [ratesDirty, setRatesDirty] = useState(false);
   const [savingRates, setSavingRates] = useState(false);
+  const [advanceAmount, setAdvanceAmount] = useState("");
+  const [advanceNote, setAdvanceNote] = useState("");
+  const [advancing, setAdvancing] = useState(false);
+
+  const advanceValue = Number(advanceAmount);
+  const advanceValid =
+    advanceAmount.trim() !== "" && Number.isFinite(advanceValue) && advanceValue > 0;
+
+  async function payAdvance() {
+    if (!member || !advanceValid || advancing) return;
+    setAdvancing(true);
+    try {
+      const { balance } = await addAdvance(
+        member.uid,
+        Math.round(advanceValue),
+        advanceNote.trim() || null
+      );
+      setAdvanceAmount("");
+      setAdvanceNote("");
+      toast(advancedToast(firstName(member.name), money(Math.round(advanceValue)), money(balance)));
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "That did not save.");
+    } finally {
+      setAdvancing(false);
+    }
+  }
+
 
   // Seeded once. Re-seeding from the snapshot would wipe a half-typed rate
   // every time anybody else on the team changed.
@@ -263,6 +290,96 @@ export default function PersonDetail() {
               );
             })}
           </View>
+        </View>
+      ) : null}
+
+      {/* Money handed over before the work exists.
+          Kept next to the rate card because the two are one conversation —
+          what somebody earns, and what they have already had. */}
+      {member ? (
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.hairline,
+            paddingVertical: spacing.card,
+            paddingHorizontal: 16,
+            gap: spacing.chips,
+          }}
+        >
+          <SectionCaption>Advance</SectionCaption>
+
+          <View
+            style={{
+              backgroundColor: member.balance > 0 ? colors.ink : colors.surfaceSunken,
+              borderRadius: radii.chipLarge,
+              paddingVertical: 11,
+              paddingHorizontal: 12,
+            }}
+          >
+            <AppText
+              style={{
+                fontFamily: fontFamily.regular,
+                fontSize: 11.5,
+                lineHeight: 16,
+                color: member.balance > 0 ? "rgba(255,255,255,.82)" : "rgba(27,26,23,.55)",
+              }}
+            >
+              {member.balance > 0
+                ? `${money(member.balance)} advanced and not yet worked off. Approved work comes off this first and is paid on the spot.`
+                : "Nothing advanced. Work you approve will queue to be paid as normal."}
+            </AppText>
+          </View>
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}>
+            <TextInput
+              value={advanceAmount}
+              onChangeText={setAdvanceAmount}
+              keyboardType="numeric"
+              placeholder="Amount"
+              placeholderTextColor="rgba(27,26,23,.35)"
+              accessibilityLabel={`Amount to advance to ${member.name}`}
+              style={{
+                flex: 1,
+                minHeight: MIN_TAP_TARGET,
+                paddingHorizontal: 12,
+                borderRadius: radii.chipLarge,
+                borderWidth: 1,
+                borderColor: colors.hairlineStrong,
+                backgroundColor: colors.surface,
+                fontFamily: fontFamily.mono,
+                fontSize: 13,
+                color: colors.ink,
+              }}
+            />
+            <Button
+              label={advancing ? "Saving…" : "Pay advance"}
+              radius={radii.cardSmall}
+              disabled={advancing || !advanceValid}
+              onPress={() => void payAdvance()}
+              style={{ flex: 1 }}
+              accessibilityLabel={`Advance money to ${member.name}`}
+            />
+          </View>
+
+          <TextInput
+            value={advanceNote}
+            onChangeText={(next: string) => setAdvanceNote(next.slice(0, 300))}
+            placeholder="What it is for — optional"
+            placeholderTextColor="rgba(27,26,23,.35)"
+            accessibilityLabel="What the advance is for"
+            style={{
+              minHeight: MIN_TAP_TARGET,
+              paddingHorizontal: 12,
+              borderRadius: radii.chipLarge,
+              borderWidth: 1,
+              borderColor: colors.hairlineStrong,
+              backgroundColor: colors.surface,
+              fontFamily: fontFamily.regular,
+              fontSize: 13,
+              color: colors.ink,
+            }}
+          />
         </View>
       ) : null}
 

@@ -33,6 +33,21 @@ export type PayUnit =
 
 export type PaymentStatus = "pending" | "paid";
 
+/**
+ * Money handed over before the work existed.
+ *
+ * Kept as its own record rather than as a number that goes up and down,
+ * because "where did this balance come from" is a question somebody will ask
+ * and a bare total cannot answer.
+ */
+export interface Advance {
+  id: string;
+  uid: string;
+  amount: number;
+  note: string | null;
+  createdAt: Date | null;
+}
+
 export interface Payment {
   id: string;
   taskId: string;
@@ -59,6 +74,12 @@ export interface Payment {
   comment: string | null;
   approvedAt: Date | null;
   paidAt: Date | null;
+  /**
+   * Settled the moment it was approved, out of money already advanced. No
+   * admin ever pressed "mark paid" on this one, which is worth saying on
+   * screen rather than leaving it looking like an ordinary payment.
+   */
+  settledFromAdvance: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +183,36 @@ export function amountToShow(payment: Pick<Payment, "finalAmount" | "estimatedAm
   return payment.finalAmount ?? payment.estimatedAmount;
 }
 
+// ---------------------------------------------------------------------------
+// Advances
+// ---------------------------------------------------------------------------
+
+export interface Settlement {
+  /** Whether the balance covered it outright. */
+  settled: boolean;
+  /** What was taken off the balance. Zero when nothing was. */
+  spent: number;
+  balanceAfter: number;
+}
+
+/**
+ * Can this approval be paid out of money already advanced?
+ *
+ * All or nothing, deliberately. Splitting one approval across an advance and
+ * a later transfer would leave a payment record carrying two amounts and two
+ * dates, and nobody reading it a month later could say what had actually been
+ * handed over. A balance that does not cover the work simply stays where it
+ * is, and the admin pays normally.
+ */
+export function settleFromBalance(amount: number | null, balance: number): Settlement {
+  const available = Number.isFinite(balance) && balance > 0 ? balance : 0;
+  if (amount === null || !Number.isFinite(amount) || amount <= 0) {
+    return { settled: false, spent: 0, balanceAfter: available };
+  }
+  if (available < amount) return { settled: false, spent: 0, balanceAfter: available };
+  return { settled: true, spent: amount, balanceAfter: available - amount };
+}
+
 export interface EarningsSummary {
   /** Actually paid, all time. Only ever real figures. */
   paid: number;
@@ -217,5 +268,11 @@ export function rateLabel(rate: number | null, unit: PayUnit): string {
  * promise and is paid less has been misled by this app, so it says plainly
  * whose decision the final figure is.
  */
+/** What the member's balance line says when there is one. */
+export function balanceLabel(balance: number): string {
+  if (balance <= 0) return "No advance on your account";
+  return `${money(balance)} advanced to you, not yet worked off`;
+}
+
 export const ESTIMATE_DISCLAIMER =
   "This is an estimate from your rate. The final amount is set by the admin and can differ depending on what the work needed.";

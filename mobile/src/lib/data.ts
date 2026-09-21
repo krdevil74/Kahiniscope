@@ -23,7 +23,7 @@ import {
 import { db } from "./firebase";
 import { toBool, toDate, toId, toNumber, toStringArray, toStringOrNull } from "./convert.ts";
 import { craftsFrom } from "./crafts";
-import { ratesFrom, taskStatusFrom, toPayment } from "./payment-convert.ts";
+import { ratesFrom, taskStatusFrom, toAdvance, toPayment } from "./payment-convert.ts";
 import {
   DEFAULT_SETTINGS,
   type ChannelId,
@@ -33,7 +33,7 @@ import {
   type Task,
   type TeamMember,
 } from "./model";
-import type { Payment } from "./payments.ts";
+import type { Advance, Payment } from "./payments.ts";
 
 // ---------------------------------------------------------------------------
 // Converting what Firestore gives back
@@ -90,6 +90,7 @@ function toMember(snap: QueryDocumentSnapshot<DocumentData>): TeamMember {
     preferredChannel: (toStringOrNull(d.preferredChannel) as ChannelId | null) ?? null,
     accountless: d.accountless === true,
     rates: ratesFrom(d.rates),
+    balance: toNumber(d.balance),
     createdAt: toDate(d.createdAt),
   };
 }
@@ -196,6 +197,18 @@ export function usePayments(
   const { uid, enabled = true } = options;
   const constraints = useMemo(() => (uid ? [where("uid", "==", uid)] : []), [uid]);
   return useCollection("payments", toPayment, constraints, enabled);
+}
+
+/**
+ * Advances: money handed over before the work existed. Own or admin, like
+ * payments, and a member's query has to name the condition.
+ */
+export function useAdvances(
+  options: { uid?: string; enabled?: boolean } = {}
+): Live<Advance[]> {
+  const { uid, enabled = true } = options;
+  const constraints = useMemo(() => (uid ? [where("uid", "==", uid)] : []), [uid]);
+  return useCollection("advances", toAdvance, constraints, enabled);
 }
 
 export function useReminderFeed(count = 12, enabled = true): Live<ReminderLogEntry[]> {

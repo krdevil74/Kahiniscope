@@ -33,13 +33,20 @@ export interface ApprovalDetails {
   amount: number | null;
 }
 
+export interface ApprovalOutcome {
+  estimatedAmount: number | null;
+  /** Paid on the spot out of money already advanced. */
+  settledFromAdvance: boolean;
+  balanceAfter: number;
+}
+
 export async function approveTask(
   taskId: string,
   details: ApprovalDetails
-): Promise<{ estimatedAmount: number | null }> {
+): Promise<ApprovalOutcome> {
   const call = httpsCallable<
     { taskId: string; decision: "approve" } & ApprovalDetails,
-    { estimatedAmount: number | null }
+    ApprovalOutcome
   >(appFunctions(), "reviewTask");
   const { data } = await call({ taskId, decision: "approve", ...details });
   return data;
@@ -52,6 +59,23 @@ export async function rejectTask(taskId: string, note: string): Promise<void> {
     "reviewTask"
   );
   await call({ taskId, decision: "reject", note });
+}
+
+/**
+ * Money handed over before the work exists. The balance it creates is spent
+ * automatically by the next approval that it covers.
+ */
+export async function addAdvance(
+  uid: string,
+  amount: number,
+  note: string | null
+): Promise<{ balance: number }> {
+  const call = httpsCallable<
+    { uid: string; amount: number; note: string | null },
+    { advanceId: string; balance: number }
+  >(appFunctions(), "addAdvance");
+  const { data } = await call({ uid, amount, note });
+  return { balance: data.balance };
 }
 
 export async function markPaymentPaid(paymentId: string, amount: number): Promise<void> {
@@ -89,4 +113,19 @@ export function rejectedToast(name: string): string {
 
 export function paidToast(name: string, amount: string): string {
   return `${amount} marked paid to ${name}`;
+}
+
+export function advancedToast(name: string, amount: string, balance: string): string {
+  return `${amount} advanced to ${name} — balance ${balance}`;
+}
+
+/** Approving is two different events depending on whether it settled itself. */
+export function approvalToast(
+  name: string,
+  amount: string,
+  outcome: { settledFromAdvance: boolean; balanceAfter: number }
+): string {
+  return outcome.settledFromAdvance
+    ? `Approved — ${amount} taken off ${name}'s advance`
+    : `Approved — ${amount} pending for ${name}`;
 }

@@ -94,6 +94,18 @@ beforeEach(async () => {
     await setDoc(doc(db, "tasks", "t-done"), { ...legacy, done: true, doneAt: Timestamp.now() });
 
     await setDoc(doc(db, "payments", "pay-mine"), payment({ uid: MEMBER }));
+    await setDoc(doc(db, "advances", "adv-mine"), {
+      uid: MEMBER,
+      amount: 5000,
+      note: "Before EP-41",
+      createdAt: Timestamp.now(),
+    });
+    await setDoc(doc(db, "advances", "adv-theirs"), {
+      uid: OTHER_MEMBER,
+      amount: 2000,
+      note: null,
+      createdAt: Timestamp.now(),
+    });
     await setDoc(doc(db, "payments", "pay-theirs"), payment({ uid: OTHER_MEMBER }));
 
     await setDoc(doc(db, "reminderLog", "log1"), {
@@ -555,4 +567,26 @@ test("admin: sets a rate card, but only a rate card", async () => {
 test("member: cannot set their own rate", async () => {
   const db = asMember();
   await assertFails(updateDoc(doc(db, "users", MEMBER), { rates: { voiceCharacter: 5000 } }));
+});
+
+test("advances: a member sees their own and writes none", async () => {
+  const db = asMember();
+  await assertSucceeds(getDoc(doc(db, "advances", "adv-mine")));
+  await assertFails(getDoc(doc(db, "advances", "adv-theirs")));
+  await assertFails(setDoc(doc(db, "advances", "adv-new"), { uid: MEMBER, amount: 99999 }));
+  await assertFails(updateDoc(doc(db, "advances", "adv-mine"), { amount: 99999 }));
+});
+
+test("the balance is the server's, and nobody else's", async () => {
+  // Not an admin's either: it moves only through addAdvance and through an
+  // approval, both of which are transactions in a Cloud Function.
+  await assertFails(updateDoc(doc(asMember(), "users", MEMBER), { balance: 99999 }));
+  await assertFails(updateDoc(doc(asAdmin(), "users", MEMBER), { balance: 99999 }));
+  await assertFails(updateDoc(doc(asAdmin(), "users", MEMBER), { rates: { cover: 700 }, balance: 5 }));
+});
+
+test("advances: an admin reads everybody's, and still writes none", async () => {
+  const db = asAdmin();
+  await assertSucceeds(getDoc(doc(db, "advances", "adv-theirs")));
+  await assertFails(updateDoc(doc(db, "advances", "adv-mine"), { amount: 1 }));
 });
