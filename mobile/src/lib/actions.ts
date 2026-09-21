@@ -140,6 +140,7 @@ export async function createTask(task: NewTask): Promise<string> {
     done: false,
     doneAt: null,
     submittedAt: null,
+    submissionNote: null,
     rejectedAt: null,
     rejectionNote: null,
     rejectedCount: 0,

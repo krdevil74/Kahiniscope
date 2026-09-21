@@ -276,3 +276,33 @@ export function balanceLabel(balance: number): string {
 
 export const ESTIMATE_DISCLAIMER =
   "This is an estimate from your rate. The final amount is set by the admin and can differ depending on what the work needed.";
+
+// ---------------------------------------------------------------------------
+// Showing a long history a little at a time
+// ---------------------------------------------------------------------------
+
+/** How many entries a member sees before asking for more. */
+export const PAGE_SIZE = 5;
+
+export interface Page<T> {
+  shown: T[];
+  hidden: number;
+  hasMore: boolean;
+}
+
+/**
+ * The most recent `size` of something, and how much is behind them.
+ *
+ * Somebody thirty episodes in has thirty payment rows, and all thirty at once
+ * is a wall with the useful part — what happened lately — at the top and no
+ * way to tell where it ends.
+ */
+export function pageOf<T>(items: readonly T[], size: number = PAGE_SIZE): Page<T> {
+  const shown = items.slice(0, Math.max(0, size));
+  return { shown, hidden: Math.max(0, items.length - shown.length), hasMore: items.length > shown.length };
+}
+
+/** "Show 7 more" — never "Show 0 more". */
+export function moreLabel(hidden: number): string {
+  return hidden === 1 ? "Show 1 more" : `Show ${hidden} more`;
+}

@@ -176,6 +176,23 @@ function ReviewCard({
         </View>
       </View>
 
+      {/* What the artist said when they handed it in. Above the controls,
+          because it may be the thing that decides which control to press. */}
+      {task.submissionNote ? (
+        <View
+          style={{
+            backgroundColor: colors.surfaceSunken,
+            borderRadius: radii.chipLarge,
+            paddingVertical: 10,
+            paddingHorizontal: 11,
+          }}
+        >
+          <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.65)" }]}>
+            {`“${task.submissionNote}”`}
+          </AppText>
+        </View>
+      ) : null}
+
       {rejecting ? (
         <>
           <SectionCaption>Why is it going back?</SectionCaption>

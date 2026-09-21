@@ -11,12 +11,12 @@
  */
 
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Redirect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText } from "../src/components/AppText";
-import { Button } from "../src/components/Button";
+import { MemberTabs } from "../src/components/MemberTabs";
 import { Card } from "../src/components/Card";
 import { HeatBadge } from "../src/components/HeatBadge";
 import { ProgressBar } from "../src/components/ProgressBar";
@@ -84,14 +84,16 @@ function MemberDashboard({
   const { data: episodes } = useEpisodes(approved);
   const { data: settings } = useSettings(approved);
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  /** A half-typed note per task, cleared once that task goes in. */
+  const [notes, setNotes] = useState<Record<string, string>>({});
 
   const byEpisode = useMemo(() => indexBy(episodes, (e) => e.id), [episodes]);
   const ordered = useMemo(() => byDueDate(tasks, now), [tasks, now]);
   const open = useMemo(() => tasks.filter((t) => !t.done).length, [tasks]);
 
   async function toggle(task: Task) {
-    await submitTask(task.id);
+    await submitTask(task.id, notes[task.id] ?? null);
+    setNotes((n) => ({ ...n, [task.id]: "" }));
     onToast(submittedToast(task.type));
   }
 
@@ -120,6 +122,33 @@ function MemberDashboard({
         >
           {open ? `${open} task${open === 1 ? "" : "s"} waiting on you` : "All clear"}
         </AppText>
+
+        {/* The balance belongs on the screen they open first, not only behind
+            the Payments tab: it is money they already have, and it changes
+            what they choose to take on. */}
+        {balance > 0 ? (
+          <View
+            style={{
+              alignSelf: "flex-start",
+              marginTop: 8,
+              backgroundColor: colors.ink,
+              borderRadius: radii.pill,
+              paddingVertical: 6,
+              paddingHorizontal: 11,
+            }}
+          >
+            <AppText
+              style={{
+                fontFamily: fontFamily.monoMedium,
+                fontSize: 10.5,
+                lineHeight: 13,
+                color: colors.brandYellow,
+              }}
+            >
+              {`${money(balance)} available`}
+            </AppText>
+          </View>
+        ) : null}
         <AppText
           style={{
             fontFamily: fontFamily.regular,
@@ -135,24 +164,12 @@ function MemberDashboard({
         </AppText>
       </View>
 
+      <MemberTabs active="tasks" />
+
       <ScrollView
         contentContainerStyle={{ padding: spacing.screen, paddingBottom: 40, gap: 9 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* The member's way into the money. There is no tab bar on this
-            screen — it is the whole app for somebody who is not an admin — so
-            the link has to live in the one list they have. */}
-        <Button
-          label={balance > 0 ? `Your payments · ${money(balance)} available` : "Your payments"}
-          variant="ink"
-          onPress={() => router.push("/payments")}
-          accessibilityLabel={
-            balance > 0
-              ? `See what you have been paid. ${money(balance)} advanced and available.`
-              : "See what you have been paid"
-          }
-        />
-
         {ordered.map((task) => {
           const episode = byEpisode.get(task.episodeId);
           const heat = heatFor(task.remindersSent);
@@ -274,6 +291,34 @@ function MemberDashboard({
                   >
                     {statusLabel(task)}
                   </AppText>
+                ) : null}
+
+                {task.status === "open" ? (
+                  <TextInput
+                    value={notes[task.id] ?? ""}
+                    onChangeText={(next: string) =>
+                      setNotes((n) => ({ ...n, [task.id]: next.slice(0, 500) }))
+                    }
+                    placeholder="Anything to say about it? Where the file is, what you changed…"
+                    placeholderTextColor="rgba(27,26,23,.35)"
+                    multiline
+                    accessibilityLabel={`A note for the admin about ${task.type}`}
+                    style={{
+                      marginTop: 9,
+                      minHeight: 62,
+                      textAlignVertical: "top",
+                      backgroundColor: colors.surfaceAlt,
+                      borderWidth: 1,
+                      borderColor: colors.hairlineStrong,
+                      borderRadius: radii.chipLarge,
+                      paddingVertical: 10,
+                      paddingHorizontal: 11,
+                      fontFamily: fontFamily.regular,
+                      fontSize: 12,
+                      lineHeight: 17,
+                      color: colors.ink,
+                    }}
+                  />
                 ) : null}
 
                 <SubmitButton task={task} onPress={() => void toggle(task)} />

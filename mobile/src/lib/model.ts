@@ -106,6 +106,13 @@ export interface Task {
   done: boolean;
   doneAt: Date | null;
   submittedAt: Date | null;
+  /**
+   * What the artist wanted to say when they handed it in — where the file is,
+   * what they changed, what they were unsure about. Optional, and replaced on
+   * each resubmission: the note that matters is the one attached to the work
+   * currently sitting in front of an admin.
+   */
+  submissionNote: string | null;
   /** Set when an admin sent it back. Cleared on the next submission. */
   rejectedAt: Date | null;
   rejectionNote: string | null;

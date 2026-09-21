@@ -9,6 +9,8 @@ import {
   daysSinceLastReminder,
   daysUntilDue,
   daysUntilNextReminder,
+  deadlineLabel,
+  shortDate,
   dueLabel,
   gapFor,
   isOverdue,
@@ -30,6 +32,7 @@ function task(overrides: Partial<import("./model").Task> = {}): import("./model"
     status: "open",
     done: false,
     submittedAt: null,
+    submissionNote: null,
     rejectedAt: null,
     rejectionNote: null,
     rejectedCount: 0,
@@ -132,13 +135,22 @@ test("a done task says so instead of counting", () => {
   assert.equal(memberNote(t, PLAN, NOW), "Closed — thanks");
 });
 
-test("row and member notes pair the due state with the next reminder", () => {
+test("the admin row counts down; the member's names the day", () => {
+  // Two audiences, two questions. An admin deciding who to chase today wants
+  // "how late is this"; the person who has to do the work wants the date they
+  // are working to, because that is what they plan around.
   const t = task({ dueDate: daysFromNow(-4), remindersSent: 3, lastReminderAt: daysFromNow(-2) });
   assert.equal(rowNote(t, PLAN, NOW), "4d overdue · reminder #4 in 0d");
-  assert.equal(memberNote(t, PLAN, NOW), "4d overdue · next reminder today");
+  assert.equal(
+    memberNote(t, PLAN, NOW),
+    `Submission deadline: ${shortDate(daysFromNow(-4))} · 4d late · next reminder today`
+  );
 
   const soon = task({ dueDate: daysFromNow(2), remindersSent: 1, lastReminderAt: daysFromNow(-1) });
-  assert.equal(memberNote(soon, PLAN, NOW), "due in 2d · next reminder in 3d");
+  assert.equal(
+    memberNote(soon, PLAN, NOW),
+    `Submission deadline: ${shortDate(daysFromNow(2))} · next reminder in 3d`
+  );
 });
 
 test("needs chasing sorts by escalation, then by how overdue", () => {
@@ -164,4 +176,26 @@ test("a task with no dates is treated as due today, not as an error", () => {
   assert.equal(daysUntilDue(t, NOW), 0);
   assert.equal(dueLabel(t, NOW), "due today");
   assert.equal(daysSinceLastReminder(t, NOW), 0);
+});
+
+test("the member is told the date, not a countdown to it", () => {
+  const now = new Date("2026-09-21T09:00:00Z");
+  const due = new Date("2026-09-28T09:00:00Z");
+  assert.equal(
+    deadlineLabel(task({ dueDate: due }), now),
+    "Submission deadline: Mon, 28 Sep"
+  );
+});
+
+test("a deadline that has passed says so, because silence would be worse", () => {
+  const now = new Date("2026-09-21T09:00:00Z");
+  const due = new Date("2026-09-17T09:00:00Z");
+  assert.equal(
+    deadlineLabel(task({ dueDate: due }), now),
+    "Submission deadline: Thu, 17 Sep · 4d late"
+  );
+});
+
+test("no deadline says so rather than inventing one", () => {
+  assert.equal(deadlineLabel(task({ dueDate: null }), new Date()), "No deadline set");
 });

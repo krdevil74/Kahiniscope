@@ -9,7 +9,9 @@ import {
   estimateFor,
   isEstimateOnly,
   money,
+  moreLabel,
   needsRecordingTime,
+  pageOf,
   needsWordCount,
   rateFor,
   rateLabel,
@@ -206,4 +208,44 @@ test("a payment settled from an advance is paid, and says where from", () => {
   assert.equal(amountToShow(settled), 600);
   // And it counts towards what the person has actually been paid.
   assert.equal(earningsFor([settled]).paid, 600);
+});
+
+// ---------------------------------------------------------------------------
+// Showing a long history a little at a time
+// ---------------------------------------------------------------------------
+
+test("a page is the most recent five, and says how many are behind them", () => {
+  const items = [1, 2, 3, 4, 5, 6, 7];
+  const page = pageOf(items);
+  assert.deepEqual(page.shown, [1, 2, 3, 4, 5]);
+  assert.equal(page.hidden, 2);
+  assert.equal(page.hasMore, true);
+});
+
+test("a short history is not paged", () => {
+  const page = pageOf([1, 2]);
+  assert.deepEqual(page.shown, [1, 2]);
+  assert.equal(page.hidden, 0);
+  assert.equal(page.hasMore, false);
+});
+
+test("nothing at all is not a page with a More button", () => {
+  const page = pageOf([]);
+  assert.deepEqual(page.shown, []);
+  assert.equal(page.hasMore, false);
+});
+
+test("asking for more than there is does not invent entries", () => {
+  const page = pageOf([1, 2, 3], 99);
+  assert.deepEqual(page.shown, [1, 2, 3]);
+  assert.equal(page.hasMore, false);
+});
+
+test("a nonsense size shows nothing rather than everything", () => {
+  assert.deepEqual(pageOf([1, 2, 3], -1).shown, []);
+});
+
+test("the more button counts, and never says zero", () => {
+  assert.equal(moreLabel(1), "Show 1 more");
+  assert.equal(moreLabel(12), "Show 12 more");
 });

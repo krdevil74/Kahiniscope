@@ -74,6 +74,41 @@ export function dueLabel(task: Task, now: Date): string {
   return `due in ${due}d`;
 }
 
+/**
+ * The date the work is due, written out.
+ *
+ * "due in 7d" is the right thing to tell an admin deciding who to chase
+ * today. It is the wrong thing to tell the person who has to do the work:
+ * they need to know which day, because that is what they plan around, and a
+ * countdown makes them compute a date every time they look.
+ *
+ * Lateness is still said, because a deadline that has passed silently is
+ * worse than a countdown.
+ */
+export function deadlineLabel(task: Task, now: Date): string {
+  if (!task.dueDate) return "No deadline set";
+  const when = shortDate(task.dueDate);
+  const due = daysUntilDue(task, now);
+  if (due < 0) return `Submission deadline: ${when} · ${Math.abs(due)}d late`;
+  return `Submission deadline: ${when}`;
+}
+
+/**
+ * "Mon, 28 Sep". Built from fixed names rather than toLocaleDateString,
+ * because ICU data differs between devices — en-GB renders "Sept" on some
+ * Android builds and "Sep" on others, and a date that changes shape
+ * depending on the phone is a date somebody will misread.
+ */
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const;
+
+export function shortDate(date: Date): string {
+  return `${DAYS[date.getDay()]}, ${date.getDate()} ${MONTHS[date.getMonth()]}`;
+}
+
 /** How often reminders are going out at this step, in words. */
 export function cadenceLabel(remindersSent: number, plan: readonly number[]): string {
   const gap = gapFor(remindersSent, plan);
@@ -97,11 +132,14 @@ export function rowNote(task: Task, plan: readonly number[], now: Date): string 
   return `${dueLabel(task, now)} · reminder #${task.remindersSent + 1} in ${next}d`;
 }
 
-/** "4d overdue · next reminder today" — the member app's note chip. */
+/**
+ * The member app's note chip: the date they are working to, and when the app
+ * will next nudge them about it.
+ */
 export function memberNote(task: Task, plan: readonly number[], now: Date): string {
   if (task.done) return "Closed — thanks";
   const next = daysUntilNextReminder(task, plan, now);
-  return `${dueLabel(task, now)} · next reminder ${next === 0 ? "today" : `in ${next}d`}`;
+  return `${deadlineLabel(task, now)} · next reminder ${next === 0 ? "today" : `in ${next}d`}`;
 }
 
 /**
