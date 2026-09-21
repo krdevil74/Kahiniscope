@@ -29,6 +29,7 @@ function task(overrides: Partial<Task>): Task {
     done: false,
     doneAt: null,
     submittedAt: null,
+    submissionNote: null,
     rejectedAt: null,
     rejectionNote: null,
     rejectedCount: 0,

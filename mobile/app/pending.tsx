@@ -13,7 +13,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, TextInput, View } from "react-native";
 import { Redirect } from "expo-router";
 
 import { AppText } from "../src/components/AppText";
@@ -24,9 +24,10 @@ import { useSession } from "../src/lib/auth";
 import { craftLabel, MAX_CRAFTS, toggleCraft } from "../src/lib/crafts";
 import { CRAFTS } from "../src/lib/model";
 import { normalisePhone } from "../src/lib/phone.ts";
+import { PhoneField } from "../src/components/PhoneField";
 import { submitRegistration } from "../src/lib/registrations";
 import { useToast } from "../src/lib/toast";
-import { colors, fontFamily, layout, radii, spacing, MIN_TAP_TARGET } from "../src/theme/tokens";
+import { colors, fontFamily, layout, radii, spacing } from "../src/theme/tokens";
 import { type } from "../src/theme/typography";
 
 export default function Pending() {
@@ -49,15 +50,44 @@ export default function Pending() {
 // ---------------------------------------------------------------------------
 
 function Waiting({ crafts }: { crafts: string[] }) {
+  const { refresh } = useSession();
+  const [checking, setChecking] = useState(false);
+
+  /**
+   * The way out when the automatic catch-up did not manage it.
+   *
+   * The session provider re-checks by itself for about half a minute after
+   * the record changes, which covers a slow trigger. Past that, something is
+   * wrong that waiting will not fix — and a screen that says "waiting" with
+   * no way to ask again is a screen people close the app on.
+   */
+  async function check() {
+    if (checking) return;
+    setChecking(true);
+    try {
+      await refresh();
+    } finally {
+      setChecking(false);
+    }
+  }
+
   return (
-    <View
-      style={{
-        flex: 1,
+    <ScrollView
+      contentContainerStyle={{
+        flexGrow: 1,
         alignItems: "center",
         justifyContent: "center",
         paddingHorizontal: 34,
         backgroundColor: colors.surfaceAlt,
       }}
+      refreshControl={
+        <RefreshControl
+          refreshing={checking}
+          onRefresh={() => void check()}
+          tintColor={colors.ink}
+          colors={[colors.ink]}
+        />
+      }
     >
       <Logo size={layout.pendingLogo} />
 
@@ -121,9 +151,10 @@ function Waiting({ crafts }: { crafts: string[] }) {
           textAlign: "center",
         }}
       >
-        We will message you on WhatsApp the moment it is approved.
+        We will message you on WhatsApp the moment it is approved. This screen
+        moves on by itself — pull down if you want to check now.
       </AppText>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -234,26 +265,11 @@ function RegistrationForm({
 
       <View style={{ gap: spacing.chips }}>
         <SectionCaption>Phone</SectionCaption>
-        <TextInput
+        <PhoneField
           value={phone}
-          onChangeText={setPhone}
-          placeholder="+880 1712 344192"
-          placeholderTextColor="rgba(27,26,23,.35)"
-          keyboardType="phone-pad"
-          autoComplete="tel"
-          accessibilityLabel="Your phone number"
-          style={{
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: phone && !phoneValid ? colors.danger : colors.hairlineStrong,
-            borderRadius: radii.chipLarge,
-            paddingVertical: 12,
-            paddingHorizontal: 13,
-            minHeight: MIN_TAP_TARGET,
-            fontFamily: fontFamily.mono,
-            fontSize: 13,
-            color: colors.ink,
-          }}
+          onChange={setPhone}
+          invalid={Boolean(phone) && !phoneValid}
+          accessibilityLabel="Your phone number, ten digits"
         />
         <AppText
           style={[
@@ -262,7 +278,7 @@ function RegistrationForm({
           ]}
         >
           {phone && !phoneValid
-            ? "That does not look like a phone number yet."
+            ? "Ten digits, starting 6, 7, 8 or 9."
             : "Reminders fall back to WhatsApp and SMS on this number."}
         </AppText>
       </View>

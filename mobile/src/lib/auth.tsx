@@ -21,6 +21,7 @@ import { onIdTokenChanged, signOut as fbSignOut, type User } from "firebase/auth
 
 import { auth, db } from "./firebase";
 import { registerForPush } from "./push.ts";
+import { CLAIM_RETRY_DELAYS_MS, claimsAreBehind } from "./claim-refresh.ts";
 
 export type Role = "owner" | "admin" | "member";
 export type AccountStatus = "pending" | "approved";
@@ -116,6 +117,46 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
     );
   }, [user, status, role, readClaims]);
+
+  /**
+   * The document knows, but the token does not yet.
+   *
+   * Approving somebody is a write to their user document; a Cloud Function
+   * sees that write and re-mints their claims, but it is a trigger and runs
+   * afterwards. The snapshot above fires immediately and asks for a fresh
+   * token, which is usually a moment too early — and, before this, that was
+   * the only attempt. A member sat on the holding screen until they
+   * force-quit the app, at which point signing in minted a correct token and
+   * it looked as though it had always worked.
+   *
+   * So it asks again, backing off, and gives up after about half a minute —
+   * at which point the holding screen's pull-to-refresh is the way out.
+   */
+  useEffect(() => {
+    if (!user || !claimsAreBehind(profile, { status, role })) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempt = 0;
+
+    const again = () => {
+      const delay = CLAIM_RETRY_DELAYS_MS[attempt];
+      if (delay === undefined || cancelled) return;
+      attempt += 1;
+      timer = setTimeout(() => {
+        if (cancelled) return;
+        void readClaims(user, true).then(again);
+      }, delay);
+    };
+    again();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+    // `profile` is the trigger: when the claims catch up, status changes,
+    // this re-runs, the condition is false and the loop is torn down.
+  }, [user, profile, status, role, readClaims]);
 
   /**
    * Push is the first rung of the fallback chain, and it only works if the

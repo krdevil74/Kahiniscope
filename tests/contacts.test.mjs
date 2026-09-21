@@ -40,7 +40,7 @@ import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/
 
 const OWNER_EMAIL = "owner@kahiniscope.test";
 const REGION = "asia-south2";
-const NUMBER = "+8801712344192";
+const NUMBER = "+919876543210";
 
 const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1:9099";
 const [fsHost, fsPort] = (process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080").split(":");
@@ -103,13 +103,13 @@ test("an admin adds somebody who has no app, and they are assignable at once", a
   const { data } = await call(owner, "addContact", {
     name: "Nabanita Roy",
     // Typed the local way: the server decides what a number is.
-    phone: "01711000002",
+    phone: "9876500002",
     crafts: ["Translation", "Proofreading"],
     preferredChannel: "whatsapp",
   });
 
   const snap = await getDoc(doc(owner.db, "users", data.uid));
-  assert.equal(snap.data().phone, "+8801711000002", "normalised to E.164 on the server");
+  assert.equal(snap.data().phone, "+919876500002", "normalised to E.164 on the server");
   assert.equal(snap.data().accountless, true);
   assert.equal(snap.data().status, "approved", "an admin typing them in is the approval");
   assert.deepEqual(snap.data().crafts, ["Translation", "Proofreading"]);
@@ -167,7 +167,7 @@ test("when they install the app, their work moves onto the real account", async 
   // An admin has been tracking Tanmoy by phone for weeks.
   const { data: contact } = await call(owner, "addContact", {
     name: "Tanmoy Das",
-    phone: "+8801711000004",
+    phone: "+919876500004",
     crafts: ["Post / mix"],
     preferredChannel: "telegram",
   });
@@ -187,7 +187,7 @@ test("when they install the app, their work moves onto the real account", async 
   const user = await signIn(c, { sub: "tanmoy", email: "tanmoy@gmail.com", name: "Tanmoy Das" });
   await waitForClaims(user, (claims) => claims.status === "pending", "pending claims");
   await updateDoc(doc(c.db, "users", user.uid), {
-    phone: "+8801711000004",
+    phone: "+919876500004",
     crafts: ["Editing"],
     note: "Same Tanmoy.",
   });

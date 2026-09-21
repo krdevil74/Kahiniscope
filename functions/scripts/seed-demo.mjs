@@ -35,18 +35,18 @@ const at = (days) => Timestamp.fromMillis(now + days * day);
 
 /** name, crafts, how they can be reached, role */
 const PEOPLE = [
-  { uid: "seed-arif", name: "Arif Hossain", crafts: ["Script"], phone: "+8801711000001", telegramChatId: null, role: "member" },
-  { uid: "seed-nabanita", name: "Nabanita Roy", crafts: ["Translation", "Proofreading"], phone: "+8801711000002", telegramChatId: "8801002", role: "member" },
-  { uid: "seed-rizu", name: "Rizu Ahmed", crafts: ["Voice", "Editing"], phone: "+8801712344192", telegramChatId: null, role: "member" },
-  { uid: "seed-tanmoy", name: "Tanmoy Das", crafts: ["Post / mix"], phone: "+8801711000004", telegramChatId: "8801004", role: "member" },
-  { uid: "seed-sohag", name: "Sohag Mia", crafts: ["Graphics"], phone: "+8801711000005", telegramChatId: null, role: "member" },
-  { uid: "seed-piyali", name: "Piyali Sen", crafts: ["Proofreading"], phone: "+8801711000006", telegramChatId: null, role: "admin" },
+  { uid: "seed-arif", name: "Arif Hossain", crafts: ["Script"], phone: "+919876500001", telegramChatId: null, role: "member" },
+  { uid: "seed-nabanita", name: "Nabanita Roy", crafts: ["Translation", "Proofreading"], phone: "+919876500002", telegramChatId: "8801002", role: "member" },
+  { uid: "seed-rizu", name: "Rizu Ahmed", crafts: ["Voice", "Editing"], phone: "+919876543210", telegramChatId: null, role: "member" },
+  { uid: "seed-tanmoy", name: "Tanmoy Das", crafts: ["Post / mix"], phone: "+919876500004", telegramChatId: "8801004", role: "member" },
+  { uid: "seed-sohag", name: "Sohag Mia", crafts: ["Graphics"], phone: "+919876500005", telegramChatId: null, role: "member" },
+  { uid: "seed-piyali", name: "Piyali Sen", crafts: ["Proofreading"], phone: "+919876500006", telegramChatId: null, role: "admin" },
 ];
 
 const PENDING = [
-  { uid: "seed-shuvo", name: "Shuvo Karim", crafts: ["Editing"], phone: "+8801712344192", registeredHoursAgo: 2, note: "Worked on EP-33 to EP-36 editing with Tanmoy. Can also do SFX cleanup." },
-  { uid: "seed-mahi", name: "Mahi Chowdhury", crafts: ["Voice"], phone: "+8801919997730", registeredHoursAgo: 26, note: "Sent a voice sample to your Messenger last week." },
-  { uid: "seed-rupa", name: "Rupa Dutta", crafts: ["Translation"], phone: "+8801611002054", registeredHoursAgo: 72, note: "Japanese to Bengali. Referred by Nabanita." },
+  { uid: "seed-shuvo", name: "Shuvo Karim", crafts: ["Editing"], phone: "+919876543210", registeredHoursAgo: 2, note: "Worked on EP-33 to EP-36 editing with Tanmoy. Can also do SFX cleanup." },
+  { uid: "seed-mahi", name: "Mahi Chowdhury", crafts: ["Voice"], phone: "+919876500007", registeredHoursAgo: 26, note: "Sent a voice sample to your Messenger last week." },
+  { uid: "seed-rupa", name: "Rupa Dutta", crafts: ["Translation"], phone: "+919876500008", registeredHoursAgo: 72, note: "Japanese to Bengali. Referred by Nabanita." },
 ];
 
 const EPISODES = [

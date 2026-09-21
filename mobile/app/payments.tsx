@@ -21,15 +21,20 @@ import { Avatar } from "../src/components/Avatar";
 import { Button } from "../src/components/Button";
 import { Card } from "../src/components/Card";
 import { EmptyState } from "../src/components/EmptyState";
-import { Logo } from "../src/components/Logo";
+import { MemberTabs } from "../src/components/MemberTabs";
+import { ScreenHeader } from "../src/components/ScreenHeader";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { useSession } from "../src/lib/auth";
 import { indexBy, useEpisodes, usePayments, useTeam } from "../src/lib/data";
+import type { Episode } from "../src/lib/model";
 import {
   amountToShow,
   earningsFor,
   ESTIMATE_DISCLAIMER,
   money,
+  moreLabel,
+  PAGE_SIZE,
+  pageOf,
   UNIT_LABELS,
   type Payment,
 } from "../src/lib/payments.ts";
@@ -291,40 +296,98 @@ function WorkingNote({ payment }: { payment: Payment }) {
 // ---------------------------------------------------------------------------
 
 function MemberPayments() {
-  const router = useRouter();
   const { user, isApproved, profile } = useSession();
   const { data: payments } = usePayments({ uid: user?.uid, enabled: Boolean(user) && isApproved });
+  const { data: episodes } = useEpisodes(isApproved);
 
+  const byEpisode = useMemo(() => indexBy(episodes, (e) => e.id), [episodes]);
   const summary = useMemo(() => earningsFor(payments), [payments]);
   const balance = profile?.balance ?? 0;
-  const ordered = useMemo(
+
+  const paid = useMemo(
     () =>
-      [...payments].sort(
-        (a, b) =>
-          (b.paidAt?.getTime() ?? b.approvedAt?.getTime() ?? 0) -
-          (a.paidAt?.getTime() ?? a.approvedAt?.getTime() ?? 0)
-      ),
+      payments
+        .filter((p) => p.status === "paid")
+        .sort((a, b) => (b.paidAt?.getTime() ?? 0) - (a.paidAt?.getTime() ?? 0)),
+    [payments]
+  );
+  const pending = useMemo(
+    () =>
+      payments
+        .filter((p) => p.status !== "paid")
+        .sort((a, b) => (b.approvedAt?.getTime() ?? 0) - (a.approvedAt?.getTime() ?? 0)),
     [payments]
   );
 
+  const [paidShown, setPaidShown] = useState(PAGE_SIZE);
+  const [pendingShown, setPendingShown] = useState(PAGE_SIZE);
+
+  const paidPage = pageOf(paid, paidShown);
+  const pendingPage = pageOf(pending, pendingShown);
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.surfaceAlt }}>
+      <ScreenHeader title="Payments" subtitle={`${paid.length + pending.length} entries`} />
+      <MemberTabs active="payments" />
+
       <ScrollView contentContainerStyle={{ padding: spacing.screen, paddingBottom: 40, gap: spacing.cardsTight }}>
-        <View style={{ alignItems: "center", gap: 6, paddingVertical: 10 }}>
-          <Logo size={44} />
-          <AppText weight="semibold" style={[type.h3]}>Your payments</AppText>
+        {/* The seal. What somebody has actually been paid is the one figure
+            worth reading from across a room, and it is the only number on
+            this screen that is not an estimate of anything. */}
+        <View
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            paddingVertical: 26,
+            borderRadius: 999,
+            borderWidth: 3,
+            borderColor: colors.brandYellow,
+            backgroundColor: colors.ink,
+            marginBottom: 4,
+          }}
+        >
+          <AppText
+            style={{
+              fontFamily: fontFamily.monoSemibold,
+              fontSize: 9.5,
+              lineHeight: 11,
+              letterSpacing: 1.6,
+              color: colors.brandYellow,
+            }}
+          >
+            TOTAL EARNED
+          </AppText>
+          <AppText
+            weight="semibold"
+            style={{
+              fontFamily: fontFamily.semibold,
+              fontSize: 40,
+              lineHeight: 46,
+              color: colors.white,
+              marginTop: 4,
+            }}
+          >
+            {money(summary.paid)}
+          </AppText>
+          <AppText
+            style={{
+              fontFamily: fontFamily.mono,
+              fontSize: 10,
+              lineHeight: 13,
+              color: "rgba(255,255,255,.55)",
+            }}
+          >
+            {`paid across ${paid.length} ${paid.length === 1 ? "task" : "tasks"}`}
+          </AppText>
         </View>
 
-        {/* An advance is money already in their hand. It goes above
-            everything else, because "what can I draw on" is the question
-            somebody opens this screen to answer. */}
         {balance > 0 ? (
-          <Card radius={13} style={{ padding: 16, gap: 4, backgroundColor: colors.ink, borderColor: colors.ink }}>
+          <Card radius={13} style={{ padding: 14, gap: 3, backgroundColor: colors.ink, borderColor: colors.ink }}>
             <AppText
               style={{
                 fontFamily: fontFamily.monoMedium,
-                fontSize: 10,
-                lineHeight: 12,
+                fontSize: 9.5,
+                lineHeight: 11,
                 letterSpacing: 0.6,
                 color: "rgba(255,255,255,.6)",
               }}
@@ -333,116 +396,212 @@ function MemberPayments() {
             </AppText>
             <AppText
               weight="semibold"
-              style={{ fontFamily: fontFamily.semibold, fontSize: 30, lineHeight: 36, color: colors.white }}
+              style={{ fontFamily: fontFamily.semibold, fontSize: 22, lineHeight: 27, color: colors.white }}
             >
               {money(balance)}
             </AppText>
             <AppText
               style={{
                 fontFamily: fontFamily.regular,
-                fontSize: 11.5,
-                lineHeight: 16,
+                fontSize: 11,
+                lineHeight: 15.5,
                 color: "rgba(255,255,255,.7)",
               }}
             >
-              Advanced to you already. Work that gets approved is paid out of
-              this first, and the balance goes down.
+              Advanced to you already. Approved work is paid out of this first.
             </AppText>
           </Card>
         ) : null}
 
-        <Card radius={13} style={{ padding: 16, gap: 4 }}>
-          <SectionCaption>Paid to you, all time</SectionCaption>
-          <AppText weight="semibold" style={{ fontFamily: fontFamily.semibold, fontSize: 30, lineHeight: 36 }}>
-            {money(summary.paid)}
-          </AppText>
-        </Card>
+        <SummaryBar
+          label="Paid so far"
+          amount={money(summary.paid)}
+          note={`${paid.length} ${paid.length === 1 ? "task" : "tasks"}`}
+          tone="paid"
+        />
 
-        {summary.pendingCount > 0 ? (
-          <Card radius={13} style={{ padding: 16, gap: 8 }}>
-            <SectionCaption>
-              {`Approved, not yet paid · ${summary.pendingCount}`}
-            </SectionCaption>
-            <AppText weight="semibold" style={{ fontFamily: fontFamily.semibold, fontSize: 24, lineHeight: 30 }}>
-              {summary.pendingIncomplete
-                ? `${money(summary.pendingEstimate)}+`
-                : money(summary.pendingEstimate)}
-            </AppText>
-
-            {/* Not decoration. Somebody who reads an estimate as a promise and
-                is paid less has been misled by this screen. */}
-            <View
-              style={{
-                backgroundColor: colors.ink,
-                borderRadius: radii.chipLarge,
-                paddingVertical: 10,
-                paddingHorizontal: 11,
-              }}
-            >
-              <AppText
-                weight="semibold"
-                style={{
-                  fontFamily: fontFamily.semibold,
-                  fontSize: 11,
-                  lineHeight: 16,
-                  color: colors.white,
-                }}
-              >
-                {ESTIMATE_DISCLAIMER}
-              </AppText>
-            </View>
-
-            {summary.pendingIncomplete ? (
-              <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)" }]}>
-                Some of these have no rate on file, so they are not in the total at all.
-              </AppText>
-            ) : null}
-          </Card>
-        ) : null}
-
-        {ordered.length === 0 ? (
+        {paid.length === 0 ? (
           <EmptyState
-            title="Nothing yet"
-            detail="A payment appears here once an admin has approved a task you submitted."
+            title="Nothing paid yet"
+            detail="Once an admin pays for a task you submitted, it appears here."
           />
-        ) : (
-          <SectionCaption style={{ marginTop: 6 }}>Every task</SectionCaption>
-        )}
+        ) : null}
 
-        {ordered.map((payment) => (
-          <Card key={payment.id} radius={11} style={{ paddingVertical: 11, paddingHorizontal: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <AppText weight="semibold" style={[type.bodySmall]}>{payment.taskType}</AppText>
-                <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)", marginTop: 2 }]}>
-                  {payment.status !== "paid"
-                  ? "Waiting to be paid"
-                  : payment.settledFromAdvance
-                    ? "Paid from your advance"
-                    : "Paid"}
-                </AppText>
-              </View>
-              <View style={{ alignItems: "flex-end" }}>
-                <AppText weight="semibold" style={[type.bodySmall]}>
-                  {money(amountToShow(payment))}
-                </AppText>
-                {payment.status !== "paid" ? (
-                  <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.45)", marginTop: 2 }]}>
-                    estimate
-                  </AppText>
-                ) : null}
-              </View>
-            </View>
-          </Card>
+        {paidPage.shown.map((payment) => (
+          <PaymentRow
+            key={payment.id}
+            payment={payment}
+            episode={byEpisode.get(payment.episodeId)}
+          />
         ))}
 
-        <Button
-          label="Back to my tasks"
-          variant="quiet"
-          onPress={() => router.replace("/my-tasks")}
-          style={{ marginTop: 8, borderColor: colors.hairlineStrong }}
+        {paidPage.hasMore ? (
+          <Button
+            label={moreLabel(paidPage.hidden)}
+            variant="quiet"
+            onPress={() => setPaidShown((n) => n + PAGE_SIZE)}
+            style={{ borderColor: colors.hairlineStrong }}
+          />
+        ) : null}
+
+        <SummaryBar
+          label="Pending, estimated"
+          amount={
+            summary.pendingIncomplete
+              ? `${money(summary.pendingEstimate)}+`
+              : money(summary.pendingEstimate)
+          }
+          note={`${pending.length} ${pending.length === 1 ? "task" : "tasks"}`}
+          tone="pending"
         />
+
+        {pending.length > 0 ? (
+          <View
+            style={{
+              backgroundColor: colors.ink,
+              borderRadius: radii.chipLarge,
+              paddingVertical: 10,
+              paddingHorizontal: 11,
+            }}
+          >
+            <AppText
+              weight="semibold"
+              style={{
+                fontFamily: fontFamily.semibold,
+                fontSize: 11,
+                lineHeight: 16,
+                color: colors.white,
+              }}
+            >
+              {ESTIMATE_DISCLAIMER}
+            </AppText>
+          </View>
+        ) : null}
+
+        {pendingPage.shown.map((payment) => (
+          <PaymentRow
+            key={payment.id}
+            payment={payment}
+            episode={byEpisode.get(payment.episodeId)}
+          />
+        ))}
+
+        {pendingPage.hasMore ? (
+          <Button
+            label={moreLabel(pendingPage.hidden)}
+            variant="quiet"
+            onPress={() => setPendingShown((n) => n + PAGE_SIZE)}
+            style={{ borderColor: colors.hairlineStrong }}
+          />
+        ) : null}
       </ScrollView>
     </View>
+  );
+}
+
+/** The horizontal bar that heads each half of the list. */
+function SummaryBar({
+  label,
+  amount,
+  note,
+  tone,
+}: {
+  label: string;
+  amount: string;
+  note: string;
+  tone: "paid" | "pending";
+}) {
+  return (
+    <View
+      style={{
+        marginTop: 10,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: spacing.chips,
+        backgroundColor: tone === "paid" ? colors.brandYellow : colors.surfaceSunken,
+        borderWidth: 1,
+        borderColor: tone === "paid" ? colors.brandYellow : colors.hairlineStrong,
+        borderRadius: radii.chipLarge,
+        paddingVertical: 11,
+        paddingHorizontal: 13,
+      }}
+    >
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <AppText weight="semibold" style={{ fontFamily: fontFamily.semibold, fontSize: 12.5, lineHeight: 15 }}>
+          {label}
+        </AppText>
+        <AppText
+          style={{
+            fontFamily: fontFamily.mono,
+            fontSize: 10,
+            lineHeight: 13,
+            color: "rgba(27,26,23,.55)",
+            marginTop: 2,
+          }}
+        >
+          {note}
+        </AppText>
+      </View>
+      <AppText weight="semibold" style={{ fontFamily: fontFamily.semibold, fontSize: 17, lineHeight: 20 }}>
+        {amount}
+      </AppText>
+    </View>
+  );
+}
+
+/**
+ * One entry. Both the episode and the kind of work are on it: "Voice
+ * recording" alone does not tell somebody which of the eleven they did.
+ */
+function PaymentRow({ payment, episode }: { payment: Payment; episode?: Episode }) {
+  return (
+    <Card radius={11} style={{ paddingVertical: 11, paddingHorizontal: 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <AppText weight="semibold" style={[type.bodySmall]}>
+            {payment.taskType}
+          </AppText>
+          {/* Bengali title: AppText gives it Noto Sans Bengali. */}
+          <AppText
+            numberOfLines={1}
+            style={{
+              fontFamily: fontFamily.regular,
+              fontSize: 11.5,
+              lineHeight: 16,
+              color: "rgba(27,26,23,.6)",
+              marginTop: 2,
+            }}
+          >
+            {[episode?.code, episode?.title].filter(Boolean).join(" · ") || "No episode"}
+          </AppText>
+          <AppText
+            style={{
+              fontFamily: fontFamily.mono,
+              fontSize: 10,
+              lineHeight: 13,
+              color: "rgba(27,26,23,.45)",
+              marginTop: 3,
+            }}
+          >
+            {payment.status !== "paid"
+              ? "Waiting to be paid"
+              : payment.settledFromAdvance
+                ? "Paid from your advance"
+                : "Paid"}
+          </AppText>
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <AppText weight="semibold" style={[type.bodySmall]}>
+            {money(amountToShow(payment))}
+          </AppText>
+          {payment.status !== "paid" ? (
+            <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.45)", marginTop: 2 }]}>
+              estimate
+            </AppText>
+          ) : null}
+        </View>
+      </View>
+    </Card>
   );
 }

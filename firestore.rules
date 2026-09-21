@@ -198,13 +198,17 @@ service cloud.firestore {
         || (isApproved()
             && resource.data.assigneeUid == uid()
             && request.resource.data.assigneeUid == uid()
-            && onlyChanged(['status', 'submittedAt'])
+            && onlyChanged(['status', 'submittedAt', 'submissionNote'])
             // Every field is checked for presence before it is read: a task
             // written by an older build of the app carries neither `status`
             // nor, in the oldest ones, anything but `done` — and a missing
             // key in a rules expression is an error, not a false.
             && 'status' in request.resource.data
             && request.resource.data.status == 'submitted'
+            && (!('submissionNote' in request.resource.data)
+                || request.resource.data.submissionNote == null
+                || (request.resource.data.submissionNote is string
+                    && request.resource.data.submissionNote.size() <= 500))
             && 'done' in resource.data
             && resource.data.done == false
             && (!('status' in resource.data) || resource.data.status == 'open'));

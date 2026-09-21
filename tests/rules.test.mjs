@@ -129,7 +129,7 @@ function user(overrides) {
   return {
     name: "Someone",
     email: "someone@gmail.com",
-    phone: "+8801712344192",
+    phone: "+919876543210",
     telegramChatId: null,
     crafts: ["Script"],
     status: "approved",
@@ -169,6 +169,7 @@ function task(overrides) {
     done: false,
     doneAt: null,
     submittedAt: null,
+    submissionNote: null,
     rejectedAt: null,
     rejectionNote: null,
     rejectedCount: 0,
@@ -204,7 +205,7 @@ test("pending: completes its own registration form", async () => {
   await assertSucceeds(
     updateDoc(doc(db, "users", PENDING), {
       name: "Newcomer Ahmed",
-      phone: "+8801712344192",
+      phone: "+919876543210",
       crafts: ["Script", "Proofreading"],
       note: "I have done three episodes of narration before.",
     })
@@ -508,6 +509,33 @@ test("member: hands their own work in, and nothing more", async () => {
   const db = asMember();
   await assertSucceeds(
     updateDoc(doc(db, "tasks", "t-mine"), { status: "submitted", submittedAt: Timestamp.now() })
+  );
+});
+
+test("member: can say something about what they handed in", async () => {
+  const db = asMember();
+  await assertSucceeds(
+    updateDoc(doc(db, "tasks", "t-mine"), {
+      status: "submitted",
+      submittedAt: Timestamp.now(),
+      submissionNote: "Re-recorded from 4:10. File is in the shared drive.",
+    })
+  );
+  // Within reason.
+  await assertFails(
+    updateDoc(doc(db, "tasks", "t-mine"), {
+      status: "submitted",
+      submittedAt: Timestamp.now(),
+      submissionNote: "x".repeat(501),
+    })
+  );
+  // And not as a way to smuggle in a field they do not own.
+  await assertFails(
+    updateDoc(doc(db, "tasks", "t-mine"), {
+      status: "submitted",
+      submissionNote: "fine",
+      rejectionNote: "no it is not",
+    })
   );
 });
 

@@ -38,6 +38,7 @@ import { CHANNEL_LABELS } from "../src/lib/channels.ts";
 import { MAX_CRAFTS, toggleCraft } from "../src/lib/crafts.ts";
 import { useTeam } from "../src/lib/data";
 import { normalisePhone } from "../src/lib/phone.ts";
+import { PhoneField } from "../src/components/PhoneField";
 import { CRAFTS } from "../src/lib/model";
 import { useToast } from "../src/lib/toast";
 import { colors, fontFamily, radii, spacing, MIN_TAP_TARGET } from "../src/theme/tokens";
@@ -134,15 +135,11 @@ export default function Contact() {
 
         <View style={{ gap: spacing.chips }}>
           <SectionCaption>Phone</SectionCaption>
-          <TextInput
+          <PhoneField
             value={draft.phone}
-            onChangeText={(phone) => patch({ phone })}
-            placeholder="+880 1712 344192"
-            placeholderTextColor="rgba(27,26,23,.35)"
-            keyboardType="phone-pad"
-            autoComplete="tel"
-            accessibilityLabel="Their phone number"
-            style={inputStyle(phoneTyped && !phoneValid)}
+            onChange={(phone) => patch({ phone })}
+            invalid={phoneTyped && !phoneValid}
+            accessibilityLabel="Their phone number, ten digits"
           />
           <AppText
             style={[
@@ -151,7 +148,7 @@ export default function Contact() {
             ]}
           >
             {phoneTyped && !phoneValid
-              ? "That does not look like a phone number yet."
+              ? "Ten digits, starting 6, 7, 8 or 9."
               : "This is how they are recognised. If they install the app later and sign up with this number, you can merge the two."}
           </AppText>
         </View>

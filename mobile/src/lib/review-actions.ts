@@ -16,11 +16,18 @@ import type { Rates } from "./model.ts";
 import type { PayUnit } from "./payments.ts";
 import { appFunctions } from "./region.ts";
 
-/** The one write a member makes to their own task. */
-export async function submitTask(taskId: string): Promise<void> {
+/**
+ * The one write a member makes to their own task.
+ *
+ * The note is optional and is replaced rather than appended: what an admin
+ * needs beside the work in front of them is what was said about *this*
+ * submission, not a thread going back three rejections.
+ */
+export async function submitTask(taskId: string, note: string | null = null): Promise<void> {
   await updateDoc(doc(db, "tasks", taskId), {
     status: "submitted",
     submittedAt: serverTimestamp(),
+    submissionNote: note?.trim() ? note.trim().slice(0, 500) : null,
   });
 }
 

@@ -32,6 +32,7 @@ function task(overrides: Partial<Task> = {}): Task {
     status: "open",
     done: false,
     submittedAt: null,
+    submissionNote: null,
     rejectedAt: null,
     rejectionNote: null,
     rejectedCount: 0,

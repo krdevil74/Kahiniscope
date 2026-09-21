@@ -124,7 +124,7 @@ before(async () => {
   await waitForClaims(artistUser, (c) => c.status === "pending", "pending claims");
 
   await updateDoc(doc(artist.db, "users", artistUser.uid), {
-    phone: "+8801712344192",
+    phone: "+919876543210",
     crafts: ["Voice"],
   });
   // Approved, and put on a rate card: ₹50 a minute in character, ₹35 reading.

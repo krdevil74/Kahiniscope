@@ -64,6 +64,7 @@ function toTask(snap: QueryDocumentSnapshot<DocumentData>): Task {
     done: toBool(d.done),
     doneAt: toDate(d.doneAt),
     submittedAt: toDate(d.submittedAt),
+    submissionNote: toStringOrNull(d.submissionNote),
     rejectedAt: toDate(d.rejectedAt),
     rejectionNote: toStringOrNull(d.rejectionNote),
     rejectedCount: toNumber(d.rejectedCount),

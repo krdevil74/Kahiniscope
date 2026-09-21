@@ -3,7 +3,7 @@
  * out this morning.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 
@@ -31,6 +31,7 @@ import {
 } from "../src/lib/data";
 import { boardDateLabel, feedTimeLabel } from "../src/lib/format.ts";
 import { byChaseOrder, countdownLabel, dueLabel } from "../src/lib/escalation.ts";
+import { groupByEpisode, groupSummary } from "../src/lib/episode-groups.ts";
 import type { ChannelId, Task } from "../src/lib/model";
 import { useToast } from "../src/lib/toast";
 import { colors, fontFamily, heatFor, layout, radii, spacing, MIN_TAP_TARGET} from "../src/theme/tokens";
@@ -54,6 +55,9 @@ export default function Board() {
 
   const stats = useMemo(() => boardStats(tasks, now), [tasks, now]);
   const chase = useMemo(() => byChaseOrder(openTasks(tasks), now), [tasks, now]);
+  const groups = useMemo(() => groupByEpisode(chase, episodes, now), [chase, episodes, now]);
+  /** Only one open at a time: the point is to stop it being a wall. */
+  const [expanded, setExpanded] = useState<string | null>(null);
   const pending = useMemo(() => team.filter((m) => m.status === "pending"), [team]);
   const review = useMemo(() => submittedTasks(tasks), [tasks]);
 
@@ -206,76 +210,165 @@ export default function Board() {
           />
         ) : null}
 
-        {chase.map((task) => {
-          const member = byUid.get(task.assigneeUid);
-          const episode = byEpisode.get(task.episodeId);
-          const heat = heatFor(task.remindersSent);
+        {/* By episode, not a flat list. The same episode's script, voice and
+            mix used to sit three rows apart, and the one question an admin
+            actually has — which episode is in trouble — could not be answered
+            by scanning it. */}
+        {groups.map((group) => {
+          const open = expanded === group.episodeId;
           return (
-            <Card
-              key={task.id}
-              clip
-              onPress={() => router.push(`/person/${task.assigneeUid}`)}
-              accessibilityLabel={`${task.type} for ${member?.name ?? "unassigned"}`}
-            >
-              {/* The heat bar: how far up the ladder this one has climbed. */}
-              <ProgressBar value={heat.bar} height={layout.heatBar} track={colors.hairline} rounded={false} />
+            <Card key={group.episodeId} clip>
+              <ProgressBar
+                value={heatFor(group.worstStep).bar}
+                height={layout.heatBar}
+                track={colors.hairline}
+                rounded={false}
+              />
 
-              <View style={{ paddingTop: 12, paddingHorizontal: 13, paddingBottom: 11, gap: 9 }}>
-                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.cards }}>
-                  <Avatar name={member?.name ?? ""} size={layout.avatar} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <AppText weight="semibold" style={type.cardTitle}>
-                      {task.type}
-                    </AppText>
+              <Pressable
+                onPress={() => setExpanded(open ? null : group.episodeId)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: open }}
+                accessibilityLabel={`${group.code}, ${groupSummary(group)}`}
+                android_ripple={{ color: "rgba(27,26,23,.06)" }}
+                style={{
+                  paddingTop: 12,
+                  paddingHorizontal: 13,
+                  paddingBottom: 11,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: spacing.cards,
+                  minHeight: MIN_TAP_TARGET,
+                }}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <AppText weight="semibold" style={type.cardTitle}>
+                    {group.code}
+                  </AppText>
+                  {/* Bengali title: AppText gives it Noto Sans Bengali. */}
+                  {group.title ? (
                     <AppText
                       numberOfLines={1}
                       style={{
-                        fontFamily: fontFamily.mono,
-                        fontSize: 11,
-                        lineHeight: 15.4,
-                        color: "rgba(27,26,23,.5)",
-                        marginTop: 3,
+                        fontFamily: fontFamily.regular,
+                        fontSize: 11.5,
+                        lineHeight: 16,
+                        color: "rgba(27,26,23,.55)",
+                        marginTop: 2,
                       }}
                     >
-                      {[episode?.code, member?.name, dueLabel(task, now)].filter(Boolean).join(" · ")}
+                      {group.title}
                     </AppText>
-                  </View>
-                  <HeatBadge step={task.remindersSent} />
-                </View>
-
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <View
+                  ) : null}
+                  <AppText
                     style={{
-                      flex: 1,
-                      minWidth: 0,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: spacing.chips,
-                      backgroundColor: colors.surfaceAlt,
-                      borderRadius: radii.chipLarge,
-                      paddingVertical: 7,
-                      paddingHorizontal: 9,
+                      fontFamily: fontFamily.mono,
+                      fontSize: 10.5,
+                      lineHeight: 14,
+                      color: "rgba(27,26,23,.5)",
+                      marginTop: 3,
                     }}
                   >
-                    <View
-                      style={{ width: 6, height: 6, borderRadius: radii.pill, backgroundColor: heat.fg }}
-                    />
-                    <AppText
-                      numberOfLines={1}
-                      style={{
-                        fontFamily: fontFamily.monoMedium,
-                        fontSize: 10.5,
-                        lineHeight: 13.65,
-                        color: colors.ink,
-                        flex: 1,
-                      }}
-                    >
-                      {countdownLabel(task, settings.plan, now)}
-                    </AppText>
-                  </View>
-                  <Button label="Nudge now" size="compact" onPress={() => void nudge(task)} />
+                    {groupSummary(group)}
+                  </AppText>
                 </View>
-              </View>
+
+                <HeatBadge step={group.worstStep} />
+                <AppText
+                  style={{
+                    fontFamily: fontFamily.mono,
+                    fontSize: 13,
+                    lineHeight: 14,
+                    color: "rgba(27,26,23,.45)",
+                  }}
+                >
+                  {open ? "\u2212" : "+"}
+                </AppText>
+              </Pressable>
+
+              {open
+                ? group.tasks.map((task) => {
+                    const member = byUid.get(task.assigneeUid);
+                    const heat = heatFor(task.remindersSent);
+                    return (
+                      <View
+                        key={task.id}
+                        style={{
+                          borderTopWidth: 1,
+                          borderTopColor: colors.hairline,
+                          paddingVertical: 11,
+                          paddingHorizontal: 13,
+                          gap: 9,
+                        }}
+                      >
+                        <Pressable
+                          onPress={() => router.push(`/person/${task.assigneeUid}`)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${task.type} for ${member?.name ?? "unassigned"}`}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "flex-start",
+                            gap: spacing.cards,
+                            minHeight: MIN_TAP_TARGET - 12,
+                          }}
+                        >
+                          <Avatar name={member?.name ?? ""} size={layout.avatar} />
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <AppText weight="semibold" style={type.cardTitle}>
+                              {task.type}
+                            </AppText>
+                            <AppText
+                              numberOfLines={1}
+                              style={{
+                                fontFamily: fontFamily.mono,
+                                fontSize: 11,
+                                lineHeight: 15.4,
+                                color: "rgba(27,26,23,.5)",
+                                marginTop: 3,
+                              }}
+                            >
+                              {[member?.name, dueLabel(task, now)].filter(Boolean).join(" \u00b7 ")}
+                            </AppText>
+                          </View>
+                          <HeatBadge step={task.remindersSent} />
+                        </Pressable>
+
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <View
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: spacing.chips,
+                              backgroundColor: colors.surfaceAlt,
+                              borderRadius: radii.chipLarge,
+                              paddingVertical: 7,
+                              paddingHorizontal: 9,
+                            }}
+                          >
+                            <View
+                              style={{ width: 6, height: 6, borderRadius: radii.pill, backgroundColor: heat.fg }}
+                            />
+                            <AppText
+                              numberOfLines={1}
+                              style={{
+                                fontFamily: fontFamily.monoMedium,
+                                fontSize: 10.5,
+                                lineHeight: 13.65,
+                                color: colors.ink,
+                                flex: 1,
+                              }}
+                            >
+                              {countdownLabel(task, settings.plan, now)}
+                            </AppText>
+                          </View>
+                          <Button label="Nudge now" size="compact" onPress={() => void nudge(task)} />
+                        </View>
+                      </View>
+                    );
+                  })
+                : null}
             </Card>
           );
         })}
