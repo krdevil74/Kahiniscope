@@ -129,7 +129,7 @@ function user(overrides) {
   return {
     name: "Someone",
     email: "someone@gmail.com",
-    phone: "+8801712344192",
+    phone: "+919876543210",
     telegramChatId: null,
     crafts: ["Script"],
     status: "approved",
@@ -205,7 +205,7 @@ test("pending: completes its own registration form", async () => {
   await assertSucceeds(
     updateDoc(doc(db, "users", PENDING), {
       name: "Newcomer Ahmed",
-      phone: "+8801712344192",
+      phone: "+919876543210",
       crafts: ["Script", "Proofreading"],
       note: "I have done three episodes of narration before.",
     })

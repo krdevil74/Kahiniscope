@@ -13,7 +13,7 @@
  */
 
 import type { ChannelId, TeamMember } from "./model.ts";
-import { normalisePhone } from "./phone.ts";
+import { nationalDigits, normalisePhone } from "./phone.ts";
 
 export interface ContactDraft {
   name: string;
@@ -40,7 +40,10 @@ export const CONTACT_CHANNELS: ChannelId[] = ["whatsapp", "telegram", "sms"];
 export function contactFrom(member: TeamMember): ContactDraft {
   return {
     name: member.name,
-    phone: member.phone ?? "",
+    // The form edits ten digits behind a fixed +91, so a stored E.164 number
+    // has to come back as the national part — otherwise editing somebody
+    // shows "+919876543210" in a field that holds ten characters.
+    phone: nationalDigits(member.phone),
     email: member.email ?? "",
     crafts: member.crafts,
     preferredChannel: member.preferredChannel,

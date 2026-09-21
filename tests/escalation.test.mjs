@@ -147,7 +147,7 @@ before(async () => {
   await updateDoc(doc(owner.db, "users", memberUid), {
     status: "approved",
     crafts: ["Voice"],
-    phone: "+8801712344192",
+    phone: "+919876543210",
     telegramChatId: "900900",
   });
   await waitForClaims(memberUser, (c) => c.status === "approved", "approved claims");

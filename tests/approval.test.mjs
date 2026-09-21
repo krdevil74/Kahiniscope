@@ -106,7 +106,7 @@ test("a registration goes into the queue with the applicant's own words", async 
   // The one write a pending account may make.
   await updateDoc(doc(c.db, "users", user.uid), {
     crafts: ["Editing"],
-    phone: "+8801712344192",
+    phone: "+919876543210",
     note: "Worked on EP-33 to EP-36 editing with Tanmoy.",
   });
 
@@ -127,7 +127,7 @@ test("approving unlocks that session — no sign-out, no second visit", async ()
   const c = client("applicant-approved");
   const user = await signIn(c, { sub: "applicant-2", email: "mahi@gmail.com", name: "Mahi Chowdhury" });
   await waitForClaims(user, (claims) => claims.status === "pending", "pending claims");
-  await updateDoc(doc(c.db, "users", user.uid), { crafts: ["Voice"], phone: "+8801919997730" });
+  await updateDoc(doc(c.db, "users", user.uid), { crafts: ["Voice"], phone: "+919876500007" });
 
   // What the Approve button does: one field.
   await updateDoc(doc(owner.db, "users", user.uid), { status: "approved" });

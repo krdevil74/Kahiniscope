@@ -38,13 +38,23 @@ themselves.
 `app/pending.tsx` is both states, because the transition between them is the
 product. When the admin taps Approve, the claim is re-minted, the snapshot on
 the member's own user document fires, and the holding screen gives way to their
-dashboard — no sign-out, no second visit. There is no navigation code in that
-path at all; the gate simply re-reads the claim.
+dashboard — no sign-out, no second visit.
+
+That last part was a promise the app did not keep for a while. The snapshot
+fires the instant the admin writes, and the claim is minted by a Firestore
+trigger that runs *afterwards* — so the token the app asked for was a moment
+too early, and there was no second attempt. A member sat on the holding
+screen until they force-quit, at which point signing in minted a correct
+token and it looked as though it had always worked. The session provider now
+re-checks on a backoff for about half a minute, and the holding screen has a
+pull-to-refresh for when that is not enough.
 
 Phone numbers are normalised to E.164 on the way in, because that is what
-WhatsApp and the SMS gateway need. `+880 1712 344192`, `01712-344192` and
-`8801712344192` are all the same number, and `src/lib/phone.ts` treats them
-that way.
+WhatsApp and the SMS gateway need. Everybody on this team is in India, so the
+form shows a fixed `+91` and takes ten digits: `98765 43210`, `09876543210`
+and `919876543210` are all the same number. A number already in E.164 is left
+exactly as it is whatever the country, because records written before that
+rule carry `+880` numbers and re-reading one must not corrupt it.
 
 ## The screen
 
