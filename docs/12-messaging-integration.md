@@ -66,14 +66,24 @@ into your database.
 Then add the bot's username to `functions/.env`:
 
 ```
-TELEGRAM_BOT_USERNAME=YourBotName
+TELEGRAM_BOT_USERNAME=Kahiniscope_bot
 ```
 
 Without the `@`. This one is not a secret — it appears in every invite link —
-which is why it lives in `.env` rather than Secret Manager. Note that
-`functions/.env` is gitignored, so the deploy workflow writes its own copy
-from repository secrets; keep the two in step or a deployed bot will hand out
-links to a bot name that does not exist.
+which is why it lives in `.env` rather than Secret Manager.
+
+**It has to be set in two places.** `functions/.env` is gitignored, so the
+deploy workflow writes its own copy, and it reads a repository **variable**
+rather than a secret (`vars.TELEGRAM_BOT_USERNAME` in
+`.github/workflows/deploy.yml`) precisely because a bot name is public:
+
+```bash
+gh variable set TELEGRAM_BOT_USERNAME --body Kahiniscope_bot
+```
+
+Miss that one and a locally-deployed bot works while the deployed one hands
+out links to a name that does not exist. `gh secret set` is the wrong command
+here and the workflow will not see it.
 
 ### 3. Deploy, then point Telegram at the webhook
 
@@ -84,6 +94,11 @@ curl "https://api.telegram.org/bot<TOKEN>/setWebhook" \
   -d "url=https://asia-south2-kahiniscope-5c9ee.cloudfunctions.net/telegramWebhook" \
   -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>"
 ```
+
+The deploy is not optional and not the last step: a secret's value reaches the
+code only at deploy time, so setting `TELEGRAM_BOT_TOKEN` and then not
+redeploying leaves the functions running on whatever version they were built
+against — which, the first time, is the placeholder `unset`.
 
 Check it took:
 
@@ -100,7 +115,7 @@ There are two routes in, and they exist because there are two kinds of person.
 
 **Somebody with the app** taps **Connect Telegram** on their own dashboard.
 That calls `linkTelegram`, which mints a one-time token onto their user
-record and opens `t.me/<bot>?start=<token>`.
+record and opens `t.me/Kahiniscope_bot?start=<token>`.
 
 **Somebody without the app** cannot tap anything — they have no dashboard. An
 admin opens their person page and taps **Telegram invite**, which calls
