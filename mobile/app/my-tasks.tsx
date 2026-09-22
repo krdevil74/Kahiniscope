@@ -103,7 +103,7 @@ function MemberDashboard({
           admin's. */}
       <View
         style={{
-          backgroundColor: colors.brandYellow,
+          backgroundColor: colors.brand,
           // The prototype's 60px was its iOS frame's notch. On Android,
           // edge to edge, the device says how much room the status bar needs.
           paddingTop: insets.top + 16,
@@ -112,7 +112,7 @@ function MemberDashboard({
         }}
       >
         <AppText
-          style={{ fontFamily: fontFamily.mono, fontSize: 11, lineHeight: 12, color: "rgba(27,26,23,.6)" }}
+          style={{ fontFamily: fontFamily.mono, fontSize: 11, lineHeight: 12, color: colors.muted }}
         >
           {boardDateLabel(now)}
         </AppText>
@@ -131,7 +131,7 @@ function MemberDashboard({
             style={{
               alignSelf: "flex-start",
               marginTop: 8,
-              backgroundColor: colors.ink,
+              backgroundColor: colors.bar,
               borderRadius: radii.pill,
               paddingVertical: 6,
               paddingHorizontal: 11,
@@ -142,7 +142,7 @@ function MemberDashboard({
                 fontFamily: fontFamily.monoMedium,
                 fontSize: 10.5,
                 lineHeight: 13,
-                color: colors.brandYellow,
+                color: colors.brand,
               }}
             >
               {`${money(balance)} available`}
@@ -154,7 +154,7 @@ function MemberDashboard({
             fontFamily: fontFamily.regular,
             fontSize: 12,
             lineHeight: 16.8,
-            color: "rgba(27,26,23,.65)",
+            color: colors.muted,
             marginTop: 6,
           }}
         >
@@ -215,7 +215,7 @@ function MemberDashboard({
                     lineHeight: 21.25,
                     marginTop: 8,
                     marginBottom: 4,
-                    color: task.done ? "rgba(27,26,23,.4)" : colors.ink,
+                    color: task.done ? colors.faint : colors.ink,
                     textDecorationLine: task.done ? "line-through" : "none",
                   }}
                 >
@@ -228,7 +228,7 @@ function MemberDashboard({
                     fontFamily: fontFamily.regular,
                     fontSize: 12,
                     lineHeight: 16.8,
-                    color: "rgba(27,26,23,.55)",
+                    color: colors.muted,
                   }}
                 >
                   {episode?.title ?? ""}
@@ -261,7 +261,7 @@ function MemberDashboard({
                 {isRejected(task) ? (
                   <View
                     style={{
-                      backgroundColor: colors.ink,
+                      backgroundColor: colors.bar,
                       borderRadius: radii.chipLarge,
                       paddingVertical: 10,
                       paddingHorizontal: 11,
@@ -285,7 +285,7 @@ function MemberDashboard({
                       fontFamily: fontFamily.monoMedium,
                       fontSize: 10.5,
                       lineHeight: 14.2,
-                      color: "rgba(27,26,23,.5)",
+                      color: colors.faint,
                       marginTop: 8,
                     }}
                   >
@@ -300,7 +300,7 @@ function MemberDashboard({
                       setNotes((n) => ({ ...n, [task.id]: next.slice(0, 500) }))
                     }
                     placeholder="Anything to say about it? Where the file is, what you changed…"
-                    placeholderTextColor="rgba(27,26,23,.35)"
+                    placeholderTextColor={colors.faint}
                     multiline
                     accessibilityLabel={`A note for the admin about ${task.type}`}
                     style={{
@@ -346,7 +346,7 @@ function MemberDashboard({
               fontFamily: fontFamily.regular,
               fontSize: 11,
               lineHeight: 17.6,
-              color: "rgba(27,26,23,.5)",
+              color: colors.faint,
               textAlign: "center",
             }}
           >
@@ -412,7 +412,7 @@ function ConnectTelegram({ onToast }: { onToast: (message: string) => void }) {
             fontFamily: fontFamily.regular,
             fontSize: 11,
             lineHeight: 15.4,
-            color: "rgba(27,26,23,.55)",
+            color: colors.muted,
             marginTop: 3,
           }}
         >
@@ -462,7 +462,7 @@ function SubmitButton({ task, onPress }: { task: Task; onPress: () => void }) {
             fontFamily: fontFamily.semibold,
             fontSize: 13,
             lineHeight: 14,
-            color: "rgba(27,26,23,.6)",
+            color: colors.muted,
           }}
         >
           {label}
@@ -494,7 +494,7 @@ function SubmitButton({ task, onPress }: { task: Task; onPress: () => void }) {
           fontFamily: fontFamily.semibold,
           fontSize: 13,
           lineHeight: 14,
-          color: colors.brandYellow,
+          color: colors.brand,
         }}
       >
         {label}

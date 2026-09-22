@@ -41,7 +41,7 @@ export default function Episodes() {
         {/* Slate completion. */}
         <View
           style={{
-            backgroundColor: colors.ink,
+            backgroundColor: colors.bar,
             borderRadius: radii.cardHero,
             paddingVertical: 16,
             paddingHorizontal: 17,
@@ -72,7 +72,7 @@ export default function Episodes() {
             <AppText
               style={[
                 type.slatePercent,
-                { fontFamily: fontFamily.monoSemibold, lineHeight: 42, color: colors.brandYellow },
+                { fontFamily: fontFamily.monoSemibold, lineHeight: 42, color: colors.brand },
               ]}
             >
               {`${slate.percent}%`}
@@ -82,7 +82,7 @@ export default function Episodes() {
           <ProgressBar
             value={slate.percent / 100}
             height={layout.progressBarLarge}
-            fill={colors.brandYellow}
+            fill={colors.brand}
             track="rgba(255,255,255,.14)"
             style={{ marginTop: spacing.card }}
           />
@@ -131,7 +131,7 @@ export default function Episodes() {
                     fontFamily: fontFamily.mono,
                     fontSize: 10,
                     lineHeight: 10,
-                    color: "rgba(27,26,23,.45)",
+                    color: colors.faint,
                   }}
                 >
                   {airLabel(episode.airDate)}
@@ -175,7 +175,7 @@ export default function Episodes() {
                     fontFamily: fontFamily.mono,
                     fontSize: 11,
                     lineHeight: 11,
-                    color: "rgba(27,26,23,.55)",
+                    color: colors.muted,
                   }}
                 >
                   {`${completion.done} of ${completion.total} tasks done`}

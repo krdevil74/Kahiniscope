@@ -30,7 +30,7 @@ export function MemberTabs({ active }: { active: MemberTab }) {
         gap: spacing.chipsTight,
         paddingHorizontal: spacing.screen,
         paddingBottom: spacing.cardTight,
-        backgroundColor: colors.ink,
+        backgroundColor: colors.bar,
       }}
     >
       {tabs.map((tab) => {
@@ -52,9 +52,9 @@ export function MemberTabs({ active }: { active: MemberTab }) {
               justifyContent: "center",
               paddingVertical: 9,
               borderRadius: radii.pill,
-              backgroundColor: on ? colors.brandYellow : "transparent",
+              backgroundColor: on ? colors.brand : "transparent",
               borderWidth: 1,
-              borderColor: on ? colors.brandYellow : "rgba(255,255,255,.22)",
+              borderColor: on ? colors.brand : colors.onInkMuted,
             }}
           >
             <AppText

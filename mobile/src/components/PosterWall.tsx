@@ -233,7 +233,7 @@ const PosterColumn = memo(function PosterColumn({
               marginBottom: GAP,
               borderRadius: 8,
               opacity: POSTER_OPACITY,
-              backgroundColor: "rgba(27,26,23,.06)",
+              backgroundColor: colors.ripple,
             }}
           />
         ))

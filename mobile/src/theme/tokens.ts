@@ -115,10 +115,12 @@ export const layout = {
 /** Two families, no others. */
 export const fontFamily = {
   /** All UI text and headings. */
-  regular: "SpaceGrotesk_400Regular",
-  medium: "SpaceGrotesk_500Medium",
-  semibold: "SpaceGrotesk_600SemiBold",
-  bold: "SpaceGrotesk_700Bold",
+  regular: "PlusJakartaSans_400Regular",
+  medium: "PlusJakartaSans_500Medium",
+  semibold: "PlusJakartaSans_600SemiBold",
+  bold: "PlusJakartaSans_700Bold",
+  /** For the few places that need to shout: a total, a seal. */
+  extrabold: "PlusJakartaSans_800ExtraBold",
   /** Every number, count, percentage, countdown, code, endpoint, timestamp. */
   mono: "IBMPlexMono_400Regular",
   monoMedium: "IBMPlexMono_500Medium",

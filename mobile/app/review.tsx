@@ -170,7 +170,7 @@ function ReviewCard({
           <AppText weight="semibold" style={[type.bodySmall]}>
             {`${task.type}${episodeCode ? ` · ${episodeCode}` : ""}`}
           </AppText>
-          <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)", marginTop: 2 }]}>
+          <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
             {`${member?.name ?? "Somebody"}${task.rejectedCount > 0 ? ` · back for the ${task.rejectedCount + 1}${task.rejectedCount === 0 ? "st" : "th"} time` : ""}`}
           </AppText>
         </View>
@@ -187,7 +187,7 @@ function ReviewCard({
             paddingHorizontal: 11,
           }}
         >
-          <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.65)" }]}>
+          <AppText style={[type.bodySmall, { color: colors.muted }]}>
             {`“${task.submissionNote}”`}
           </AppText>
         </View>
@@ -200,12 +200,12 @@ function ReviewCard({
             value={note}
             onChangeText={(next) => setNote(next.slice(0, 500))}
             placeholder="Levels are too hot from 4:10 onwards — can you redo that section?"
-            placeholderTextColor="rgba(27,26,23,.35)"
+            placeholderTextColor={colors.faint}
             multiline
             accessibilityLabel="Why the work is going back"
             style={[inputStyle, { minHeight: 84, textAlignVertical: "top" }]}
           />
-          <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)" }]}>
+          <AppText style={[type.metaXSmall, { color: colors.faint }]}>
             They will see this, and it goes out with every reminder until the
             work comes back — every other day.
           </AppText>
@@ -258,7 +258,7 @@ function ReviewCard({
                           fontFamily: fontFamily.medium,
                           fontSize: 11,
                           lineHeight: 13,
-                          color: on ? colors.white : "rgba(27,26,23,.6)",
+                          color: on ? colors.white : colors.muted,
                         }}
                       >
                         {UNIT_LABELS[option]}
@@ -267,7 +267,7 @@ function ReviewCard({
                   );
                 })}
               </View>
-              <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)" }]}>
+              <AppText style={[type.metaXSmall, { color: colors.faint }]}>
                 {rateLabel(rate, unit)}
               </AppText>
             </View>
@@ -309,7 +309,7 @@ function ReviewCard({
               justifyContent: "space-between",
             }}
           >
-            <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.55)" }]}>
+            <AppText style={[type.metaXSmall, { color: colors.muted }]}>
               {quantity !== null && rate !== null
                 ? `${quantity} × ${money(rate)}`
                 : "Typed amount"}
@@ -323,7 +323,7 @@ function ReviewCard({
               hands over money that has already been paid, and no payment will
               appear in the queue afterwards. */}
           {balance > 0 && shown !== null ? (
-            <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.55)" }]}>
+            <AppText style={[type.metaXSmall, { color: colors.muted }]}>
               {shown <= balance
                 ? `Comes off the ${money(balance)} advance — paid on approval, leaving ${money(balance - shown)}.`
                 : `${money(balance)} advanced, which does not cover this. It will queue to be paid as normal.`}
@@ -386,7 +386,7 @@ function Field({
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor="rgba(27,26,23,.35)"
+        placeholderTextColor={colors.faint}
         keyboardType={numeric ? "numeric" : "default"}
         accessibilityLabel={label}
         style={[inputStyle, numeric ? { fontFamily: fontFamily.mono } : null]}

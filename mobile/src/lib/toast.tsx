@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     right: layout.toastInset,
     bottom: layout.toastBottom,
     zIndex: 70,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.bar,
     borderRadius: 11,
     paddingVertical: 12,
     paddingHorizontal: 14,
@@ -85,6 +85,6 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: radii.pill,
-    backgroundColor: colors.brandYellow,
+    backgroundColor: colors.brand,
   },
 });

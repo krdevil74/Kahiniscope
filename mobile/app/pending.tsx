@@ -110,7 +110,7 @@ function Waiting({ crafts }: { crafts: string[] }) {
           fontFamily: fontFamily.regular,
           fontSize: 12.5,
           lineHeight: 20.6,
-          color: "rgba(27,26,23,.6)",
+          color: colors.muted,
           marginTop: 10,
           textAlign: "center",
         }}
@@ -133,7 +133,7 @@ function Waiting({ crafts }: { crafts: string[] }) {
           marginTop: 22,
         }}
       >
-        <View style={{ width: 7, height: 7, borderRadius: radii.pill, backgroundColor: colors.brandYellow }} />
+        <View style={{ width: 7, height: 7, borderRadius: radii.pill, backgroundColor: colors.brand }} />
         <AppText
           style={{ fontFamily: fontFamily.monoMedium, fontSize: 10.5, lineHeight: 12, color: colors.ink }}
         >
@@ -146,7 +146,7 @@ function Waiting({ crafts }: { crafts: string[] }) {
           fontFamily: fontFamily.mono,
           fontSize: 10.5,
           lineHeight: 16.8,
-          color: "rgba(27,26,23,.42)",
+          color: colors.faint,
           marginTop: 26,
           textAlign: "center",
         }}
@@ -214,7 +214,7 @@ function RegistrationForm({
           {`Welcome, ${name.split(" ")[0] || "there"}`}
         </AppText>
         <AppText
-          style={[type.bodySmall, { color: "rgba(27,26,23,.6)", textAlign: "center" }]}
+          style={[type.bodySmall, { color: colors.muted, textAlign: "center" }]}
         >
           Tell the admin what you do and how to reach you. They approve
           registrations by hand.
@@ -224,7 +224,7 @@ function RegistrationForm({
       <View style={{ gap: spacing.chips }}>
         <SectionCaption>What you do</SectionCaption>
         {/* Several are allowed: one person is rarely one thing. */}
-        <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.5)", marginTop: -4 }]}>
+        <AppText style={[type.bodySmall, { color: colors.faint, marginTop: -4 }]}>
           Pick everything you do — up to {MAX_CRAFTS}.
         </AppText>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.chipsTight }}>
@@ -252,7 +252,7 @@ function RegistrationForm({
                     fontFamily: fontFamily.medium,
                     fontSize: 11,
                     lineHeight: 13,
-                    color: on ? colors.white : "rgba(27,26,23,.6)",
+                    color: on ? colors.white : colors.muted,
                   }}
                 >
                   {option}
@@ -274,7 +274,7 @@ function RegistrationForm({
         <AppText
           style={[
             type.metaXSmall,
-            { color: phone && !phoneValid ? colors.danger : "rgba(27,26,23,.45)" },
+            { color: phone && !phoneValid ? colors.danger : colors.faint },
           ]}
         >
           {phone && !phoneValid
@@ -289,7 +289,7 @@ function RegistrationForm({
           value={note}
           onChangeText={(next) => setNote(next.slice(0, 500))}
           placeholder="Which episodes you have worked on, what else you can cover…"
-          placeholderTextColor="rgba(27,26,23,.35)"
+          placeholderTextColor={colors.faint}
           multiline
           numberOfLines={4}
           maxLength={500}
@@ -308,7 +308,7 @@ function RegistrationForm({
             color: colors.ink,
           }}
         />
-        <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.45)" }]}>
+        <AppText style={[type.metaXSmall, { color: colors.faint }]}>
           {`${note.length}/500 · shown on your card in the approval queue`}
         </AppText>
       </View>

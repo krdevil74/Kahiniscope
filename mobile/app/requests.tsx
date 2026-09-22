@@ -106,7 +106,7 @@ export default function Requests() {
             fontFamily: fontFamily.regular,
             fontSize: 11,
             lineHeight: 17.05,
-            color: "rgba(27,26,23,.55)",
+            color: colors.muted,
             paddingHorizontal: 2,
             paddingBottom: 2,
           }}
@@ -143,7 +143,7 @@ export default function Requests() {
                     fontFamily: fontFamily.mono,
                     fontSize: 10.5,
                     lineHeight: 15.75,
-                    color: "rgba(27,26,23,.5)",
+                    color: colors.faint,
                     marginTop: 4,
                   }}
                 >
@@ -189,7 +189,7 @@ export default function Requests() {
                   fontFamily: fontFamily.regular,
                   fontSize: 11,
                   lineHeight: 16.5,
-                  color: "rgba(27,26,23,.6)",
+                  color: colors.muted,
                 }}
               >
                 {member.note?.trim()
@@ -204,7 +204,7 @@ export default function Requests() {
             {contactFor(member) ? (
               <View
                 style={{
-                  backgroundColor: colors.ink,
+                  backgroundColor: colors.bar,
                   borderRadius: radii.chipLarge,
                   paddingVertical: 11,
                   paddingHorizontal: 12,
@@ -286,7 +286,7 @@ export default function Requests() {
                 fontFamily: fontFamily.regular,
                 fontSize: 11.5,
                 lineHeight: 18.4,
-                color: "rgba(27,26,23,.5)",
+                color: colors.faint,
                 textAlign: "center",
               }}
             >
@@ -308,7 +308,7 @@ export default function Requests() {
         >
           {approved.length === 0 ? (
             <View style={{ paddingVertical: 16, paddingHorizontal: 13 }}>
-              <AppText style={[type.bodyXSmall, { color: "rgba(27,26,23,.45)" }]}>
+              <AppText style={[type.bodyXSmall, { color: colors.faint }]}>
                 Nobody approved yet.
               </AppText>
             </View>
@@ -347,7 +347,7 @@ export default function Requests() {
                   fontFamily: fontFamily.mono,
                   fontSize: 10,
                   lineHeight: 10,
-                  color: "rgba(27,26,23,.45)",
+                  color: colors.faint,
                 }}
               >
                 {member.role === "owner" || member.role === "admin" ? member.role : craftLabel(member.crafts)}
@@ -375,7 +375,7 @@ export default function Requests() {
                     fontFamily: fontFamily.medium,
                     fontSize: 10,
                     lineHeight: 10,
-                    color: "rgba(27,26,23,.45)",
+                    color: colors.faint,
                   }}
                 >
                   Revoke

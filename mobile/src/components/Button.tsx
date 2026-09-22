@@ -43,10 +43,19 @@ export function Button({
   accessibilityLabel,
 }: ButtonProps) {
   const metrics = PADDING[size];
+  // "yellow" is the primary variant's name from the original handoff. The
+  // colour it paints is now the brand purple: the yellow belongs to the mark,
+  // and a button wearing the logo's colour competes with the logo. The name
+  // stays because sixty call sites use it and renaming them would be churn
+  // with no reader on the other side.
   const background =
-    variant === "yellow" ? colors.brandYellow : variant === "ink" ? colors.ink : colors.surface;
+    variant === "yellow" ? colors.brand : variant === "ink" ? colors.bar : colors.surface;
   const foreground =
-    variant === "ink" ? colors.white : variant === "quiet" ? "rgba(27,26,23,.6)" : colors.ink;
+    variant === "yellow" || variant === "ink"
+      ? colors.onBar
+      : variant === "quiet"
+        ? colors.muted
+        : colors.ink;
   const border =
     variant === "outline" ? colors.hairlineStrong : variant === "quiet" ? colors.hairlineStronger : "transparent";
 
@@ -58,14 +67,14 @@ export function Button({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled }}
       hitSlop={size === "compact" ? 8 : 0}
-      android_ripple={{ color: "rgba(27,26,23,.12)" }}
+      android_ripple={{ color: colors.ripple }}
       style={({ pressed }) => [
         {
           backgroundColor:
             pressed && variant === "yellow"
-              ? colors.yellowHover
+              ? colors.brandPressed
               : pressed && variant === "ink"
-                ? "#332f28"
+                ? colors.barPressed
                 : background,
           borderRadius: radius ?? (size === "large" ? radii.buttonLarge : radii.button),
           borderWidth: border === "transparent" ? 0 : 1,

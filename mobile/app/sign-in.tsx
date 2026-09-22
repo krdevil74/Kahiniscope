@@ -108,7 +108,7 @@ export default function SignIn() {
           <AppText
             style={[
               type.body,
-              { color: "rgba(27,26,23,.6)", textAlign: "center", maxWidth: 280 },
+              { color: colors.muted, textAlign: "center", maxWidth: 280 },
             ]}
           >
             Sign in with the Google account you use for the channel. New sign-ups go
@@ -127,7 +127,7 @@ export default function SignIn() {
               borderRadius: radii.buttonLarge,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: pressed ? colors.yellowHover : colors.brandYellow,
+              backgroundColor: pressed ? colors.brandPressed : colors.brand,
               opacity: disabled ? 0.6 : 1,
             })}
           >
@@ -167,7 +167,7 @@ export default function SignIn() {
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <AppText style={[type.meta, { color: "rgba(27,26,23,.6)" }]}>
+                  <AppText style={[type.meta, { color: colors.muted }]}>
                     {`emulator · ${account.label}`}
                   </AppText>
                 </Pressable>

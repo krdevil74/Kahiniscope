@@ -24,7 +24,16 @@
  */
 
 export interface Palette {
+  /**
+   * Primary text. In the light theme this is also the colour of the header
+   * and nav bars, which is why the two were one token for a long time — in
+   * the dark theme they are opposites, so they are two now.
+   */
   ink: string;
+  /** The header, the nav bar, and anything else drawn as a dark slab. */
+  bar: string;
+  /** Text on `bar`. */
+  onBar: string;
   brandYellow: string;
   yellowHover: string;
   yellowDeep: string;
@@ -45,7 +54,10 @@ export interface Palette {
   white: string;
   /** New, and named for the job rather than the hue. */
   brand: string;
+  brandPressed: string;
   brandSoft: string;
+  /** Pressed state on the dark bar. */
+  barPressed: string;
   info: string;
   infoSoft: string;
   money: string;
@@ -56,6 +68,10 @@ export interface Palette {
   text: string;
   muted: string;
   faint: string;
+  /** Android touch feedback. Dark ink on light, light ink on dark. */
+  ripple: string;
+  /** A heavier ripple, for the yellow "+" and other filled controls. */
+  rippleStrong: string;
 }
 
 const PURPLE = "#9B5DE5";
@@ -65,9 +81,9 @@ const BLUE = "#00BBF9";
 const MINT = "#00F5D4";
 
 export const DARK: Palette = {
-  // `ink` is the colour things sit *on* in the dark theme: headers, the nav
-  // bar and primary fills are all raised surfaces here, not black ones.
-  ink: "#1E1829",
+  ink: "#F6F3FB",
+  bar: "#1E1829",
+  onBar: "#F6F3FB",
   brandYellow: "#FFC20A",
   yellowHover: "#FFD451",
   yellowDeep: YELLOW,
@@ -87,7 +103,9 @@ export const DARK: Palette = {
   onInkMuted: "rgba(246,243,251,.55)",
   white: "#FFFFFF",
   brand: PURPLE,
+  brandPressed: "#8A4CD8",
   brandSoft: "rgba(155,93,229,.16)",
+  barPressed: "#2A2138",
   info: BLUE,
   infoSoft: "rgba(0,187,249,.14)",
   money: MINT,
@@ -97,10 +115,14 @@ export const DARK: Palette = {
   text: "#F6F3FB",
   muted: "rgba(246,243,251,.58)",
   faint: "rgba(246,243,251,.38)",
+  ripple: "rgba(255,255,255,.10)",
+  rippleStrong: "rgba(255,255,255,.18)",
 };
 
 export const LIGHT: Palette = {
   ink: "#171225",
+  bar: "#171225",
+  onBar: "#FFFFFF",
   brandYellow: "#FFC20A",
   yellowHover: "#FFD451",
   // The raw yellow is unreadable on white, so the light theme darkens it for
@@ -124,7 +146,9 @@ export const LIGHT: Palette = {
   onInkMuted: "rgba(255,255,255,.62)",
   white: "#FFFFFF",
   brand: "#7B3FD4",
+  brandPressed: "#6A32BE",
   brandSoft: "rgba(155,93,229,.13)",
+  barPressed: "#2A2138",
   info: "#0090C7",
   infoSoft: "rgba(0,187,249,.14)",
   money: "#00806C",
@@ -134,6 +158,8 @@ export const LIGHT: Palette = {
   text: "#171225",
   muted: "rgba(23,18,31,.62)",
   faint: "rgba(23,18,31,.42)",
+  ripple: "rgba(23,18,31,.08)",
+  rippleStrong: "rgba(23,18,31,.18)",
 };
 
 /** The escalation heat scale, per theme. Yellow through pink, either way. */

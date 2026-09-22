@@ -5,6 +5,7 @@
 import { View, type ViewStyle } from "react-native";
 
 import { AppText } from "./AppText";
+import { colors } from "../theme/tokens";
 import { type } from "../theme/typography";
 
 export function SectionCaption({
@@ -21,7 +22,7 @@ export function SectionCaption({
       <AppText
         style={[
           type.caption,
-          { color: onInk ? "rgba(255,255,255,.45)" : "rgba(27,26,23,.45)" },
+          { color: onInk ? "rgba(255,255,255,.45)" : colors.faint },
         ]}
       >
         {children}
