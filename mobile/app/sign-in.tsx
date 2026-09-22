@@ -5,7 +5,8 @@
  */
 
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Redirect } from "expo-router";
 
 import { AppText } from "../src/components/AppText";
@@ -127,11 +128,18 @@ export default function SignIn() {
               borderRadius: radii.buttonLarge,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: pressed ? colors.brandPressed : colors.brand,
+              backgroundColor: "transparent",
+          overflow: "hidden",
               opacity: disabled ? 0.6 : 1,
             })}
           >
-            {busy ? (
+            <LinearGradient
+          colors={[...colors.brandGradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {busy ? (
               <ActivityIndicator color={colors.ink} />
             ) : (
               <AppText weight="semibold" style={[type.h4, { fontSize: 14, lineHeight: 14 }]}>

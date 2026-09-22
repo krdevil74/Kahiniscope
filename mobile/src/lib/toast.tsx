@@ -42,13 +42,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
+  const styles = toastStyles();
+
   return (
     <ToastContext.Provider value={show}>
       {children}
       {message ? (
         <Animated.View pointerEvents="none" style={[styles.toast, { opacity }]}>
           <View style={styles.dot} />
-          <AppText style={[type.bodySmall, { color: colors.white, flex: 1 }]}>{message}</AppText>
+          <AppText style={[type.bodySmall, { color: colors.onBar, flex: 1 }]}>{message}</AppText>
         </Animated.View>
       ) : null}
     </ToastContext.Provider>
@@ -61,30 +63,37 @@ export function useToast(): Show {
   return show;
 }
 
-const styles = StyleSheet.create({
-  toast: {
-    position: "absolute",
-    left: layout.toastInset,
-    right: layout.toastInset,
-    bottom: layout.toastBottom,
-    zIndex: 70,
-    backgroundColor: colors.bar,
-    borderRadius: 11,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.cards,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.28,
-    shadowRadius: 30,
-    shadowOffset: { width: 0, height: 10 },
-  },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: radii.pill,
-    backgroundColor: colors.brand,
-  },
-});
+/**
+ * Built per render rather than once at import. StyleSheet.create freezes what
+ * it is given, and `colors` is swapped in place when the theme changes — a
+ * frozen sheet would leave the toast in whichever theme loaded first.
+ */
+function toastStyles() {
+  return StyleSheet.create({
+    toast: {
+      position: "absolute",
+      left: layout.toastInset,
+      right: layout.toastInset,
+      bottom: layout.toastBottom,
+      zIndex: 70,
+      backgroundColor: colors.bar,
+      borderRadius: 11,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.cards,
+      elevation: 8,
+      shadowColor: "#000",
+      shadowOpacity: 0.28,
+      shadowRadius: 30,
+      shadowOffset: { width: 0, height: 10 },
+    },
+    dot: {
+      width: 7,
+      height: 7,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brand,
+    },
+  });
+}

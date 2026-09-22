@@ -7,7 +7,8 @@
  * below it on their own.
  */
 
-import { Pressable, View, type ViewStyle } from "react-native";
+import { Pressable, StyleSheet, View, type ViewStyle } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { AppText } from "./AppText";
 import { colors, fontFamily, radii, MIN_TAP_TARGET } from "../theme/tokens";
@@ -70,12 +71,15 @@ export function Button({
       android_ripple={{ color: colors.ripple }}
       style={({ pressed }) => [
         {
+          // The primary variant paints its fill with a gradient layer below,
+          // so its own background stays clear. Everything else fills flat.
           backgroundColor:
-            pressed && variant === "yellow"
-              ? colors.brandPressed
+            variant === "yellow"
+              ? "transparent"
               : pressed && variant === "ink"
                 ? colors.barPressed
                 : background,
+          overflow: "hidden",
           borderRadius: radius ?? (size === "large" ? radii.buttonLarge : radii.button),
           borderWidth: border === "transparent" ? 0 : 1,
           borderColor: border,
@@ -89,20 +93,35 @@ export function Button({
         style,
       ]}
     >
-      <View>
-        <AppText
-          weight="semibold"
-          numberOfLines={1}
-          style={{
-            fontFamily: fontFamily.semibold,
-            fontSize: metrics.fontSize,
-            lineHeight: metrics.fontSize * 1.15,
-            color: foreground,
-          }}
-        >
-          {label}
-        </AppText>
-      </View>
+      {({ pressed }: { pressed: boolean }) => (
+        <>
+          {/* Purple into pink, and only here: appearing together is what
+              makes this read as the primary action rather than decoration. */}
+          {variant === "yellow" ? (
+            <LinearGradient
+              colors={[...(pressed ? colors.brandGradientPressed : colors.brandGradient)]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null}
+
+          <View>
+            <AppText
+              weight="semibold"
+              numberOfLines={1}
+              style={{
+                fontFamily: fontFamily.semibold,
+                fontSize: metrics.fontSize,
+                lineHeight: metrics.fontSize * 1.15,
+                color: foreground,
+              }}
+            >
+              {label}
+            </AppText>
+          </View>
+        </>
+      )}
     </Pressable>
   );
 }

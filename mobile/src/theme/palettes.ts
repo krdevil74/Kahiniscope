@@ -55,6 +55,13 @@ export interface Palette {
   /** New, and named for the job rather than the hue. */
   brand: string;
   brandPressed: string;
+  /**
+   * The primary action, as two stops. Purple and pink appear together only
+   * here — that is what makes the gradient read as "the button" rather than
+   * as decoration, and why nothing else in the app uses both at once.
+   */
+  brandGradient: readonly [string, string];
+  brandGradientPressed: readonly [string, string];
   brandSoft: string;
   /** Pressed state on the dark bar. */
   barPressed: string;
@@ -104,6 +111,8 @@ export const DARK: Palette = {
   white: "#FFFFFF",
   brand: PURPLE,
   brandPressed: "#8A4CD8",
+  brandGradient: [PURPLE, PINK],
+  brandGradientPressed: ["#8A4CD8", "#D94FA1"],
   brandSoft: "rgba(155,93,229,.16)",
   barPressed: "#2A2138",
   info: BLUE,
@@ -147,6 +156,9 @@ export const LIGHT: Palette = {
   white: "#FFFFFF",
   brand: "#7B3FD4",
   brandPressed: "#6A32BE",
+  // Taken down to pass contrast against white text on a light page.
+  brandGradient: ["#7B3FD4", "#D6399B"],
+  brandGradientPressed: ["#6A32BE", "#BE2C89"],
   brandSoft: "rgba(155,93,229,.13)",
   barPressed: "#2A2138",
   info: "#0090C7",

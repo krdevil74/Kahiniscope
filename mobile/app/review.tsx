@@ -203,7 +203,7 @@ function ReviewCard({
             placeholderTextColor={colors.faint}
             multiline
             accessibilityLabel="Why the work is going back"
-            style={[inputStyle, { minHeight: 84, textAlignVertical: "top" }]}
+            style={[inputStyle(), { minHeight: 84, textAlignVertical: "top" }]}
           />
           <AppText style={[type.metaXSmall, { color: colors.faint }]}>
             They will see this, and it goes out with every reminder until the
@@ -353,18 +353,25 @@ function ReviewCard({
   );
 }
 
-const inputStyle = {
-  backgroundColor: colors.surface,
-  borderWidth: 1,
-  borderColor: colors.hairlineStrong,
-  borderRadius: radii.chipLarge,
-  paddingVertical: 11,
-  paddingHorizontal: 12,
-  minHeight: MIN_TAP_TARGET,
-  fontFamily: fontFamily.regular,
-  fontSize: 13,
-  color: colors.ink,
-} as const;
+/**
+ * A function, not a constant. `colors` is swapped in place when the theme
+ * changes, so an object built once at import would carry whichever theme
+ * loaded first — for the life of the process.
+ */
+function inputStyle() {
+  return {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.hairlineStrong,
+    borderRadius: radii.chipLarge,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    minHeight: MIN_TAP_TARGET,
+    fontFamily: fontFamily.regular,
+    fontSize: 13,
+    color: colors.ink,
+  } as const;
+}
 
 function Field({
   label,
@@ -389,7 +396,7 @@ function Field({
         placeholderTextColor={colors.faint}
         keyboardType={numeric ? "numeric" : "default"}
         accessibilityLabel={label}
-        style={[inputStyle, numeric ? { fontFamily: fontFamily.mono } : null]}
+        style={[inputStyle(), numeric ? { fontFamily: fontFamily.mono } : null]}
       />
     </View>
   );
