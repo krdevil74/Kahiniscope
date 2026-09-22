@@ -4,6 +4,7 @@ import test from "node:test";
 import { EMPTY_RATES } from "./model.ts";
 import {
   amountToShow,
+  breakdownOf,
   balanceLabel,
   earningsFor,
   estimateFor,
@@ -248,4 +249,64 @@ test("a nonsense size shows nothing rather than everything", () => {
 test("the more button counts, and never says zero", () => {
   assert.equal(moreLabel(1), "Show 1 more");
   assert.equal(moreLabel(12), "Show 12 more");
+});
+
+// ---------------------------------------------------------------------------
+// Showing the working
+// ---------------------------------------------------------------------------
+
+test("a figure from a rate shows the sum that produced it", () => {
+  const b = breakdownOf(
+    payment({ unit: "voice-narration", rate: 20, quantity: 10, estimatedAmount: 200 })
+  );
+  assert.equal(b.rate, "₹20 per minute");
+  assert.equal(b.quantity, "10 minutes");
+  assert.equal(b.working, "₹20 × 10 minutes");
+  assert.equal(b.total, "₹200");
+  assert.equal(b.note, null);
+});
+
+test("one of a thing is not \"1 minutes\"", () => {
+  const b = breakdownOf(payment({ unit: "cover", rate: 700, quantity: 1, estimatedAmount: 700 }));
+  assert.equal(b.quantity, "1 cover");
+  assert.equal(b.working, "₹700 × 1 cover");
+});
+
+test("a part minute is not shown to fifteen decimal places", () => {
+  const b = breakdownOf(
+    payment({ unit: "sound-design", rate: 26, quantity: 12.5, estimatedAmount: 325 })
+  );
+  assert.equal(b.quantity, "12.5 minutes");
+});
+
+test("work with no unit says so rather than leaving a gap", () => {
+  const b = breakdownOf(
+    payment({ taskType: "Script writing", unit: "manual", estimatedAmount: 1500 })
+  );
+  assert.equal(b.working, null);
+  assert.equal(b.total, "₹1,500");
+  assert.match(b.note ?? "", /No unit rate for this kind of work/);
+});
+
+test("a final figure that differs from the estimate is explained, not hidden", () => {
+  const b = breakdownOf(
+    payment({
+      status: "paid",
+      unit: "voice-character",
+      rate: 50,
+      quantity: 12,
+      estimatedAmount: 600,
+      finalAmount: 550,
+    })
+  );
+  assert.equal(b.total, "₹550", "what was actually paid");
+  assert.equal(b.working, "₹50 × 12 minutes");
+  assert.match(b.note ?? "", /Estimated ₹600; the admin paid ₹550\./);
+});
+
+test("a final figure that matches the estimate needs no explanation", () => {
+  const b = breakdownOf(
+    payment({ status: "paid", unit: "cover", rate: 700, quantity: 1, estimatedAmount: 700, finalAmount: 700 })
+  );
+  assert.equal(b.note, null);
 });

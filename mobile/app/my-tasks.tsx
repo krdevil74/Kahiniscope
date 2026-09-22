@@ -23,11 +23,14 @@ import { ProgressBar } from "../src/components/ProgressBar";
 import { useSession } from "../src/lib/auth";
 import { submitTask, submittedToast } from "../src/lib/review-actions.ts";
 import { isRejected, rejectionLabel, statusLabel, submitLabel } from "../src/lib/review.ts";
+import { ActivityChart } from "../src/components/ActivityChart";
+import { SectionCaption } from "../src/components/SectionCaption";
+import { memberSummary, monthlyActivity } from "../src/lib/member-summary.ts";
 import { memberChainSentence } from "../src/lib/channel-meta.ts";
 import { money } from "../src/lib/payments.ts";
 import { connectTelegram } from "../src/lib/telegram-link";
 import { byDueDate } from "../src/lib/completion.ts";
-import { indexBy, useEpisodes, useNow, useSettings, useTasks } from "../src/lib/data";
+import { indexBy, useEpisodes, useNow, usePayments, useSettings, useTasks } from "../src/lib/data";
 import { memberNote } from "../src/lib/escalation.ts";
 import { boardDateLabel } from "../src/lib/format.ts";
 import type { Task } from "../src/lib/model";
@@ -83,6 +86,8 @@ function MemberDashboard({
   const { data: tasks } = useTasks({ assigneeUid: uid, enabled: approved && Boolean(uid) });
   const { data: episodes } = useEpisodes(approved);
   const { data: settings } = useSettings(approved);
+  // Their own payments, for the three money figures above the list.
+  const { data: payments } = usePayments({ uid, enabled: approved && Boolean(uid) });
   const insets = useSafeAreaInsets();
   /** A half-typed note per task, cleared once that task goes in. */
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -90,6 +95,8 @@ function MemberDashboard({
   const byEpisode = useMemo(() => indexBy(episodes, (e) => e.id), [episodes]);
   const ordered = useMemo(() => byDueDate(tasks, now), [tasks, now]);
   const open = useMemo(() => tasks.filter((t) => !t.done).length, [tasks]);
+  const summary = useMemo(() => memberSummary(tasks, payments, now), [tasks, payments, now]);
+  const activity = useMemo(() => monthlyActivity(tasks, now), [tasks, now]);
 
   async function toggle(task: Task) {
     await submitTask(task.id, notes[task.id] ?? null);
@@ -112,13 +119,19 @@ function MemberDashboard({
         }}
       >
         <AppText
-          style={{ fontFamily: fontFamily.mono, fontSize: 11, lineHeight: 12, color: colors.muted }}
+          style={{ fontFamily: fontFamily.mono, fontSize: 11, lineHeight: 12, color: colors.onInkMuted }}
         >
           {boardDateLabel(now)}
         </AppText>
         <AppText
           weight="semibold"
-          style={{ fontFamily: fontFamily.semibold, fontSize: 24, lineHeight: 27.6, marginTop: 6 }}
+          style={{
+            fontFamily: fontFamily.semibold,
+            fontSize: 24,
+            lineHeight: 27.6,
+            marginTop: 6,
+            color: colors.onBar,
+          }}
         >
           {open ? `${open} task${open === 1 ? "" : "s"} waiting on you` : "All clear"}
         </AppText>
@@ -154,7 +167,7 @@ function MemberDashboard({
             fontFamily: fontFamily.regular,
             fontSize: 12,
             lineHeight: 16.8,
-            color: colors.muted,
+            color: colors.onInkMuted,
             marginTop: 6,
           }}
         >
@@ -170,6 +183,47 @@ function MemberDashboard({
         contentContainerStyle={{ padding: spacing.screen, paddingBottom: 40, gap: 9 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* What the screen is actually for: the three counts, the money, and
+            six months of shape. The list below answers "what next"; none of
+            this could be read from it without scrolling and counting. */}
+        <View style={{ flexDirection: "row", gap: spacing.chipsTight }}>
+          <Stat label="Pending" value={String(summary.pending)} tone={colors.attention} />
+          <Stat label="Submitted" value={String(summary.submitted)} tone={colors.info} />
+          <Stat label="Approved" value={String(summary.approved)} tone={colors.money} />
+        </View>
+
+        <Card radius={13} style={{ padding: 14, gap: 12 }}>
+          <SectionCaption>Payments</SectionCaption>
+          <View style={{ gap: 10 }}>
+            <MoneyLine
+              label="Pending, estimated"
+              value={
+                summary.paymentPendingPartial
+                  ? `${money(summary.paymentPending)}+`
+                  : money(summary.paymentPending)
+              }
+              tone={colors.yellowDeep}
+            />
+            <MoneyLine
+              label="Paid · last 30 days"
+              value={money(summary.paidLastMonth)}
+              tone={colors.money}
+            />
+            <MoneyLine
+              label="Paid · last 12 months"
+              value={money(summary.paidLastYear)}
+              tone={colors.money}
+            />
+          </View>
+        </Card>
+
+        <Card radius={13} style={{ padding: 14, gap: 12 }}>
+          <SectionCaption>Last six months</SectionCaption>
+          <ActivityChart months={activity} />
+        </Card>
+
+        <SectionCaption style={{ marginTop: 6 }}>Your tasks</SectionCaption>
+
         {ordered.map((task) => {
           const episode = byEpisode.get(task.episodeId);
           const heat = heatFor(task.remindersSent);
@@ -500,5 +554,77 @@ function SubmitButton({ task, onPress }: { task: Task; onPress: () => void }) {
         {label}
       </AppText>
     </Pressable>
+  );
+}
+
+
+/**
+ * One of the three counts. Large numeral, quiet label — the number is the
+ * thing being read and the word only says which number it is.
+ */
+function Stat({ label, value, tone }: { label: string; value: string; tone: string }) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.hairline,
+        borderRadius: radii.card,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+      }}
+    >
+      <AppText
+        style={{
+          fontFamily: fontFamily.monoMedium,
+          fontSize: 9.5,
+          lineHeight: 11,
+          letterSpacing: 0.8,
+          textTransform: "uppercase",
+          color: colors.faint,
+        }}
+      >
+        {label}
+      </AppText>
+      <AppText
+        weight="semibold"
+        style={{
+          fontFamily: fontFamily.semibold,
+          fontSize: 26,
+          lineHeight: 31,
+          letterSpacing: -0.8,
+          color: tone,
+          marginTop: 2,
+        }}
+      >
+        {value}
+      </AppText>
+    </View>
+  );
+}
+
+function MoneyLine({ label, value, tone }: { label: string; value: string; tone: string }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "baseline", gap: spacing.chips }}>
+      <AppText
+        style={{
+          flex: 1,
+          minWidth: 0,
+          fontFamily: fontFamily.regular,
+          fontSize: 12,
+          lineHeight: 16,
+          color: colors.muted,
+        }}
+      >
+        {label}
+      </AppText>
+      <AppText
+        weight="semibold"
+        style={{ fontFamily: fontFamily.semibold, fontSize: 16, lineHeight: 19, color: tone }}
+      >
+        {value}
+      </AppText>
+    </View>
   );
 }
