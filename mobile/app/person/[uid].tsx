@@ -14,6 +14,7 @@ import { EmptyState } from "../../src/components/EmptyState";
 import { HeatBadge } from "../../src/components/HeatBadge";
 import { craftLabel, toggleCraft } from "../../src/lib/crafts.ts";
 import { contactTelegramLink } from "../../src/lib/contact-actions.ts";
+import { telegramInvite } from "../../src/lib/telegram-invite.ts";
 import { addAdvance, advancedToast, setRates } from "../../src/lib/review-actions.ts";
 import { EMPTY_RATES, type Rates } from "../../src/lib/model";
 import { money } from "../../src/lib/payments.ts";
@@ -154,9 +155,8 @@ export default function PersonDetail() {
     setInviting(true);
     try {
       const url = await contactTelegramLink(member.uid);
-      await Share.share({
-        message: `Kahiniscope reminders for you, ${member.name}: open this and press Start.\n${url}`,
-      });
+      const invite = telegramInvite(member.name, url);
+      await Share.share({ message: invite.message, title: invite.subject });
     } catch (err) {
       toast(err instanceof Error ? err.message : "Could not make an invite link.");
     } finally {

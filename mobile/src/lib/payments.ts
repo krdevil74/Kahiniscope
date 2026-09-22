@@ -306,3 +306,67 @@ export function pageOf<T>(items: readonly T[], size: number = PAGE_SIZE): Page<T
 export function moreLabel(hidden: number): string {
   return hidden === 1 ? "Show 1 more" : `Show ${hidden} more`;
 }
+
+// ---------------------------------------------------------------------------
+// Showing the working
+// ---------------------------------------------------------------------------
+
+export interface Breakdown {
+  /** "₹20 per minute", or null where nothing was multiplied. */
+  rate: string | null;
+  /** "10 minutes", or null. */
+  quantity: string | null;
+  /** "₹20 × 10 minutes", the sum as written out. */
+  working: string | null;
+  /** What that came to. */
+  total: string;
+  /**
+   * Why there is no working: not every kind of work has a unit, and a row
+   * that shows a total with no explanation reads as though one is missing.
+   */
+  note: string | null;
+}
+
+function plural(count: number, noun: string): string {
+  const rounded = Number.isInteger(count) ? count : Math.round(count * 100) / 100;
+  return `${rounded} ${noun}${rounded === 1 ? "" : "s"}`;
+}
+
+/**
+ * How a figure was arrived at.
+ *
+ * An amount on its own invites the question "why that much", and the answer
+ * is arithmetic somebody should be able to check: a rate, a quantity, and the
+ * two multiplied. Where there is no rate — script writing, editing, anything
+ * the channel does not price by the unit — the honest answer is that an admin
+ * decided, and it says so rather than leaving a gap.
+ */
+export function breakdownOf(payment: Payment): Breakdown {
+  const shown = amountToShow(payment);
+  const total = money(shown);
+
+  if (payment.rate === null || payment.quantity === null) {
+    return {
+      rate: null,
+      quantity: null,
+      working: null,
+      total,
+      note: "No unit rate for this kind of work — the amount was set by the admin.",
+    };
+  }
+
+  const noun = UNIT_NOUNS[payment.unit];
+  const rate = `${money(payment.rate)} per ${noun}`;
+  const quantity = plural(payment.quantity, noun);
+
+  return {
+    rate,
+    quantity,
+    working: `${money(payment.rate)} × ${quantity}`,
+    total,
+    note:
+      payment.finalAmount !== null && payment.finalAmount !== payment.estimatedAmount
+        ? `Estimated ${money(payment.estimatedAmount)}; the admin paid ${money(payment.finalAmount)}.`
+        : null,
+  };
+}

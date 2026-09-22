@@ -12,7 +12,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { AppShell } from "../src/components/AppShell";
@@ -30,6 +30,7 @@ import { indexBy, useEpisodes, usePayments, useTeam } from "../src/lib/data";
 import type { Episode } from "../src/lib/model";
 import {
   amountToShow,
+  breakdownOf,
   earningsFor,
   ESTIMATE_DISCLAIMER,
   money,
@@ -563,9 +564,21 @@ function SummaryBar({
  * recording" alone does not tell somebody which of the eleven they did.
  */
 function PaymentRow({ payment, episode }: { payment: Payment; episode?: Episode }) {
+  const [open, setOpen] = useState(false);
+  const detail = breakdownOf(payment);
+
   return (
     <Card radius={11} style={{ paddingVertical: 11, paddingHorizontal: 12 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}>
+      {/* The amount is the question and the working is the answer, so the
+          answer is one tap away rather than on screen for every row. */}
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`${payment.taskType}, ${detail.total}. ${open ? "Hide" : "Show"} how it was worked out`}
+        android_ripple={{ color: colors.ripple }}
+        style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}
+      >
         <View style={{ flex: 1, minWidth: 0 }}>
           <AppText weight="semibold" style={[type.bodySmall]}>
             {payment.taskType}
@@ -588,7 +601,7 @@ function PaymentRow({ payment, episode }: { payment: Payment; episode?: Episode 
               fontFamily: fontFamily.mono,
               fontSize: 10,
               lineHeight: 13,
-              color: colors.faint,
+              color: payment.status === "paid" ? colors.money : colors.faint,
               marginTop: 3,
             }}
           >
@@ -601,15 +614,100 @@ function PaymentRow({ payment, episode }: { payment: Payment; episode?: Episode 
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <AppText weight="semibold" style={[type.bodySmall]}>
-            {money(amountToShow(payment))}
+            {detail.total}
           </AppText>
-          {payment.status !== "paid" ? (
-            <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
-              estimate
+          <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
+            {payment.status !== "paid" ? "estimate" : open ? "hide" : "how?"}
+          </AppText>
+        </View>
+      </Pressable>
+
+      {open ? (
+        <View
+          style={{
+            marginTop: 11,
+            paddingTop: 11,
+            borderTopWidth: 1,
+            borderTopColor: colors.hairline,
+            gap: 7,
+          }}
+        >
+          {detail.working ? (
+            <>
+              <BreakdownLine label="Rate" value={detail.rate ?? "—"} />
+              <BreakdownLine label="Work" value={detail.quantity ?? "—"} />
+              <BreakdownLine label={detail.working} value={detail.total} emphasis />
+            </>
+          ) : (
+            <BreakdownLine label="Amount" value={detail.total} emphasis />
+          )}
+
+          {detail.note ? (
+            <AppText style={[type.metaXSmall, { color: colors.faint, lineHeight: 15 }]}>
+              {detail.note}
             </AppText>
           ) : null}
+
+          {/* What the admin said when they approved it. Worth surfacing:
+              it is the only feedback most work ever gets. */}
+          {payment.comment ? (
+            <View
+              style={{
+                marginTop: 4,
+                backgroundColor: colors.surfaceSunken,
+                borderRadius: radii.chipLarge,
+                paddingVertical: 9,
+                paddingHorizontal: 10,
+              }}
+            >
+              <AppText style={[type.metaXSmall, { color: colors.faint }]}>
+                Note from the admin
+              </AppText>
+              <AppText style={[type.bodySmall, { color: colors.muted, marginTop: 3 }]}>
+                {`“${payment.comment}”`}
+              </AppText>
+            </View>
+          ) : null}
         </View>
-      </View>
+      ) : null}
     </Card>
+  );
+}
+
+function BreakdownLine({
+  label,
+  value,
+  emphasis = false,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "baseline", gap: spacing.chips }}>
+      <AppText
+        style={{
+          flex: 1,
+          minWidth: 0,
+          fontFamily: emphasis ? fontFamily.monoMedium : fontFamily.mono,
+          fontSize: 10.5,
+          lineHeight: 14,
+          color: emphasis ? colors.ink : colors.muted,
+        }}
+      >
+        {label}
+      </AppText>
+      <AppText
+        weight={emphasis ? "semibold" : "regular"}
+        style={{
+          fontFamily: emphasis ? fontFamily.semibold : fontFamily.mono,
+          fontSize: emphasis ? 13 : 11,
+          lineHeight: 15,
+          color: emphasis ? colors.money : colors.ink,
+        }}
+      >
+        {value}
+      </AppText>
+    </View>
   );
 }
