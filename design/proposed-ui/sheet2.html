@@ -1,0 +1,207 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Bengali:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+ .sheet{display:flex;gap:26px;padding:26px;align-items:flex-start}
+ .lbl{color:#8B85A0;font:600 11px/1 "Plus Jakarta Sans";letter-spacing:1.4px;text-transform:uppercase;margin-bottom:10px}
+ .push{position:absolute;left:14px;right:14px;top:14px;border-radius:16px;padding:12px 13px;
+       background:rgba(30,24,41,.92);backdrop-filter:blur(18px);border:1px solid var(--line-2);
+       box-shadow:0 18px 44px rgba(0,0,0,.55);display:flex;gap:11px;align-items:flex-start}
+</style></head><body><div class="sheet">
+
+<!-- ============ REVIEW ============ -->
+<div><div class="lbl">Review · admin</div>
+<div class="phone dark">
+  <div class="hdr"><img class="mark" src="logo.png" alt="Kahiniscope">
+    <div class="grow"><h1>Review</h1><div class="sub">3 tasks waiting</div></div>
+    <div class="ghost">Back</div></div>
+  <div class="body">
+    <div class="card">
+      <div class="row">
+        <div class="av" style="background:var(--mint)">RA</div>
+        <div class="grow"><div class="t">Voice recording · EP-41</div>
+          <div class="m">Rizu Ahmed · submitted 2 days ago</div></div>
+      </div>
+      <div style="background:var(--raised);border-radius:10px;padding:11px;margin-top:11px">
+        <div class="xs" style="color:var(--text)">“Re-recorded 4:10 onwards. File is in the shared drive.”</div>
+      </div>
+
+      <div class="cap" style="margin-top:14px">Paid as</div>
+      <div class="row" style="gap:7px;margin-top:7px">
+        <div class="grow" style="text-align:center;padding:10px;border-radius:var(--r-pill);
+             background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;font-size:11.5px;font-weight:700">Character</div>
+        <div class="grow" style="text-align:center;padding:10px;border-radius:var(--r-pill);
+             border:1px solid var(--line-2);color:var(--muted);font-size:11.5px;font-weight:650">Narration</div>
+      </div>
+      <div class="mono" style="font-size:10px;color:var(--faint);margin-top:7px">₹50 per minute</div>
+
+      <div class="cap" style="margin-top:13px">Recording time, in minutes</div>
+      <div style="border:1px solid var(--line-2);border-radius:10px;padding:11px;margin-top:6px;
+                  font-family:var(--mono);font-size:13px">12</div>
+
+      <div class="row" style="background:var(--raised);border-radius:10px;padding:11px;margin-top:11px">
+        <span class="mono grow" style="font-size:10px;color:var(--muted)">12 × ₹50</span>
+        <span style="font-size:14px;font-weight:750;color:var(--mint)">₹600</span>
+      </div>
+      <div class="xs" style="margin-top:8px;color:var(--purple)">
+        Comes off the ₹2,400 advance — paid on approval, leaving ₹1,800.</div>
+
+      <div class="row" style="gap:8px;margin-top:12px">
+        <div class="btn quiet grow">Send back</div>
+        <div class="btn primary" style="flex:2">Approve</div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ============ REQUESTS ============ -->
+<div><div class="lbl">Requests · admin</div>
+<div class="phone dark">
+  <div class="hdr"><img class="mark" src="logo.png" alt="Kahiniscope">
+    <div class="grow"><h1>Access requests</h1><div class="sub">2 waiting for approval</div></div>
+    <div class="ghost">Back</div></div>
+  <div class="body">
+    <div class="card">
+      <div class="row">
+        <div class="av" style="background:var(--pink)">SK</div>
+        <div class="grow"><div class="t">Shuvo Karim</div>
+          <div class="m">+91 98765 43210 · 2 hours ago</div></div>
+        <div class="chip" style="background:rgba(241,91,181,.16);color:var(--pink)">Editing</div>
+      </div>
+      <div style="background:var(--raised);border-radius:10px;padding:11px;margin-top:11px">
+        <div class="xs">“Worked on EP-33 to EP-36 editing with Tanmoy. Can also do SFX cleanup.”</div>
+      </div>
+      <div style="background:rgba(0,187,249,.12);border:1px solid rgba(0,187,249,.34);
+                  border-radius:10px;padding:11px;margin-top:9px">
+        <div class="xs" style="color:var(--blue)">This number is already on the team as
+          <b>Shuvo Karim</b>, with 2 open tasks.</div>
+        <div class="btn sm" style="background:var(--blue);color:#04202B;margin-top:9px">Approve &amp; link to Shuvo</div>
+      </div>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <div class="btn quiet grow">Decline</div>
+        <div class="btn primary" style="flex:2">Approve as a new person</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="av" style="background:var(--yellow)">MC</div>
+        <div class="grow"><div class="t">Mahi Chowdhury</div>
+          <div class="m">+91 99887 76655 · yesterday</div></div>
+        <div class="chip" style="background:rgba(254,228,64,.16);color:var(--yellow)">Voice</div>
+      </div>
+      <div class="row" style="gap:8px;margin-top:11px">
+        <div class="btn quiet grow">Decline</div>
+        <div class="btn primary" style="flex:2">Approve as Voice</div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ============ NOTIFICATIONS ============ -->
+<div><div class="lbl">Notifications</div>
+<div class="phone dark" style="background:#0D0A14">
+  <div style="position:relative;flex:1;padding-top:52px">
+    <div style="text-align:center;color:var(--faint);font-size:64px;font-weight:200;letter-spacing:-3px">9:41</div>
+    <div style="text-align:center;color:var(--faint);font-size:12px;margin-top:2px">Sunday, 21 September</div>
+
+    <div style="padding:26px 14px 0;display:flex;flex-direction:column;gap:10px">
+      <div style="border-radius:16px;padding:12px 13px;background:rgba(30,24,41,.92);
+                  border:1px solid var(--line-2);display:flex;gap:11px;align-items:flex-start">
+        <img class="mark" src="logo.png" alt="Kahiniscope">
+        <div class="grow">
+          <div style="font-size:12.5px;font-weight:700">Voice recording approved</div>
+          <div class="xs" style="margin-top:2px;color:var(--muted)">Hi Rizu — your Voice recording for EP-41 has been approved. ₹600 taken off your advance, leaving ₹1,800.</div>
+        </div>
+        <div class="mono" style="font-size:9.5px;color:var(--faint)">now</div>
+      </div>
+
+      <div style="border-radius:16px;padding:12px 13px;background:rgba(30,24,41,.92);
+                  border:1px solid rgba(241,91,181,.4);display:flex;gap:11px;align-items:flex-start">
+        <img class="mark" src="logo.png" alt="Kahiniscope">
+        <div class="grow">
+          <div style="font-size:12.5px;font-weight:700;color:var(--pink)">Voice recording needs another look</div>
+          <div class="xs" style="margin-top:2px;color:var(--muted)">Hi Rizu — EP-41 has come back for changes: Levels are too hot from 4:10. Submit it again when ready.</div>
+        </div>
+        <div class="mono" style="font-size:9.5px;color:var(--faint)">2h</div>
+      </div>
+
+      <div style="border-radius:16px;padding:12px 13px;background:rgba(30,24,41,.92);
+                  border:1px solid rgba(0,245,212,.4);display:flex;gap:11px;align-items:flex-start">
+        <img class="mark" src="logo.png" alt="Kahiniscope">
+        <div class="grow">
+          <div style="font-size:12.5px;font-weight:700;color:var(--mint)">₹550 paid</div>
+          <div class="xs" style="margin-top:2px;color:var(--muted)">Hi Rizu — ₹550 has been paid to you for Dubbing / mixing on EP-41.</div>
+        </div>
+        <div class="mono" style="font-size:9.5px;color:var(--faint)">1d</div>
+      </div>
+    </div>
+
+    <!-- in-app toast -->
+    <div style="position:absolute;left:14px;right:14px;bottom:30px;border-radius:14px;padding:13px 14px;
+                background:linear-gradient(135deg,var(--purple),var(--pink));display:flex;align-items:center;gap:10px;
+                box-shadow:0 16px 40px rgba(155,93,229,.35)">
+      <div style="width:7px;height:7px;border-radius:50%;background:#fff"></div>
+      <div style="font-size:12.5px;font-weight:650;color:#fff">Approved — ₹600 pending for Rizu</div>
+    </div>
+    <div class="cap" style="text-align:center;margin-top:8px">in-app toast</div>
+    <div class="cap" style="text-align:center;margin-top:14px;color:var(--muted)">every message opens with their name</div>
+  </div>
+</div></div>
+
+<!-- ============ LIGHT ============ -->
+<div><div class="lbl">Board · light theme</div>
+<div class="phone light">
+  <div class="hdr"><img class="mark" src="logo.png" alt="Kahiniscope">
+    <div class="grow"><h1>Board</h1><div class="sub">Sun 21 Sep · 4 overdue</div></div>
+    <div class="ghost">Sign out</div></div>
+  <div class="body">
+    <div class="row" style="gap:5px;background:var(--raised);border-radius:var(--r-pill);padding:4px">
+      <div style="flex:1;text-align:center;padding:8px;border-radius:var(--r-pill);font-size:11.5px;font-weight:700;
+                  background:var(--surface);border:1px solid var(--line-2)">Light</div>
+      <div style="flex:1;text-align:center;padding:8px;border-radius:var(--r-pill);font-size:11.5px;
+                  font-weight:600;color:var(--muted)">Dark</div>
+      <div style="flex:1;text-align:center;padding:8px;border-radius:var(--r-pill);font-size:11.5px;
+                  font-weight:600;color:var(--muted)">System</div>
+    </div>
+    <div class="row" style="gap:8px">
+      <div class="card grow" style="padding:12px 13px"><div class="cap">Overdue</div>
+        <div style="font-size:26px;font-weight:800;color:var(--pink);letter-spacing:-1px">4</div></div>
+      <div class="card grow" style="padding:12px 13px"><div class="cap">Open</div>
+        <div style="font-size:26px;font-weight:800;letter-spacing:-1px">11</div></div>
+      <div class="card grow" style="padding:12px 13px"><div class="cap">Done</div>
+        <div style="font-size:26px;font-weight:800;color:#00A88F;letter-spacing:-1px">23</div></div>
+    </div>
+    <div class="card" style="background:rgba(0,187,249,.10);border-color:rgba(0,187,249,.4)">
+      <div class="row"><div class="chip" style="background:var(--blue);color:#04202B">3</div>
+        <div class="grow"><div class="t">Waiting for review</div><div class="m">Oldest submitted 2 days ago</div></div>
+        <div style="color:var(--blue);font-size:17px">›</div></div>
+    </div>
+    <div class="card" style="background:rgba(241,91,181,.09);border-color:rgba(241,91,181,.38)">
+      <div class="row"><div class="chip" style="background:var(--pink);color:#fff">2</div>
+        <div class="grow"><div class="t">New registrations</div><div class="m">Shuvo Karim · Mahi Chowdhury</div></div>
+        <div style="color:var(--pink);font-size:17px">›</div></div>
+    </div>
+    <div class="cap" style="margin-top:4px">Needs chasing · by episode</div>
+    <div class="card flat">
+      <div class="bar"><i style="width:82%;background:linear-gradient(90deg,var(--yellow),var(--pink))"></i></div>
+      <div style="padding:13px 14px">
+        <div class="row"><div class="grow"><div class="t">EP-41</div>
+          <div class="bn" style="font-size:12.5px;color:var(--muted);margin-top:3px">রক্তমুখী নীলা</div>
+          <div class="m">3 open · 2 overdue</div></div>
+          <div class="chip" style="background:rgba(241,91,181,.14);color:#C4247F">#4</div>
+          <div style="color:var(--faint);margin-left:2px">−</div></div>
+      </div>
+      <div style="border-top:1px solid var(--line);padding:12px 14px">
+        <div class="row"><div class="av" style="background:var(--mint)">RA</div>
+          <div class="grow"><div class="t" style="font-size:13px">Voice recording</div>
+            <div class="m">Rizu Ahmed · 4d overdue</div></div>
+          <div class="btn primary sm">Nudge</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="nav"><div class="on">Board</div><div>Episodes</div><div>Team</div><div>Payments</div><div>Notify</div></div>
+</div></div>
+
+</div></body></html>

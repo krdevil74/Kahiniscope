@@ -140,6 +140,7 @@ export function PosterWall() {
             height={layout.posterHeight}
             travel={layout.travel}
             still={reduceMotion}
+            placeholder={colors.ripple}
           />
         ))}
       </View>
@@ -172,6 +173,12 @@ interface ColumnProps {
   height: number;
   travel: number;
   still: boolean;
+  /**
+   * The tint behind a poster while it loads. Passed in rather than read
+   * inside, because this component is memoised and would otherwise keep
+   * whichever theme was active when it first rendered.
+   */
+  placeholder: string;
 }
 
 const PosterColumn = memo(function PosterColumn({
@@ -181,6 +188,7 @@ const PosterColumn = memo(function PosterColumn({
   height,
   travel,
   still,
+  placeholder,
 }: ColumnProps) {
   const progress = useRef(new Animated.Value(0)).current;
   const { up, durationMs } = columnMotion(index);
@@ -233,7 +241,7 @@ const PosterColumn = memo(function PosterColumn({
               marginBottom: GAP,
               borderRadius: 8,
               opacity: POSTER_OPACITY,
-              backgroundColor: "rgba(27,26,23,.06)",
+              backgroundColor: placeholder,
             }}
           />
         ))

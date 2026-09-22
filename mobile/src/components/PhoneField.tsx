@@ -50,7 +50,7 @@ export function PhoneField({ value, onChange, invalid = false, accessibilityLabe
             fontFamily: fontFamily.monoMedium,
             fontSize: 13,
             lineHeight: 16,
-            color: "rgba(27,26,23,.7)",
+            color: colors.muted,
           }}
         >
           {DEFAULT_DIAL_CODE}
@@ -61,7 +61,7 @@ export function PhoneField({ value, onChange, invalid = false, accessibilityLabe
         value={value}
         onChangeText={(next: string) => onChange(limitNationalInput(next))}
         placeholder="98765 43210"
-        placeholderTextColor="rgba(27,26,23,.35)"
+        placeholderTextColor={colors.faint}
         keyboardType="number-pad"
         autoComplete="tel"
         maxLength={NATIONAL_DIGITS}

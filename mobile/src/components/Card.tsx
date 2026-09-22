@@ -33,8 +33,8 @@ export function Card({ children, onPress, clip = false, radius = radii.card, sty
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      android_ripple={{ color: "rgba(27,26,23,.06)" }}
-      style={({ pressed }) => [base, { borderColor: pressed ? colors.brandYellow : colors.hairline }, style]}
+      android_ripple={{ color: colors.ripple }}
+      style={({ pressed }) => [base, { borderColor: pressed ? colors.brand : colors.hairline }, style]}
     >
       {children}
     </Pressable>

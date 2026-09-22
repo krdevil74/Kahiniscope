@@ -281,7 +281,7 @@ export default function PersonDetail() {
                       fontFamily: fontFamily.medium,
                       fontSize: 11,
                       lineHeight: 13,
-                      color: on ? colors.white : "rgba(27,26,23,.6)",
+                      color: on ? colors.white : colors.muted,
                     }}
                   >
                     {option}
@@ -322,7 +322,7 @@ export default function PersonDetail() {
                 fontFamily: fontFamily.regular,
                 fontSize: 11.5,
                 lineHeight: 16,
-                color: member.balance > 0 ? "rgba(255,255,255,.82)" : "rgba(27,26,23,.55)",
+                color: member.balance > 0 ? "rgba(255,255,255,.82)" : colors.muted,
               }}
             >
               {member.balance > 0
@@ -337,7 +337,7 @@ export default function PersonDetail() {
               onChangeText={setAdvanceAmount}
               keyboardType="numeric"
               placeholder="Amount"
-              placeholderTextColor="rgba(27,26,23,.35)"
+              placeholderTextColor={colors.faint}
               accessibilityLabel={`Amount to advance to ${member.name}`}
               style={{
                 flex: 1,
@@ -366,7 +366,7 @@ export default function PersonDetail() {
             value={advanceNote}
             onChangeText={(next: string) => setAdvanceNote(next.slice(0, 300))}
             placeholder="What it is for — optional"
-            placeholderTextColor="rgba(27,26,23,.35)"
+            placeholderTextColor={colors.faint}
             accessibilityLabel="What the advance is for"
             style={{
               minHeight: MIN_TAP_TARGET,
@@ -406,7 +406,7 @@ export default function PersonDetail() {
           <RateRow label="Sound design" suffix="per minute" value={rateDraft.soundDesign} onChange={(v) => patchRate({ soundDesign: v })} />
           <RateRow label="Cover design" suffix="per cover" value={rateDraft.cover} onChange={(v) => patchRate({ cover: v })} />
 
-          <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)" }]}>
+          <AppText style={[type.metaXSmall, { color: colors.faint }]}>
             Leave a rate blank where there isn't one — script writing and the
             rest are a figure you type when you approve the work.
           </AppText>
@@ -437,7 +437,7 @@ export default function PersonDetail() {
           }}
         >
           <SectionCaption>No app on their phone</SectionCaption>
-          <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.6)" }]}>
+          <AppText style={[type.bodySmall, { color: colors.muted }]}>
             {member.telegramChatId
               ? "Telegram is connected — reminders arrive there, and they can close a task from the chat."
               : member.preferredChannel === "telegram"
@@ -488,7 +488,7 @@ export default function PersonDetail() {
                       fontFamily: fontFamily.semibold,
                       fontSize: 13,
                       lineHeight: 16.25,
-                      color: task.done ? "rgba(27,26,23,.4)" : colors.ink,
+                      color: task.done ? colors.faint : colors.ink,
                       textDecorationLine: task.done ? "line-through" : "none",
                     }}
                   >
@@ -502,7 +502,7 @@ export default function PersonDetail() {
                       fontFamily: fontFamily.mono,
                       fontSize: 10.5,
                       lineHeight: 14.7,
-                      color: "rgba(27,26,23,.5)",
+                      color: colors.faint,
                       marginTop: 3,
                     }}
                   >
@@ -562,7 +562,7 @@ function RateRow({
     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}>
       <View style={{ flex: 1, minWidth: 0 }}>
         <AppText style={[type.bodySmall]}>{label}</AppText>
-        <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.45)", marginTop: 1 }]}>
+        <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 1 }]}>
           {value === null ? `no rate · ${suffix}` : `${money(value)} ${suffix}`}
         </AppText>
       </View>
@@ -575,7 +575,7 @@ function RateRow({
         }}
         keyboardType="numeric"
         placeholder="—"
-        placeholderTextColor="rgba(27,26,23,.3)"
+        placeholderTextColor={colors.faint}
         accessibilityLabel={`${label}, ${suffix}`}
         style={{
           width: 88,

@@ -107,7 +107,7 @@ export default function EpisodeDetail() {
                 fontFamily: fontFamily.mono,
                 fontSize: 11,
                 lineHeight: 15.4,
-                color: "rgba(27,26,23,.55)",
+                color: colors.muted,
                 marginTop: 7,
               }}
             >
@@ -153,7 +153,7 @@ export default function EpisodeDetail() {
               onPress={() => router.push(`/person/${member.uid}`)}
               accessibilityRole="button"
               accessibilityLabel={member.name}
-              android_ripple={{ color: "rgba(27,26,23,.06)" }}
+              android_ripple={{ color: colors.ripple }}
               style={{
                 paddingVertical: 12,
                 paddingHorizontal: 13,
@@ -175,7 +175,7 @@ export default function EpisodeDetail() {
                     fontFamily: fontFamily.mono,
                     fontSize: 10,
                     lineHeight: 13.5,
-                    color: "rgba(27,26,23,.5)",
+                    color: colors.faint,
                     marginTop: 3,
                   }}
                 >
@@ -238,7 +238,7 @@ export default function EpisodeDetail() {
                         fontFamily: fontFamily.monoSemibold,
                         fontSize: 11,
                         lineHeight: 12,
-                        color: colors.brandYellow,
+                        color: colors.brand,
                       }}
                     >
                       ✓
@@ -253,7 +253,7 @@ export default function EpisodeDetail() {
                       fontFamily: fontFamily.medium,
                       fontSize: 12.5,
                       lineHeight: 15.6,
-                      color: task.done ? "rgba(27,26,23,.4)" : colors.ink,
+                      color: task.done ? colors.faint : colors.ink,
                       textDecorationLine: task.done ? "line-through" : "none",
                     }}
                   >
@@ -265,7 +265,7 @@ export default function EpisodeDetail() {
                       fontFamily: fontFamily.mono,
                       fontSize: 10,
                       lineHeight: 14,
-                      color: "rgba(27,26,23,.45)",
+                      color: colors.faint,
                       marginTop: 3,
                     }}
                   >

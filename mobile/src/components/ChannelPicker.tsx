@@ -72,7 +72,7 @@ export function ChannelPicker({ member, settings, busy = false, onChange }: Chan
                   fontFamily: fontFamily.medium,
                   fontSize: 11,
                   lineHeight: 13,
-                  color: on ? colors.white : usable ? "rgba(27,26,23,.7)" : "rgba(27,26,23,.35)",
+                  color: on ? colors.white : usable ? colors.muted : colors.faint,
                   textDecorationLine: usable ? "none" : "line-through",
                 }}
               >
@@ -83,7 +83,7 @@ export function ChannelPicker({ member, settings, busy = false, onChange }: Chan
         })}
       </View>
 
-      <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.45)" }]}>
+      <AppText style={[type.metaXSmall, { color: colors.faint }]}>
         {member.preferredChannel
           ? `Tried first. If it fails, the usual order takes over.`
           : `Push first, then Telegram, then whatever else is switched on.`}

@@ -170,7 +170,7 @@ function ReviewCard({
           <AppText weight="semibold" style={[type.bodySmall]}>
             {`${task.type}${episodeCode ? ` · ${episodeCode}` : ""}`}
           </AppText>
-          <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)", marginTop: 2 }]}>
+          <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
             {`${member?.name ?? "Somebody"}${task.rejectedCount > 0 ? ` · back for the ${task.rejectedCount + 1}${task.rejectedCount === 0 ? "st" : "th"} time` : ""}`}
           </AppText>
         </View>
@@ -187,7 +187,7 @@ function ReviewCard({
             paddingHorizontal: 11,
           }}
         >
-          <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.65)" }]}>
+          <AppText style={[type.bodySmall, { color: colors.muted }]}>
             {`“${task.submissionNote}”`}
           </AppText>
         </View>
@@ -200,12 +200,12 @@ function ReviewCard({
             value={note}
             onChangeText={(next) => setNote(next.slice(0, 500))}
             placeholder="Levels are too hot from 4:10 onwards — can you redo that section?"
-            placeholderTextColor="rgba(27,26,23,.35)"
+            placeholderTextColor={colors.faint}
             multiline
             accessibilityLabel="Why the work is going back"
-            style={[inputStyle, { minHeight: 84, textAlignVertical: "top" }]}
+            style={[inputStyle(), { minHeight: 84, textAlignVertical: "top" }]}
           />
-          <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)" }]}>
+          <AppText style={[type.metaXSmall, { color: colors.faint }]}>
             They will see this, and it goes out with every reminder until the
             work comes back — every other day.
           </AppText>
@@ -258,7 +258,7 @@ function ReviewCard({
                           fontFamily: fontFamily.medium,
                           fontSize: 11,
                           lineHeight: 13,
-                          color: on ? colors.white : "rgba(27,26,23,.6)",
+                          color: on ? colors.white : colors.muted,
                         }}
                       >
                         {UNIT_LABELS[option]}
@@ -267,7 +267,7 @@ function ReviewCard({
                   );
                 })}
               </View>
-              <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)" }]}>
+              <AppText style={[type.metaXSmall, { color: colors.faint }]}>
                 {rateLabel(rate, unit)}
               </AppText>
             </View>
@@ -309,7 +309,7 @@ function ReviewCard({
               justifyContent: "space-between",
             }}
           >
-            <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.55)" }]}>
+            <AppText style={[type.metaXSmall, { color: colors.muted }]}>
               {quantity !== null && rate !== null
                 ? `${quantity} × ${money(rate)}`
                 : "Typed amount"}
@@ -323,7 +323,7 @@ function ReviewCard({
               hands over money that has already been paid, and no payment will
               appear in the queue afterwards. */}
           {balance > 0 && shown !== null ? (
-            <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.55)" }]}>
+            <AppText style={[type.metaXSmall, { color: colors.muted }]}>
               {shown <= balance
                 ? `Comes off the ${money(balance)} advance — paid on approval, leaving ${money(balance - shown)}.`
                 : `${money(balance)} advanced, which does not cover this. It will queue to be paid as normal.`}
@@ -353,18 +353,25 @@ function ReviewCard({
   );
 }
 
-const inputStyle = {
-  backgroundColor: colors.surface,
-  borderWidth: 1,
-  borderColor: colors.hairlineStrong,
-  borderRadius: radii.chipLarge,
-  paddingVertical: 11,
-  paddingHorizontal: 12,
-  minHeight: MIN_TAP_TARGET,
-  fontFamily: fontFamily.regular,
-  fontSize: 13,
-  color: colors.ink,
-} as const;
+/**
+ * A function, not a constant. `colors` is swapped in place when the theme
+ * changes, so an object built once at import would carry whichever theme
+ * loaded first — for the life of the process.
+ */
+function inputStyle() {
+  return {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.hairlineStrong,
+    borderRadius: radii.chipLarge,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    minHeight: MIN_TAP_TARGET,
+    fontFamily: fontFamily.regular,
+    fontSize: 13,
+    color: colors.ink,
+  } as const;
+}
 
 function Field({
   label,
@@ -386,10 +393,10 @@ function Field({
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor="rgba(27,26,23,.35)"
+        placeholderTextColor={colors.faint}
         keyboardType={numeric ? "numeric" : "default"}
         accessibilityLabel={label}
-        style={[inputStyle, numeric ? { fontFamily: fontFamily.mono } : null]}
+        style={[inputStyle(), numeric ? { fontFamily: fontFamily.mono } : null]}
       />
     </View>
   );

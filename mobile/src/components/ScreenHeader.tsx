@@ -39,7 +39,7 @@ export function ScreenHeader({ title, subtitle, onBack, onSignOut, style }: Scre
     <View
       style={[
         {
-          backgroundColor: colors.ink,
+          backgroundColor: colors.bar,
           paddingTop: insets.top + spacing.cardTight,
           paddingBottom: spacing.cardTight,
           paddingHorizontal: spacing.screen,
@@ -97,8 +97,8 @@ export function ScreenHeader({ title, subtitle, onBack, onSignOut, style }: Scre
             paddingVertical: 7,
             borderRadius: radii.pill,
             borderWidth: 1,
-            borderColor: confirming ? colors.brandYellow : "rgba(255,255,255,.28)",
-            backgroundColor: confirming ? colors.brandYellow : "transparent",
+            borderColor: confirming ? colors.brand : colors.onInkMuted,
+            backgroundColor: confirming ? colors.brand : "transparent",
             opacity: pressed ? 0.7 : 1,
           })}
         >
@@ -132,7 +132,7 @@ export function ScreenHeader({ title, subtitle, onBack, onSignOut, style }: Scre
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <AppText style={{ fontFamily: fontFamily.medium, fontSize: 11, lineHeight: 11, color: colors.brandYellow }}>
+          <AppText style={{ fontFamily: fontFamily.medium, fontSize: 11, lineHeight: 11, color: colors.brand }}>
             Back
           </AppText>
         </Pressable>

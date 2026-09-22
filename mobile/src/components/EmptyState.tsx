@@ -25,7 +25,7 @@ export function EmptyState({ title, detail }: { title: string; detail?: string }
         {title}
       </AppText>
       {detail ? (
-        <AppText style={[type.bodyXSmall, { color: "rgba(27,26,23,.5)", textAlign: "center" }]}>
+        <AppText style={[type.bodyXSmall, { color: colors.faint, textAlign: "center" }]}>
           {detail}
         </AppText>
       ) : null}

@@ -17,6 +17,7 @@ import { Avatar } from "../src/components/Avatar";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { Toggle } from "../src/components/Toggle";
 import { craftLabel } from "../src/lib/crafts";
+import { ThemePicker } from "../src/components/ThemePicker";
 import { useSession } from "../src/lib/auth";
 import {
   CHANNEL_META,
@@ -28,7 +29,7 @@ import {
 import { useSettings, useTeam } from "../src/lib/data";
 import { roleToast, savePlan, saveChannel, saveQuietHours, setMemberRole } from "../src/lib/settings-actions";
 import { useToast } from "../src/lib/toast";
-import { colors, fontFamily, heat, radii, spacing, MIN_TAP_TARGET } from "../src/theme/tokens";
+import { colors, fontFamily, radii, spacing, MIN_TAP_TARGET, heatFor } from "../src/theme/tokens";
 import { type } from "../src/theme/typography";
 
 export default function Notify() {
@@ -62,13 +63,19 @@ export default function Notify() {
   return (
     <AppShell title="Notifications" subtitle="Channels and escalation" activeTab="notify">
       <View style={{ padding: 16, gap: 18 }}>
+        {/* ---- Appearance ---------------------------------------------- */}
+        <View>
+          <SectionCaption style={{ marginBottom: 9 }}>Appearance</SectionCaption>
+          <ThemePicker />
+        </View>
+
         {/* ---- Admin access ------------------------------------------- */}
         <View>
           <SectionCaption style={{ marginBottom: 9 }}>Admin access</SectionCaption>
 
           <View
             style={{
-              backgroundColor: colors.ink,
+              backgroundColor: colors.bar,
               borderRadius: radii.cardLarge,
               padding: 15,
               marginBottom: 9,
@@ -87,7 +94,7 @@ export default function Notify() {
                   </AppText>
                   <View
                     style={{
-                      backgroundColor: colors.brandYellow,
+                      backgroundColor: colors.brand,
                       borderRadius: 3,
                       paddingVertical: 4,
                       paddingHorizontal: 5,
@@ -155,7 +162,7 @@ export default function Notify() {
             >
               {others.length === 0 ? (
                 <View style={{ paddingVertical: 16, paddingHorizontal: 13 }}>
-                  <AppText style={[type.bodyXSmall, { color: "rgba(27,26,23,.45)" }]}>
+                  <AppText style={[type.bodyXSmall, { color: colors.faint }]}>
                     No approved members yet.
                   </AppText>
                 </View>
@@ -193,7 +200,7 @@ export default function Notify() {
                           fontFamily: fontFamily.mono,
                           fontSize: 9.5,
                           lineHeight: 12.4,
-                          color: "rgba(27,26,23,.45)",
+                          color: colors.faint,
                           marginTop: 3,
                         }}
                       >
@@ -215,7 +222,7 @@ export default function Notify() {
                       hitSlop={8}
                       style={{
                         borderWidth: 1,
-                        borderColor: isMemberAdmin ? colors.brandYellow : colors.hairlineStrong,
+                        borderColor: isMemberAdmin ? colors.brand : colors.hairlineStrong,
                         backgroundColor: isMemberAdmin ? colors.selectedFill : colors.surface,
                         borderRadius: 7,
                         paddingVertical: 7,
@@ -239,7 +246,7 @@ export default function Notify() {
               fontFamily: fontFamily.regular,
               fontSize: 10.5,
               lineHeight: 16.3,
-              color: "rgba(27,26,23,.5)",
+              color: colors.faint,
             }}
           >
             Admins can approve registrations, assign tasks and nudge. Only the master
@@ -305,7 +312,7 @@ export default function Notify() {
                           lineHeight: 15.2,
                           // A channel that bills says so in the colour the
                           // rest of the app uses for things going wrong.
-                          color: channel.free ? "rgba(27,26,23,.5)" : colors.danger,
+                          color: channel.free ? colors.faint : colors.danger,
                           marginTop: 5,
                         }}
                       >
@@ -343,7 +350,7 @@ export default function Notify() {
                           fontFamily: fontFamily.mono,
                           fontSize: 10,
                           lineHeight: 14,
-                          color: "rgba(27,26,23,.55)",
+                          color: colors.muted,
                         }}
                       >
                         {channel.endpoint}
@@ -386,7 +393,7 @@ export default function Notify() {
               fontFamily: fontFamily.regular,
               fontSize: 10.5,
               lineHeight: 16.3,
-              color: "rgba(27,26,23,.5)",
+              color: colors.faint,
               marginTop: 9,
             }}
           >
@@ -429,7 +436,7 @@ export default function Notify() {
                       borderRadius: radii.pill,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: (heat[index] ?? heat[heat.length - 1]).fg,
+                      backgroundColor: heatFor(index).fg,
                     }}
                   >
                     <AppText
@@ -493,7 +500,7 @@ export default function Notify() {
                   fontFamily: fontFamily.mono,
                   fontSize: 10.5,
                   lineHeight: 15.75,
-                  color: "rgba(27,26,23,.5)",
+                  color: colors.faint,
                 }}
               >
                 {`After step ${settings.plan.length} the reminder repeats ${
@@ -529,7 +536,7 @@ export default function Notify() {
                 fontFamily: fontFamily.regular,
                 fontSize: 11.5,
                 lineHeight: 16.1,
-                color: "rgba(27,26,23,.7)",
+                color: colors.muted,
               }}
             >
               {`No reminders between ${hour(settings.quietHours.from)} and ${hour(
@@ -553,7 +560,7 @@ export default function Notify() {
               fontFamily: fontFamily.regular,
               fontSize: 10.5,
               lineHeight: 16.3,
-              color: "rgba(27,26,23,.5)",
+              color: colors.faint,
             }}
           >
             These settings are the master admin's. You can see what they are set to; only

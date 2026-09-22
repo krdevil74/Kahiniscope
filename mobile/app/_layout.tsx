@@ -13,10 +13,15 @@ import { useFonts } from "expo-font";
 // Imported one weight at a time. The packages' root entry points require()
 // every weight and italic they ship — 29 files, close to 4MB — and this app
 // uses ten of them.
-import { SpaceGrotesk_400Regular } from "@expo-google-fonts/space-grotesk/400Regular";
-import { SpaceGrotesk_500Medium } from "@expo-google-fonts/space-grotesk/500Medium";
-import { SpaceGrotesk_600SemiBold } from "@expo-google-fonts/space-grotesk/600SemiBold";
-import { SpaceGrotesk_700Bold } from "@expo-google-fonts/space-grotesk/700Bold";
+// Space Grotesk is a display face; on a screen of dense data its personality
+// competes with the data. Plus Jakarta Sans is quieter at small sizes and has
+// the weight range the hierarchy needs — the old design leaned on 600 for
+// almost everything, which is why it read flat.
+import { PlusJakartaSans_400Regular } from "@expo-google-fonts/plus-jakarta-sans/400Regular";
+import { PlusJakartaSans_500Medium } from "@expo-google-fonts/plus-jakarta-sans/500Medium";
+import { PlusJakartaSans_600SemiBold } from "@expo-google-fonts/plus-jakarta-sans/600SemiBold";
+import { PlusJakartaSans_700Bold } from "@expo-google-fonts/plus-jakarta-sans/700Bold";
+import { PlusJakartaSans_800ExtraBold } from "@expo-google-fonts/plus-jakarta-sans/800ExtraBold";
 import { IBMPlexMono_400Regular } from "@expo-google-fonts/ibm-plex-mono/400Regular";
 import { IBMPlexMono_500Medium } from "@expo-google-fonts/ibm-plex-mono/500Medium";
 import { IBMPlexMono_600SemiBold } from "@expo-google-fonts/ibm-plex-mono/600SemiBold";
@@ -29,15 +34,17 @@ import { shouldSendToSignIn } from "../src/lib/session-routing.ts";
 import { useNotificationTaps } from "../src/lib/notifications";
 import { ToastProvider } from "../src/lib/toast";
 import { colors } from "../src/theme/tokens";
+import { ThemeProvider } from "../src/theme/theme.tsx";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_500Medium,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
     IBMPlexMono_400Regular,
     IBMPlexMono_500Medium,
     IBMPlexMono_600SemiBold,
@@ -57,6 +64,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      <ThemeProvider>
       <SessionProvider>
         <ToastProvider>
           <SignedOutGate />
@@ -75,6 +83,7 @@ export default function RootLayout() {
         </View>
         </ToastProvider>
       </SessionProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

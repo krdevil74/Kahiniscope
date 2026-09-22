@@ -1,0 +1,238 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Bengali:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .sheet { display: flex; gap: 26px; padding: 26px; align-items: flex-start; }
+  .lbl { color: #8B85A0; font: 600 11px/1 "Plus Jakarta Sans"; letter-spacing: 1.4px;
+         text-transform: uppercase; margin-bottom: 10px; }
+</style></head><body>
+
+<div class="sheet" id="sheet">
+
+<!-- ================= BOARD (admin) ================= -->
+<div><div class="lbl">Board · admin</div>
+<div class="phone dark" id="p-board">
+  <div class="hdr">
+    <img class="mark" src="logo.png" alt="Kahiniscope">
+    <div class="grow"><h1>Board</h1><div class="sub">Sun 21 Sep · 4 overdue</div></div>
+    <div class="ghost">Sign out</div>
+  </div>
+
+  <div class="body">
+    <!-- stat strip -->
+    <div class="row" style="gap:8px">
+      <div class="card grow" style="padding:12px 13px">
+        <div class="cap">Overdue</div>
+        <div style="font-size:26px;font-weight:800;color:var(--pink);letter-spacing:-1px;margin-top:2px">4</div>
+      </div>
+      <div class="card grow" style="padding:12px 13px">
+        <div class="cap">Open</div>
+        <div style="font-size:26px;font-weight:800;letter-spacing:-1px;margin-top:2px">11</div>
+      </div>
+      <div class="card grow" style="padding:12px 13px">
+        <div class="cap">Done</div>
+        <div style="font-size:26px;font-weight:800;color:var(--mint);letter-spacing:-1px;margin-top:2px">23</div>
+      </div>
+    </div>
+
+    <!-- review queue -->
+    <div class="card" style="background:linear-gradient(135deg,rgba(0,187,249,.16),rgba(0,245,212,.10));border-color:rgba(0,187,249,.35)">
+      <div class="row">
+        <div class="chip" style="background:var(--blue);color:#04202B"><span class="dot" style="background:#04202B"></span>3</div>
+        <div class="grow"><div class="t">Waiting for review</div>
+          <div class="m">Oldest submitted 2 days ago</div></div>
+        <div style="color:var(--blue);font-size:17px">›</div>
+      </div>
+    </div>
+
+    <!-- pending registrations -->
+    <div class="card" style="background:rgba(241,91,181,.10);border-color:rgba(241,91,181,.32)">
+      <div class="row">
+        <div class="chip" style="background:var(--pink);color:#2B0A1D"><span class="dot" style="background:#2B0A1D"></span>2</div>
+        <div class="grow"><div class="t">New registrations</div>
+          <div class="m">Shuvo Karim · Mahi Chowdhury</div></div>
+        <div style="color:var(--pink);font-size:17px">›</div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:4px">
+      <div class="cap grow">Needs chasing · by episode</div>
+      <div class="mono" style="font-size:9.5px;color:var(--faint)">7→4→3→2→1</div>
+    </div>
+
+    <!-- episode group, open -->
+    <div class="card flat">
+      <div class="bar"><i style="width:82%;background:linear-gradient(90deg,var(--yellow),var(--pink))"></i></div>
+      <div style="padding:13px 14px 12px">
+        <div class="row">
+          <div class="grow">
+            <div class="t">EP-41</div>
+            <div class="bn" style="font-size:12.5px;color:var(--muted);margin-top:3px">রক্তমুখী নীলা</div>
+            <div class="m">3 open · 2 overdue</div>
+          </div>
+          <div class="chip" style="background:rgba(254,228,64,.16);color:var(--yellow)">#4</div>
+          <div style="color:var(--faint);font-size:15px;margin-left:2px">−</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--line);padding:12px 14px">
+        <div class="row">
+          <div class="av" style="background:var(--mint)">RA</div>
+          <div class="grow"><div class="t" style="font-size:13px">Voice recording</div>
+            <div class="m">Rizu Ahmed · 4d overdue</div></div>
+          <div class="chip" style="background:rgba(241,91,181,.16);color:var(--pink)">#4</div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div class="grow" style="background:var(--raised);border-radius:9px;padding:8px 10px">
+            <span class="mono" style="font-size:10px;color:var(--muted)">Reminder #5 today · daily</span>
+          </div>
+          <div class="btn primary sm">Nudge</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--line);padding:12px 14px">
+        <div class="row">
+          <div class="av" style="background:var(--blue)">TD</div>
+          <div class="grow"><div class="t" style="font-size:13px">Dubbing / mixing</div>
+            <div class="m">Tanmoy Das · due in 2d</div></div>
+          <div class="chip" style="background:rgba(0,187,249,.16);color:var(--blue)">#1</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- collapsed group -->
+    <div class="card flat">
+      <div class="bar"><i style="width:28%;background:var(--blue)"></i></div>
+      <div style="padding:13px 14px 12px">
+        <div class="row">
+          <div class="grow"><div class="t">EP-42</div>
+            <div class="bn" style="font-size:12.5px;color:var(--muted);margin-top:3px">কল্কে কাশির অবাক কাণ্ড</div>
+            <div class="m">2 open</div></div>
+          <div class="chip" style="background:rgba(0,187,249,.16);color:var(--blue)">#1</div>
+          <div style="color:var(--faint);font-size:15px;margin-left:2px">+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav"><div class="on">Board</div><div>Episodes</div><div>Team</div><div>Payments</div><div>Notify</div></div>
+</div></div>
+
+<!-- ================= MEMBER PAYMENTS ================= -->
+<div><div class="lbl">Payments · member</div>
+<div class="phone dark" id="p-pay">
+  <div class="hdr">
+    <img class="mark" src="logo.png" alt="Kahiniscope">
+    <div class="grow"><h1>Payments</h1><div class="sub">10 entries</div></div>
+  </div>
+  <div class="tabs"><div class="tab">Tasks</div><div class="tab on">Payments</div></div>
+
+  <div class="body">
+    <!-- the seal -->
+    <div style="border-radius:var(--r-lg);padding:26px 18px;text-align:center;
+                background:radial-gradient(120% 120% at 50% 0%, rgba(155,93,229,.42), rgba(0,245,212,.10) 70%, transparent);
+                border:1px solid rgba(0,245,212,.30)">
+      <div class="cap" style="color:var(--mint)">Total earned</div>
+      <div style="font-size:44px;font-weight:800;letter-spacing:-2px;margin-top:5px;line-height:1">₹4,278</div>
+      <div class="mono" style="font-size:10px;color:var(--muted);margin-top:6px">paid across 7 tasks</div>
+    </div>
+
+    <div class="card" style="border-color:rgba(155,93,229,.35);background:rgba(155,93,229,.12)">
+      <div class="row">
+        <div class="grow"><div class="cap" style="color:var(--purple)">Available balance</div>
+          <div style="font-size:22px;font-weight:750;margin-top:3px">₹2,400</div></div>
+        <div class="xs grow" style="text-align:right">Advanced to you.<br>Approved work comes off this.</div>
+      </div>
+    </div>
+
+    <!-- paid bar -->
+    <div class="row" style="background:var(--mint);border-radius:var(--r-sm);padding:11px 13px;color:#06241F">
+      <div class="grow"><div style="font-size:12.5px;font-weight:750">Paid so far</div>
+        <div class="mono" style="font-size:9.5px;opacity:.7">7 tasks</div></div>
+      <div style="font-size:17px;font-weight:800;letter-spacing:-.5px">₹4,278</div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="grow"><div class="t" style="font-size:13px">Voice recording</div>
+          <div class="bn" style="font-size:12px;color:var(--muted);margin-top:2px">EP-41 · রক্তমুখী নীলা</div>
+          <div class="m" style="color:var(--mint)">Paid</div></div>
+        <div style="font-size:15px;font-weight:750">₹400</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <div class="grow"><div class="t" style="font-size:13px">Thumbnail / graphics</div>
+          <div class="bn" style="font-size:12px;color:var(--muted);margin-top:2px">EP-42 · কল্কে কাশির অবাক কাণ্ড</div>
+          <div class="m" style="color:var(--purple)">Paid from your advance</div></div>
+        <div style="font-size:15px;font-weight:750">₹700</div>
+      </div>
+    </div>
+    <div class="btn quiet" style="padding:10px">Show 5 more</div>
+
+    <!-- pending bar -->
+    <div class="row" style="background:var(--raised);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:11px 13px">
+      <div class="grow"><div style="font-size:12.5px;font-weight:750">Pending, estimated</div>
+        <div class="mono" style="font-size:9.5px;color:var(--faint)">3 tasks</div></div>
+      <div style="font-size:17px;font-weight:800;letter-spacing:-.5px;color:var(--yellow)">₹1,530+</div>
+    </div>
+    <div class="xs" style="background:rgba(254,228,64,.10);border:1px solid rgba(254,228,64,.28);
+                           border-radius:var(--r-sm);padding:10px 11px;color:var(--yellow)">
+      An estimate from your rate. The final amount is set by the admin and can
+      differ depending on what the work needed.
+    </div>
+  </div>
+</div></div>
+
+<!-- ================= MEMBER TASKS ================= -->
+<div><div class="lbl">Tasks · member</div>
+<div class="phone dark" id="p-tasks">
+  <div class="hdr">
+    <img class="mark" src="logo.png" alt="Kahiniscope">
+    <div class="grow"><h1>2 tasks waiting</h1><div class="sub">Sun 21 Sep</div></div>
+  </div>
+  <div class="tabs"><div class="tab on">Tasks</div><div class="tab">Payments</div></div>
+
+  <div class="body">
+    <div class="chip" style="background:rgba(155,93,229,.16);color:var(--purple);align-self:flex-start">
+      ₹2,400 available</div>
+
+    <div class="card flat">
+      <div class="bar"><i style="width:82%;background:linear-gradient(90deg,var(--yellow),var(--pink))"></i></div>
+      <div style="padding:14px">
+        <div class="row">
+          <div class="grow"><div class="t">Voice recording</div>
+            <div class="bn" style="font-size:12.5px;color:var(--muted);margin-top:3px">EP-41 · রক্তমুখী নীলা</div></div>
+          <div class="chip" style="background:rgba(241,91,181,.16);color:var(--pink)">#4</div>
+        </div>
+        <div style="background:var(--raised);border-radius:9px;padding:9px 11px;margin-top:11px">
+          <span class="mono" style="font-size:10px">Submission deadline: Thu, 17 Sep · 4d late</span>
+        </div>
+        <div style="background:rgba(241,91,181,.12);border:1px solid rgba(241,91,181,.3);
+                    border-radius:9px;padding:10px 11px;margin-top:8px">
+          <div class="xs" style="color:var(--pink)">Sent back: Levels are too hot from 4:10.</div>
+        </div>
+        <div style="border:1px solid var(--line-2);border-radius:9px;padding:10px 11px;margin-top:8px;
+                    color:var(--faint);font-size:11.5px">Anything to say about it?</div>
+        <div class="btn primary" style="margin-top:10px">Submit again</div>
+      </div>
+    </div>
+
+    <div class="card flat">
+      <div class="bar"><i style="width:22%;background:var(--blue)"></i></div>
+      <div style="padding:14px">
+        <div class="row">
+          <div class="grow"><div class="t">Proofreading</div>
+            <div class="bn" style="font-size:12.5px;color:var(--muted);margin-top:3px">EP-42 · কল্কে কাশির অবাক কাণ্ড</div></div>
+          <div class="chip" style="background:rgba(0,187,249,.16);color:var(--blue)">#1</div>
+        </div>
+        <div style="background:var(--raised);border-radius:9px;padding:9px 11px;margin-top:11px">
+          <span class="mono" style="font-size:10px">Submission deadline: Fri, 26 Sep</span>
+        </div>
+        <div class="btn quiet" style="margin-top:10px;color:var(--muted)">Waiting for review</div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+</div>
+</body></html>

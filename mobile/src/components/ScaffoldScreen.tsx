@@ -70,7 +70,7 @@ export function ScaffoldScreen({ title, subtitle, step, onBack }: ScaffoldScreen
         >
           {rows.map(([label, value]) => (
             <View key={label} style={{ flexDirection: "row", gap: spacing.chips }}>
-              <AppText style={[type.metaSmall, { color: "rgba(27,26,23,.5)", width: 92 }]}>
+              <AppText style={[type.metaSmall, { color: colors.faint, width: 92 }]}>
                 {label}
               </AppText>
               <AppText style={[type.metaSmall, { flex: 1 }]}>{value}</AppText>

@@ -28,7 +28,7 @@ export function TabBar({ items, active }: { items: TabItem[]; active: string }) 
         right: 0,
         bottom: 0,
         zIndex: 65,
-        backgroundColor: colors.ink,
+        backgroundColor: colors.bar,
         paddingTop: 11,
         paddingHorizontal: 10,
         // The design's 30px bottom padding is the gesture bar's space; on a
@@ -61,7 +61,7 @@ export function TabBar({ items, active }: { items: TabItem[]; active: string }) 
                 width: 7,
                 height: 7,
                 borderRadius: radii.pill,
-                backgroundColor: on ? colors.brandYellow : "transparent",
+                backgroundColor: on ? colors.brand : "transparent",
               }}
             />
             <AppText

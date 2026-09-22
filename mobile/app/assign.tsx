@@ -39,7 +39,7 @@ import { useEpisodes, useNow, useSettings, useTeam } from "../src/lib/data";
 import { airLabel, firstName } from "../src/lib/format.ts";
 import { TASK_TYPES, type ChannelId } from "../src/lib/model";
 import { useToast } from "../src/lib/toast";
-import { colors, fontFamily, heat, radii, spacing, MIN_TAP_TARGET } from "../src/theme/tokens";
+import { colors, fontFamily, radii, spacing, MIN_TAP_TARGET, heatFor } from "../src/theme/tokens";
 import { type } from "../src/theme/typography";
 
 const CHANNEL_TILES: { id: ChannelId; name: string; note: string }[] = [
@@ -146,7 +146,7 @@ export default function Assign() {
                 value={personQuery}
                 onChangeText={setPersonQuery}
                 placeholder="Search people"
-                placeholderTextColor="rgba(27,26,23,.38)"
+                placeholderTextColor={colors.faint}
                 accessibilityLabel="Search people"
                 style={{
                   flex: 1,
@@ -165,12 +165,12 @@ export default function Assign() {
             ) : null}
           </View>
           {approved.length === 0 ? (
-            <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.5)" }]}>
+            <AppText style={[type.bodySmall, { color: colors.faint }]}>
               Nobody is approved yet. Approve a registration, or add someone who
               has not installed the app from the Team tab.
             </AppText>
           ) : visiblePeople.length === 0 ? (
-            <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.5)" }]}>
+            <AppText style={[type.bodySmall, { color: colors.faint }]}>
               {`Nobody matches "${personQuery.trim()}".`}
             </AppText>
           ) : (
@@ -232,7 +232,7 @@ export default function Assign() {
                   fontFamily: fontFamily.medium,
                   fontSize: 11,
                   lineHeight: 13,
-                  color: "rgba(27,26,23,.6)",
+                  color: colors.muted,
                 }}
               >
                 {peopleExpanded ? "Show fewer" : `+ ${hiddenPeople} more`}
@@ -262,7 +262,7 @@ export default function Assign() {
                     paddingHorizontal: 12,
                     borderRadius: 10,
                     borderWidth: 1,
-                    borderColor: on ? colors.brandYellow : colors.hairlineStrong,
+                    borderColor: on ? colors.brand : colors.hairlineStrong,
                     backgroundColor: on ? colors.selectedFill : colors.surface,
                     minHeight: MIN_TAP_TARGET,
                   }}
@@ -272,7 +272,7 @@ export default function Assign() {
                       width: 8,
                       height: 8,
                       borderRadius: radii.pill,
-                      backgroundColor: on ? colors.brandYellow : colors.hairlineStrong,
+                      backgroundColor: on ? colors.brand : colors.hairlineStrong,
                     }}
                   />
                   <AppText
@@ -303,7 +303,7 @@ export default function Assign() {
                       fontFamily: fontFamily.mono,
                       fontSize: 10,
                       lineHeight: 11,
-                      color: "rgba(27,26,23,.4)",
+                      color: colors.faint,
                     }}
                   >
                     {airLabel(episode.airDate)}
@@ -346,7 +346,7 @@ export default function Assign() {
                     fontFamily: fontFamily.mono,
                     fontSize: 13,
                     lineHeight: 13,
-                    color: "rgba(27,26,23,.45)",
+                    color: colors.faint,
                     width: 8,
                     textAlign: "center",
                   }}
@@ -359,7 +359,7 @@ export default function Assign() {
                     fontFamily: fontFamily.medium,
                     fontSize: 12.5,
                     lineHeight: 15,
-                    color: "rgba(27,26,23,.55)",
+                    color: colors.muted,
                   }}
                 >
                   New episode
@@ -445,7 +445,7 @@ export default function Assign() {
                   fontFamily: fontFamily.regular,
                   fontSize: 12,
                   lineHeight: 14,
-                  color: "rgba(27,26,23,.5)",
+                  color: colors.faint,
                   marginLeft: 5,
                 }}
               >
@@ -463,7 +463,7 @@ export default function Assign() {
         {/* Reminder ladder */}
         <View>
           <SectionCaption style={{ marginBottom: 9 }}>Reminder ladder</SectionCaption>
-          <View style={{ backgroundColor: colors.ink, borderRadius: radii.card, padding: spacing.card }}>
+          <View style={{ backgroundColor: colors.bar, borderRadius: radii.card, padding: spacing.card }}>
             <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 5, height: 54 }}>
               {ladderBars(settings.plan).map((bar) => (
                 <View key={bar.step} style={{ flex: 1, alignItems: "center", gap: 6 }}>
@@ -473,7 +473,7 @@ export default function Assign() {
                       height: bar.height,
                       borderTopLeftRadius: radii.badge,
                       borderTopRightRadius: radii.badge,
-                      backgroundColor: (heat[bar.step] ?? heat[heat.length - 1]).fg,
+                      backgroundColor: heatFor(bar.step).fg,
                     }}
                   />
                   <AppText
@@ -523,7 +523,7 @@ export default function Assign() {
                     paddingHorizontal: 8,
                     borderRadius: radii.cardSmall,
                     borderWidth: 1,
-                    borderColor: on ? colors.brandYellow : colors.hairlineStrong,
+                    borderColor: on ? colors.brand : colors.hairlineStrong,
                     backgroundColor: on ? colors.selectedFill : colors.surface,
                     alignItems: "center",
                     minHeight: MIN_TAP_TARGET,
@@ -540,7 +540,7 @@ export default function Assign() {
                       fontFamily: fontFamily.mono,
                       fontSize: 9,
                       lineHeight: 10,
-                      color: "rgba(27,26,23,.42)",
+                      color: colors.faint,
                       marginTop: 4,
                     }}
                   >
@@ -651,7 +651,7 @@ function NewEpisode({
     <View
       style={{
         borderWidth: 1,
-        borderColor: colors.brandYellow,
+        borderColor: colors.brand,
         backgroundColor: colors.selectedFill,
         borderRadius: 10,
         padding: spacing.cardTight,
@@ -662,7 +662,7 @@ function NewEpisode({
         value={code}
         onChangeText={setCode}
         placeholder="EP-44"
-        placeholderTextColor="rgba(27,26,23,.35)"
+        placeholderTextColor={colors.faint}
         autoCapitalize="characters"
         accessibilityLabel="Episode code"
         style={[input, { fontFamily: fontFamily.monoSemibold, fontSize: 12 }]}
@@ -671,12 +671,12 @@ function NewEpisode({
         value={title}
         onChangeText={setTitle}
         placeholder="Bengali title"
-        placeholderTextColor="rgba(27,26,23,.35)"
+        placeholderTextColor={colors.faint}
         accessibilityLabel="Episode title"
         style={[input, { fontFamily: fontFamily.bengali, fontSize: 13 }]}
       />
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.cardTight }}>
-        <AppText style={[type.metaSmall, { flex: 1, color: "rgba(27,26,23,.55)" }]}>
+        <AppText style={[type.metaSmall, { flex: 1, color: colors.muted }]}>
           {`Airs in ${airInDays} days`}
         </AppText>
         <StepperButton

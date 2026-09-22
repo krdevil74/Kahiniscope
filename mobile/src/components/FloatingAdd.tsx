@@ -16,7 +16,7 @@ export function FloatingAdd({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel="Assign a task"
-      android_ripple={{ color: "rgba(27,26,23,.2)", borderless: true }}
+      android_ripple={{ color: colors.rippleStrong, borderless: true }}
       style={({ pressed }) => ({
         position: "absolute",
         right: layout.fabRight,

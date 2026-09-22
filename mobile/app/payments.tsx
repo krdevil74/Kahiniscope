@@ -22,6 +22,7 @@ import { Button } from "../src/components/Button";
 import { Card } from "../src/components/Card";
 import { EmptyState } from "../src/components/EmptyState";
 import { MemberTabs } from "../src/components/MemberTabs";
+import { ThemePicker } from "../src/components/ThemePicker";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { useSession } from "../src/lib/auth";
@@ -131,7 +132,7 @@ function AdminPayments() {
                     <AppText weight="semibold" style={[type.bodySmall]}>
                       {byUid.get(payment.uid)?.name ?? "Somebody"}
                     </AppText>
-                    <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)", marginTop: 2 }]}>
+                    <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
                       {`${payment.taskType} · ${byEpisode.get(payment.episodeId)?.code ?? ""}`}
                     </AppText>
                   </View>
@@ -194,7 +195,7 @@ function PendingCard({
         <Avatar name={name} size={28} variant="light" />
         <View style={{ flex: 1, minWidth: 0 }}>
           <AppText weight="semibold" style={[type.bodySmall]}>{name}</AppText>
-          <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)", marginTop: 2 }]}>
+          <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
             {`${payment.taskType}${episodeCode ? ` · ${episodeCode}` : ""} · ${UNIT_LABELS[payment.unit]}`}
           </AppText>
         </View>
@@ -206,13 +207,13 @@ function PendingCard({
           otherwise it would never have reached the queue. Worth saying, since
           the obvious next thought is "haven't I already paid them?". */}
       {balance > 0 ? (
-        <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.5)" }]}>
+        <AppText style={[type.metaXSmall, { color: colors.faint }]}>
           {`${money(balance)} still advanced to ${name.split(" ")[0]} — this was too big to come off it.`}
         </AppText>
       ) : null}
 
       {payment.comment ? (
-        <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.6)" }]}>
+        <AppText style={[type.bodySmall, { color: colors.muted }]}>
           {`“${payment.comment}”`}
         </AppText>
       ) : null}
@@ -223,7 +224,7 @@ function PendingCard({
           onChangeText={setAmount}
           keyboardType="numeric"
           placeholder="Amount"
-          placeholderTextColor="rgba(27,26,23,.35)"
+          placeholderTextColor={colors.faint}
           accessibilityLabel={`Amount to pay ${name}`}
           style={{
             flex: 1,
@@ -281,7 +282,7 @@ function WorkingNote({ payment }: { payment: Payment }) {
         gap: spacing.chips,
       }}
     >
-      <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.55)" }]}>
+      <AppText style={[type.metaXSmall, { color: colors.muted }]}>
         {parts.length ? parts.join(" · ") : "No rate on file — type the amount"}
       </AppText>
       <AppText weight="semibold" style={[type.metaXSmall]}>
@@ -341,8 +342,8 @@ function MemberPayments() {
             paddingVertical: 26,
             borderRadius: 999,
             borderWidth: 3,
-            borderColor: colors.brandYellow,
-            backgroundColor: colors.ink,
+            borderColor: colors.brand,
+            backgroundColor: colors.bar,
             marginBottom: 4,
           }}
         >
@@ -352,7 +353,7 @@ function MemberPayments() {
               fontSize: 9.5,
               lineHeight: 11,
               letterSpacing: 1.6,
-              color: colors.brandYellow,
+              color: colors.brand,
             }}
           >
             TOTAL EARNED
@@ -382,7 +383,7 @@ function MemberPayments() {
         </View>
 
         {balance > 0 ? (
-          <Card radius={13} style={{ padding: 14, gap: 3, backgroundColor: colors.ink, borderColor: colors.ink }}>
+          <Card radius={13} style={{ padding: 14, gap: 3, backgroundColor: colors.bar, borderColor: colors.ink }}>
             <AppText
               style={{
                 fontFamily: fontFamily.monoMedium,
@@ -458,7 +459,7 @@ function MemberPayments() {
         {pending.length > 0 ? (
           <View
             style={{
-              backgroundColor: colors.ink,
+              backgroundColor: colors.bar,
               borderRadius: radii.chipLarge,
               paddingVertical: 10,
               paddingHorizontal: 11,
@@ -494,6 +495,13 @@ function MemberPayments() {
             style={{ borderColor: colors.hairlineStrong }}
           />
         ) : null}
+
+        {/* A member has no settings screen — this is the one page they have
+            that is not a list of work, so the theme lives at the foot of it. */}
+        <View style={{ marginTop: 18, gap: spacing.chips }}>
+          <SectionCaption>Appearance</SectionCaption>
+          <ThemePicker />
+        </View>
       </ScrollView>
     </View>
   );
@@ -519,9 +527,9 @@ function SummaryBar({
         alignItems: "center",
         justifyContent: "space-between",
         gap: spacing.chips,
-        backgroundColor: tone === "paid" ? colors.brandYellow : colors.surfaceSunken,
+        backgroundColor: tone === "paid" ? colors.brand : colors.surfaceSunken,
         borderWidth: 1,
-        borderColor: tone === "paid" ? colors.brandYellow : colors.hairlineStrong,
+        borderColor: tone === "paid" ? colors.brand : colors.hairlineStrong,
         borderRadius: radii.chipLarge,
         paddingVertical: 11,
         paddingHorizontal: 13,
@@ -536,7 +544,7 @@ function SummaryBar({
             fontFamily: fontFamily.mono,
             fontSize: 10,
             lineHeight: 13,
-            color: "rgba(27,26,23,.55)",
+            color: colors.muted,
             marginTop: 2,
           }}
         >
@@ -569,7 +577,7 @@ function PaymentRow({ payment, episode }: { payment: Payment; episode?: Episode 
               fontFamily: fontFamily.regular,
               fontSize: 11.5,
               lineHeight: 16,
-              color: "rgba(27,26,23,.6)",
+              color: colors.muted,
               marginTop: 2,
             }}
           >
@@ -580,7 +588,7 @@ function PaymentRow({ payment, episode }: { payment: Payment; episode?: Episode 
               fontFamily: fontFamily.mono,
               fontSize: 10,
               lineHeight: 13,
-              color: "rgba(27,26,23,.45)",
+              color: colors.faint,
               marginTop: 3,
             }}
           >
@@ -596,7 +604,7 @@ function PaymentRow({ payment, episode }: { payment: Payment; episode?: Episode 
             {money(amountToShow(payment))}
           </AppText>
           {payment.status !== "paid" ? (
-            <AppText style={[type.metaXSmall, { color: "rgba(27,26,23,.45)", marginTop: 2 }]}>
+            <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
               estimate
             </AppText>
           ) : null}

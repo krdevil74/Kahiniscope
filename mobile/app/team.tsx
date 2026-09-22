@@ -19,7 +19,7 @@ import { useSession } from "../src/lib/auth";
 import { bestChannelFor, channelLabel } from "../src/lib/channels.ts";
 import { openEpisodeCodes, openTasks, tasksForMember, worstStep } from "../src/lib/completion.ts";
 import { indexBy, useEpisodes, useSettings, useTasks, useTeam } from "../src/lib/data";
-import { fontFamily, layout, spacing } from "../src/theme/tokens";
+import { colors, fontFamily, layout, spacing } from "../src/theme/tokens";
 import { type } from "../src/theme/typography";
 
 export default function Team() {
@@ -88,7 +88,7 @@ export default function Team() {
                     fontFamily: fontFamily.mono,
                     fontSize: 10.5,
                     lineHeight: 14.7,
-                    color: "rgba(27,26,23,.5)",
+                    color: colors.faint,
                     marginTop: 3,
                   }}
                 >
@@ -108,7 +108,7 @@ export default function Team() {
                     fontFamily: fontFamily.mono,
                     fontSize: 9,
                     lineHeight: 9,
-                    color: "rgba(27,26,23,.4)",
+                    color: colors.faint,
                   }}
                 >
                   {channelLabel(bestChannelFor(member, settings))}

@@ -98,11 +98,13 @@ export default function Board() {
           onPress={() => router.push("/review")}
           accessibilityRole="button"
           accessibilityLabel={reviewQueueLabel(review.length)}
-          android_ripple={{ color: "rgba(27,26,23,.08)" }}
+          android_ripple={{ color: colors.ripple }}
           style={{
             marginTop: 8,
             marginHorizontal: spacing.screen,
-            backgroundColor: colors.brandYellow,
+            backgroundColor: colors.infoSoft,
+            borderWidth: 1,
+            borderColor: colors.info,
             borderRadius: radii.cardLarge,
             paddingVertical: 12,
             paddingHorizontal: 13,
@@ -115,7 +117,7 @@ export default function Board() {
           <AppText weight="semibold" style={{ fontFamily: fontFamily.semibold, fontSize: 12.5, lineHeight: 15 }}>
             {reviewQueueLabel(review.length)}
           </AppText>
-          <AppText style={{ fontFamily: fontFamily.mono, fontSize: 11, color: "rgba(27,26,23,.6)" }}>
+          <AppText style={{ fontFamily: fontFamily.mono, fontSize: 11, color: colors.muted }}>
             Review
           </AppText>
         </Pressable>
@@ -126,11 +128,14 @@ export default function Board() {
           onPress={() => router.push("/requests")}
           accessibilityRole="button"
           accessibilityLabel={`${pending.length} registrations awaiting approval`}
-          android_ripple={{ color: "rgba(255,255,255,.08)" }}
+          android_ripple={{ color: colors.ripple }}
           style={{
             marginTop: 8,
             marginHorizontal: spacing.screen,
-            backgroundColor: colors.ink,
+            // Somebody waiting to be let in is attention, not information.
+            backgroundColor: colors.attentionSoft,
+            borderWidth: 1,
+            borderColor: colors.attention,
             borderRadius: radii.card,
             paddingVertical: 13,
             paddingHorizontal: spacing.card,
@@ -144,13 +149,13 @@ export default function Board() {
               width: 28,
               height: 28,
               borderRadius: radii.pill,
-              backgroundColor: colors.brandYellow,
+              backgroundColor: colors.attention,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
             <AppText
-              style={{ fontFamily: fontFamily.monoSemibold, fontSize: 12, lineHeight: 12, color: colors.ink }}
+              style={{ fontFamily: fontFamily.monoSemibold, fontSize: 12, lineHeight: 12, color: colors.white }}
             >
               {String(pending.length)}
             </AppText>
@@ -158,7 +163,7 @@ export default function Board() {
           <View style={{ flex: 1, minWidth: 0 }}>
             <AppText
               weight="semibold"
-              style={{ fontFamily: fontFamily.semibold, fontSize: 12.5, lineHeight: 15, color: colors.white }}
+              style={{ fontFamily: fontFamily.semibold, fontSize: 12.5, lineHeight: 15, color: colors.ink }}
             >
               Registrations awaiting approval
             </AppText>
@@ -168,14 +173,14 @@ export default function Board() {
                 fontFamily: fontFamily.mono,
                 fontSize: 10,
                 lineHeight: 13.5,
-                color: colors.onInkMuted,
+                color: colors.muted,
                 marginTop: 3,
               }}
             >
               {pending.map((p) => p.name.split(" ")[0]).join(", ")} · from Play Store
             </AppText>
           </View>
-          <AppText style={{ fontFamily: fontFamily.regular, fontSize: 16, lineHeight: 16, color: colors.brandYellow }}>
+          <AppText style={{ fontFamily: fontFamily.regular, fontSize: 16, lineHeight: 16, color: colors.attention }}>
             →
           </AppText>
         </Pressable>
@@ -196,7 +201,7 @@ export default function Board() {
           Needs chasing
         </AppText>
         <AppText
-          style={{ fontFamily: fontFamily.mono, fontSize: 10, lineHeight: 10, color: "rgba(27,26,23,.45)" }}
+          style={{ fontFamily: fontFamily.mono, fontSize: 10, lineHeight: 10, color: colors.faint }}
         >
           {settings.plan.join(" → ")} days
         </AppText>
@@ -230,7 +235,7 @@ export default function Board() {
                 accessibilityRole="button"
                 accessibilityState={{ expanded: open }}
                 accessibilityLabel={`${group.code}, ${groupSummary(group)}`}
-                android_ripple={{ color: "rgba(27,26,23,.06)" }}
+                android_ripple={{ color: colors.ripple }}
                 style={{
                   paddingTop: 12,
                   paddingHorizontal: 13,
@@ -253,7 +258,7 @@ export default function Board() {
                         fontFamily: fontFamily.regular,
                         fontSize: 11.5,
                         lineHeight: 16,
-                        color: "rgba(27,26,23,.55)",
+                        color: colors.muted,
                         marginTop: 2,
                       }}
                     >
@@ -265,7 +270,7 @@ export default function Board() {
                       fontFamily: fontFamily.mono,
                       fontSize: 10.5,
                       lineHeight: 14,
-                      color: "rgba(27,26,23,.5)",
+                      color: colors.faint,
                       marginTop: 3,
                     }}
                   >
@@ -279,7 +284,7 @@ export default function Board() {
                     fontFamily: fontFamily.mono,
                     fontSize: 13,
                     lineHeight: 14,
-                    color: "rgba(27,26,23,.45)",
+                    color: colors.faint,
                   }}
                 >
                   {open ? "\u2212" : "+"}
@@ -323,7 +328,7 @@ export default function Board() {
                                 fontFamily: fontFamily.mono,
                                 fontSize: 11,
                                 lineHeight: 15.4,
-                                color: "rgba(27,26,23,.5)",
+                                color: colors.faint,
                                 marginTop: 3,
                               }}
                             >
@@ -429,14 +434,14 @@ export default function Board() {
                       fontFamily: fontFamily.regular,
                       fontSize: 11,
                       lineHeight: 15.4,
-                      color: entry.result === "failed" ? colors.danger : "rgba(27,26,23,.75)",
+                      color: entry.result === "failed" ? colors.danger : colors.muted,
                     }}
                   >
                     {summary || "Reminder sent"}
                     {entry.result === "failed" ? " · failed" : ""}
                   </AppText>
                   <AppText
-                    style={{ fontFamily: fontFamily.mono, fontSize: 9.5, lineHeight: 9.5, color: "rgba(27,26,23,.35)" }}
+                    style={{ fontFamily: fontFamily.mono, fontSize: 9.5, lineHeight: 9.5, color: colors.faint }}
                   >
                     {feedTimeLabel(entry.sentAt, now)}
                   </AppText>
@@ -461,7 +466,7 @@ function StatCell({ value, label, tone = colors.ink }: { value: number; label: s
           fontFamily: fontFamily.regular,
           fontSize: 10,
           lineHeight: 13,
-          color: "rgba(27,26,23,.55)",
+          color: colors.muted,
           marginTop: 5,
         }}
       >

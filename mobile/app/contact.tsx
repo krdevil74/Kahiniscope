@@ -115,7 +115,7 @@ export default function Contact() {
       onBack={() => router.back()}
     >
       <View style={{ padding: spacing.screen, gap: 18 }}>
-        <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.6)" }]}>
+        <AppText style={[type.bodySmall, { color: colors.muted }]}>
           For people who do the work but will not install anything. They are
           assignable straight away — reminders go to their phone instead of the
           app.
@@ -127,7 +127,7 @@ export default function Contact() {
             value={draft.name}
             onChangeText={(name) => patch({ name: name.slice(0, 80) })}
             placeholder="Rizu Ahmed"
-            placeholderTextColor="rgba(27,26,23,.35)"
+            placeholderTextColor={colors.faint}
             accessibilityLabel="Their name"
             style={inputStyle(false)}
           />
@@ -144,7 +144,7 @@ export default function Contact() {
           <AppText
             style={[
               type.metaXSmall,
-              { color: phoneTyped && !phoneValid ? colors.danger : "rgba(27,26,23,.45)" },
+              { color: phoneTyped && !phoneValid ? colors.danger : colors.faint },
             ]}
           >
             {phoneTyped && !phoneValid
@@ -159,7 +159,7 @@ export default function Contact() {
             value={draft.email}
             onChangeText={(email) => patch({ email })}
             placeholder="Usually there isn't one"
-            placeholderTextColor="rgba(27,26,23,.35)"
+            placeholderTextColor={colors.faint}
             keyboardType="email-address"
             autoCapitalize="none"
             accessibilityLabel="Their email address"
@@ -169,7 +169,7 @@ export default function Contact() {
 
         <View style={{ gap: spacing.chips }}>
           <SectionCaption>What they do</SectionCaption>
-          <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.5)" }]}>
+          <AppText style={[type.bodySmall, { color: colors.faint }]}>
             {`Pick everything they do — up to ${MAX_CRAFTS}.`}
           </AppText>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.chipsTight }}>
@@ -192,7 +192,7 @@ export default function Contact() {
 
         <View style={{ gap: spacing.chips }}>
           <SectionCaption>Remind them on</SectionCaption>
-          <AppText style={[type.bodySmall, { color: "rgba(27,26,23,.5)" }]}>
+          <AppText style={[type.bodySmall, { color: colors.faint }]}>
             Push is not an option for somebody with no app. Telegram needs one
             tap from them — the person page has the invite link.
           </AppText>
@@ -220,7 +220,7 @@ export default function Contact() {
             value={draft.note}
             onChangeText={(note) => patch({ note: note.slice(0, 500) })}
             placeholder="Answers fastest in the evening. Has done EP-33 to EP-36."
-            placeholderTextColor="rgba(27,26,23,.35)"
+            placeholderTextColor={colors.faint}
             multiline
             accessibilityLabel="A note about them"
             style={[inputStyle(false), { minHeight: 88, textAlignVertical: "top" }]}
@@ -281,6 +281,6 @@ function chipTextStyle(on: boolean) {
     fontFamily: fontFamily.medium,
     fontSize: 11,
     lineHeight: 13,
-    color: on ? colors.white : "rgba(27,26,23,.6)",
+    color: on ? colors.white : colors.muted,
   } as const;
 }

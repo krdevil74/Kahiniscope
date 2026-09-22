@@ -7,7 +7,8 @@
  * below it on their own.
  */
 
-import { Pressable, View, type ViewStyle } from "react-native";
+import { Pressable, StyleSheet, View, type ViewStyle } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { AppText } from "./AppText";
 import { colors, fontFamily, radii, MIN_TAP_TARGET } from "../theme/tokens";
@@ -43,10 +44,19 @@ export function Button({
   accessibilityLabel,
 }: ButtonProps) {
   const metrics = PADDING[size];
+  // "yellow" is the primary variant's name from the original handoff. The
+  // colour it paints is now the brand purple: the yellow belongs to the mark,
+  // and a button wearing the logo's colour competes with the logo. The name
+  // stays because sixty call sites use it and renaming them would be churn
+  // with no reader on the other side.
   const background =
-    variant === "yellow" ? colors.brandYellow : variant === "ink" ? colors.ink : colors.surface;
+    variant === "yellow" ? colors.brand : variant === "ink" ? colors.bar : colors.surface;
   const foreground =
-    variant === "ink" ? colors.white : variant === "quiet" ? "rgba(27,26,23,.6)" : colors.ink;
+    variant === "yellow" || variant === "ink"
+      ? colors.onBar
+      : variant === "quiet"
+        ? colors.muted
+        : colors.ink;
   const border =
     variant === "outline" ? colors.hairlineStrong : variant === "quiet" ? colors.hairlineStronger : "transparent";
 
@@ -58,15 +68,18 @@ export function Button({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled }}
       hitSlop={size === "compact" ? 8 : 0}
-      android_ripple={{ color: "rgba(27,26,23,.12)" }}
+      android_ripple={{ color: colors.ripple }}
       style={({ pressed }) => [
         {
+          // The primary variant paints its fill with a gradient layer below,
+          // so its own background stays clear. Everything else fills flat.
           backgroundColor:
-            pressed && variant === "yellow"
-              ? colors.yellowHover
+            variant === "yellow"
+              ? "transparent"
               : pressed && variant === "ink"
-                ? "#332f28"
+                ? colors.barPressed
                 : background,
+          overflow: "hidden",
           borderRadius: radius ?? (size === "large" ? radii.buttonLarge : radii.button),
           borderWidth: border === "transparent" ? 0 : 1,
           borderColor: border,
@@ -80,20 +93,35 @@ export function Button({
         style,
       ]}
     >
-      <View>
-        <AppText
-          weight="semibold"
-          numberOfLines={1}
-          style={{
-            fontFamily: fontFamily.semibold,
-            fontSize: metrics.fontSize,
-            lineHeight: metrics.fontSize * 1.15,
-            color: foreground,
-          }}
-        >
-          {label}
-        </AppText>
-      </View>
+      {({ pressed }: { pressed: boolean }) => (
+        <>
+          {/* Purple into pink, and only here: appearing together is what
+              makes this read as the primary action rather than decoration. */}
+          {variant === "yellow" ? (
+            <LinearGradient
+              colors={[...(pressed ? colors.brandGradientPressed : colors.brandGradient)]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null}
+
+          <View>
+            <AppText
+              weight="semibold"
+              numberOfLines={1}
+              style={{
+                fontFamily: fontFamily.semibold,
+                fontSize: metrics.fontSize,
+                lineHeight: metrics.fontSize * 1.15,
+                color: foreground,
+              }}
+            >
+              {label}
+            </AppText>
+          </View>
+        </>
+      )}
     </Pressable>
   );
 }

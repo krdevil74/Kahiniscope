@@ -1,0 +1,117 @@
+/* Kahiniscope — proposed design language
+   Palette: 9B5DE5 · F15BB5 · FEE440 · 00BBF9 · 00F5D4
+   Five loud colours used loudly would be worse than what is there now, so
+   each one is given a job and nothing else: purple carries the brand, mint
+   means money, blue means information, pink means attention, yellow means
+   heat. */
+:root {
+  --purple: #9B5DE5;
+  --pink:   #F15BB5;
+  --yellow: #FEE440;
+  --blue:   #00BBF9;
+  --mint:   #00F5D4;
+
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+
+  --ui: "Plus Jakarta Sans", -apple-system, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --bn: "Noto Sans Bengali", var(--ui);
+}
+
+/* Dark: the palette is built for it. These hues on a near-black violet read
+   as premium; the same hues on white read as a poster. */
+.dark {
+  --bg: #0D0A14;
+  --surface: #17121F;
+  --raised: #1E1829;
+  --line: rgba(255,255,255,.09);
+  --line-2: rgba(255,255,255,.16);
+  --text: #F6F3FB;
+  --muted: rgba(246,243,251,.58);
+  --faint: rgba(246,243,251,.38);
+}
+
+.light {
+  --bg: #F7F5FC;
+  --surface: #FFFFFF;
+  --raised: #F1ECFA;
+  --line: rgba(23,18,31,.09);
+  --line-2: rgba(23,18,31,.16);
+  --text: #171225;
+  --muted: rgba(23,18,31,.62);
+  --faint: rgba(23,18,31,.42);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #08060C; font-family: var(--ui); -webkit-font-smoothing: antialiased; }
+
+.phone {
+  width: 390px; height: 844px;
+  background: var(--bg); color: var(--text);
+  border-radius: 34px; overflow: hidden;
+  display: flex; flex-direction: column;
+  position: relative;
+}
+
+.bn { font-family: var(--bn); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---- header ---- */
+.hdr { padding: 52px 20px 14px; display: flex; align-items: center; gap: 12px;
+       background: linear-gradient(180deg, rgba(155,93,229,.22), transparent); }
+/* The client's mark, unchanged. The handoff is explicit that no substitute
+   is to be generated, and the yellow is the one thing everybody already
+   recognises — so the palette works around it rather than over it. */
+.mark { width: 34px; height: 34px; border-radius: 50%; flex: none; object-fit: contain; }
+.hdr h1 { font-size: 19px; font-weight: 700; letter-spacing: -.3px; line-height: 1.15; }
+.hdr .sub { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-top: 3px; letter-spacing: .1px; }
+.ghost { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--muted);
+         border: 1px solid var(--line-2); border-radius: var(--r-pill); padding: 7px 13px; }
+
+.body { flex: 1; overflow: hidden; padding: 4px 16px 0; display: flex; flex-direction: column; gap: 10px; }
+
+/* ---- cards ---- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px; }
+.card.flat { padding: 0; overflow: hidden; }
+
+.row { display: flex; align-items: center; gap: 11px; }
+.grow { flex: 1; min-width: 0; }
+.t { font-size: 14px; font-weight: 650; letter-spacing: -.15px; }
+.m { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+.xs { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+.cap { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.3px;
+       text-transform: uppercase; color: var(--faint); }
+
+.av { width: 34px; height: 34px; border-radius: 11px; flex: none; display: grid; place-items: center;
+      font-size: 12px; font-weight: 700; color: #0D0A14; }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--r-pill);
+        padding: 5px 10px; font-size: 10.5px; font-weight: 650; }
+.dot { width: 6px; height: 6px; border-radius: 50%; }
+
+.bar { height: 3px; width: 100%; background: var(--line); }
+.bar > i { display: block; height: 100%; }
+
+.btn { border-radius: var(--r-sm); padding: 13px 16px; font-size: 13px; font-weight: 700;
+       text-align: center; letter-spacing: -.1px; }
+.btn.primary { background: linear-gradient(135deg, var(--purple), var(--pink)); color: #fff; }
+.btn.mint { background: var(--mint); color: #06241F; }
+.btn.quiet { border: 1px solid var(--line-2); color: var(--muted); background: transparent; }
+.btn.sm { padding: 9px 13px; font-size: 11.5px; border-radius: 9px; }
+
+/* ---- tabs ---- */
+.tabs { display: flex; gap: 6px; padding: 0 16px 12px; }
+.tab { flex: 1; text-align: center; padding: 10px; border-radius: var(--r-pill);
+       font-size: 12px; font-weight: 650; color: var(--muted); border: 1px solid var(--line-2); }
+.tab.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+.nav { margin-top: auto; display: flex; gap: 4px; padding: 10px 12px 26px;
+       background: var(--surface); border-top: 1px solid var(--line); }
+.nav div { flex: 1; text-align: center; font-size: 10px; font-weight: 600; color: var(--faint); padding: 7px 0; }
+.nav div.on { color: var(--text); }
+.nav div.on::after { content: ""; display: block; width: 16px; height: 2px; border-radius: 2px;
+                     background: var(--purple); margin: 5px auto 0; }
