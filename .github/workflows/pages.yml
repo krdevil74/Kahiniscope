@@ -1,0 +1,62 @@
+name: Privacy policy site
+
+# Play rejects a listing without a privacy policy at a public URL. This
+# publishes mobile/store/privacy-policy.md to GitHub Pages, so there is one
+# copy of the text and the published page is a view of it — edit the markdown
+# and the live policy follows.
+#
+# Only the policy is published. The build-order docs in docs/ stay out of it:
+# they are readable in the repository, but a store link should resolve to the
+# policy and nothing else.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/store/privacy-policy.md"
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Build
+        env:
+          # The public contact address. A repository variable rather than a
+          # secret: it is printed on the listing, so it is not a secret — but
+          # it belongs in one place, not scattered through the markdown.
+          SUPPORT_EMAIL: ${{ vars.SUPPORT_EMAIL }}
+        run: |
+          npm install --no-save marked@15
+          node site/build.mjs
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
