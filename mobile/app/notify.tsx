@@ -281,7 +281,7 @@ export default function Notify() {
                             borderRadius: 3,
                             paddingVertical: 4,
                             paddingHorizontal: 5,
-                            backgroundColor: on ? "#fff4d6" : "#eef1f4",
+                            backgroundColor: on ? colors.heatSoft : colors.surfaceSunken,
                           }}
                         >
                           <AppText
@@ -291,7 +291,7 @@ export default function Notify() {
                               lineHeight: 9.5,
                               letterSpacing: 0.6,
                               textTransform: "uppercase",
-                              color: on ? "#8a6400" : "#3f5261",
+                              color: on ? colors.heat : colors.muted,
                             }}
                           >
                             {tag}

@@ -201,12 +201,60 @@ collections, `payments` and `advances`, that no client may write.
 
 ---
 
+## The single-palette UI, the episode life cycle and the script link
+
+One branch, `feat/blocks-ui`, open as PR #11.
+
+**One interface, one palette.** The dark/light theme pair is gone —
+`ThemePicker`, `theme/theme.tsx` and `theme/preference.ts` deleted. Every
+colour comes from one `PALETTE` built on the five brand colours, used as
+large flat fills on white with a near-black bar across the top. The bar is a
+true neutral so it no longer collides with the violet tab strip below it.
+
+**The member side is three tabs**: Summary (new, and the landing page),
+Tasks, Payments. Payments opens on the total with a diagonal PAID stamp, then
+a ribbon per section.
+
+**The admin side matches it**: the board opens on the same three soft-fill
+tiles the member summary does, the slate block is a violet fill rather than a
+second near-black one, the "+" is violet because the yellow belongs to the
+mark, and Back is the same pill as Sign out.
+
+**Episodes have a life cycle**: `in_progress` and `broadcast`. Marking an
+episode broadcast takes it off the new-task screen and nothing else — its
+tasks, percentages and payments stay. `lib/episode-status.ts` reads
+"production" and "released" too, which are the two spellings already in the
+live database; only the new pair is ever written, so the old ones age out.
+
+**Episodes carry a script link**, one Google Drive URL, readable only by the
+people with a task on that episode. It is **not** a field on the episode
+document — that document is listed by every approved account so the member
+screens can put a code against a task. It lives at
+`episodes/{id}/private/script`, and the rules gate it on a roster at
+`episodes/{id}/private/roster` that `syncEpisodeRosterOnTaskWrite` maintains.
+Rules cannot ask "does this person have a task here" directly: task ids are
+generated, so there is no path a rule could construct. The roster is
+admin-read-only, so the check does not publish who is working on what.
+
+One new trigger, `syncEpisodeRosterOnTaskWrite`. **It has to be deployed
+with the rules** — the rules read a document only the trigger writes, so
+rules without the trigger means no member can open any script.
+
+---
+
 ## TBD
 
 ### Blocking a real launch
 
 - [x] **Run the app on a phone.** Done 20–21 Sep.
 - [x] **Deploy the contacts work.** Merged and deployed 21 Sep.
+- [ ] **Deploy the episode life cycle and the script link**, rules and
+      functions **together**. The script rule reads
+      `episodes/{id}/private/roster`, which only `syncEpisodeRosterOnTaskWrite`
+      writes. Rules without the trigger and every script read is denied; the
+      trigger without the rules and the subcollection is unreachable. Existing
+      episodes get their roster the first time any task on them is written —
+      to backfill sooner, touch each task once.
 - [ ] **Deploy the payments work**, rules and functions together. The member
       write on `tasks` moved from `done` to `status`, so an app built from
       this branch cannot submit anything against the old rules — and an old

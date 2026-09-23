@@ -33,3 +33,4 @@ export {
   updateContact,
 } from "./contacts";
 export { purgeOldData } from "./retention";
+export { syncEpisodeRosterOnTaskWrite } from "./episode-roster";

@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
+  doc,
   limit as fsLimit,
   onSnapshot,
   orderBy,
@@ -23,11 +24,13 @@ import {
 import { db } from "./firebase";
 import { toBool, toDate, toId, toNumber, toStringArray, toStringOrNull } from "./convert.ts";
 import { craftsFrom } from "./crafts";
+import { episodeStatusFrom } from "./episode-status.ts";
 import { ratesFrom, taskStatusFrom, toAdvance, toPayment } from "./payment-convert.ts";
 import {
   DEFAULT_SETTINGS,
   type ChannelId,
   type Episode,
+  type EpisodeScript,
   type ReminderLogEntry,
   type Settings,
   type Task,
@@ -46,7 +49,7 @@ function toEpisode(snap: QueryDocumentSnapshot<DocumentData>): Episode {
     code: d.code ?? "",
     title: d.title ?? "",
     airDate: toDate(d.airDate),
-    status: d.status === "released" ? "released" : "production",
+    status: episodeStatusFrom(d.status),
   };
 }
 
@@ -168,6 +171,69 @@ function useCollection<T>(
 
 export function useEpisodes(enabled = true): Live<Episode[]> {
   return useCollection("episodes", toEpisode, [orderBy("airDate", "asc")], enabled);
+}
+
+/**
+ * The script links for a set of episodes, keyed by episode id.
+ *
+ * One listener per episode rather than a collection-group query, because
+ * there is no query a member could run across episodes/{id}/private that the
+ * rules would accept: the roster check is per episode, and a list has to be
+ * guaranteed by the query itself. A member has a handful of episodes open at
+ * a time, so a handful of document listeners is the honest cost.
+ *
+ * An episode with no script, or one the reader has no task on, simply does
+ * not appear in the map — a refused read is the expected case here, not an
+ * error worth surfacing.
+ */
+export function useEpisodeScripts(
+  episodeIds: readonly string[],
+  enabled = true
+): Live<Record<string, EpisodeScript>> {
+  const [data, setData] = useState<Record<string, EpisodeScript>>({});
+  const key = [...episodeIds].sort().join(",");
+
+  useEffect(() => {
+    if (!enabled || !key) {
+      setData({});
+      return;
+    }
+    const ids = key.split(",");
+    const unsubscribes = ids.map((id) =>
+      onSnapshot(
+        doc(db, "episodes", id, "private", "script"),
+        (snap) => {
+          const script = snap.exists() ? toScript(snap.data()) : null;
+          setData((current) => {
+            if (!script) {
+              if (!(id in current)) return current;
+              const next = { ...current };
+              delete next[id];
+              return next;
+            }
+            return { ...current, [id]: script };
+          });
+        },
+        // Refused because they have no task on this episode, which is the
+        // rule working. Drop it rather than log a warning per episode.
+        () => setData((current) => {
+          if (!(id in current)) return current;
+          const next = { ...current };
+          delete next[id];
+          return next;
+        })
+      )
+    );
+    return () => unsubscribes.forEach((stop) => stop());
+  }, [key, enabled]);
+
+  return { data, loading: false, error: null };
+}
+
+function toScript(d: DocumentData): EpisodeScript | null {
+  const url = typeof d.url === "string" ? d.url.trim() : "";
+  if (!url) return null;
+  return { url, addedAt: toDate(d.addedAt), addedBy: d.addedBy ?? "" };
 }
 
 /**
