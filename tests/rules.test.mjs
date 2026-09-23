@@ -44,6 +44,8 @@ const MEMBER = "uid-rizu";
 const OTHER_MEMBER = "uid-tanvir";
 const PENDING = "uid-newcomer";
 
+const SCRIPT_URL = "https://drive.google.com/file/d/1AbCdEfGhIj/view";
+
 let env;
 
 /** Contexts carry exactly the claims the auth triggers mint. */
@@ -84,6 +86,31 @@ beforeEach(async () => {
       title: "রক্তমুখী নীলা",
       airDate: Timestamp.now(),
       status: "production",
+    });
+
+    await setDoc(doc(db, "episodes", "ep42"), {
+      code: "EP-42",
+      title: "শেষ ট্রামের যাত্রী",
+      airDate: Timestamp.now(),
+      status: "broadcast",
+    });
+
+    // What syncEpisodeRosterOnTaskWrite writes: who has a task on EP-41. The
+    // rules read this to decide who may open the script.
+    await setDoc(doc(db, "episodes", "ep41", "private", "roster"), {
+      uids: [MEMBER],
+      updatedAt: Timestamp.now(),
+    });
+    await setDoc(doc(db, "episodes", "ep41", "private", "script"), {
+      url: SCRIPT_URL,
+      addedAt: Timestamp.now(),
+      addedBy: ADMIN,
+    });
+    // EP-42 has a script but no roster — nobody has been assigned to it yet.
+    await setDoc(doc(db, "episodes", "ep42", "private", "script"), {
+      url: SCRIPT_URL,
+      addedAt: Timestamp.now(),
+      addedBy: ADMIN,
     });
 
     await setDoc(doc(db, "tasks", "t-mine"), task({ assigneeUid: MEMBER, type: "Voice recording" }));
@@ -617,4 +644,125 @@ test("advances: an admin reads everybody's, and still writes none", async () => 
   const db = asAdmin();
   await assertSucceeds(getDoc(doc(db, "advances", "adv-theirs")));
   await assertFails(updateDoc(doc(db, "advances", "adv-mine"), { amount: 1 }));
+});
+
+// ---------------------------------------------------------------------------
+// The episode script
+//
+// One Drive link per episode, readable only by the people with a task on it.
+// The check is a roster document the tasks trigger maintains — see
+// functions/src/episode-roster.ts — so these tests seed the roster the way
+// the trigger would have written it.
+// ---------------------------------------------------------------------------
+
+test("script: the member working on the episode opens it", async () => {
+  const db = asMember();
+  const snap = await assertSucceeds(getDoc(doc(db, "episodes", "ep41", "private", "script")));
+  assert.equal(snap.data().url, SCRIPT_URL);
+});
+
+test("script: a member with no task on the episode is refused", async () => {
+  // Tanvir is approved, and can read the episode itself — its code and title
+  // are on his own payment rows. The script is the part he does not get.
+  const db = asOtherMember();
+  await assertSucceeds(getDoc(doc(db, "episodes", "ep41")));
+  await assertFails(getDoc(doc(db, "episodes", "ep41", "private", "script")));
+});
+
+test("script: an episode nobody is assigned to yet is refused to everyone but the admin", async () => {
+  await assertFails(getDoc(doc(asMember(), "episodes", "ep42", "private", "script")));
+  await assertFails(getDoc(doc(asOtherMember(), "episodes", "ep42", "private", "script")));
+  await assertSucceeds(getDoc(doc(asAdmin(), "episodes", "ep42", "private", "script")));
+});
+
+test("script: pending and signed-out accounts get nothing", async () => {
+  await assertFails(getDoc(doc(asPending(), "episodes", "ep41", "private", "script")));
+  await assertFails(getDoc(doc(asAnon(), "episodes", "ep41", "private", "script")));
+  await assertFails(getDoc(doc(asClaimless(), "episodes", "ep41", "private", "script")));
+});
+
+test("script: the roster is never handed to a member, even their own", async () => {
+  // It names everyone working on the episode. Knowing the check exists is
+  // fine; reading the list it is made of is not.
+  await assertFails(getDoc(doc(asMember(), "episodes", "ep41", "private", "roster")));
+  await assertSucceeds(getDoc(doc(asAdmin(), "episodes", "ep41", "private", "roster")));
+});
+
+test("script: a member cannot list the subcollection to get around the per-document check", async () => {
+  await assertFails(getDocs(collection(asMember(), "episodes", "ep41", "private")));
+});
+
+test("script: only an admin writes it", async () => {
+  await assertSucceeds(
+    setDoc(doc(asAdmin(), "episodes", "ep41", "private", "script"), {
+      url: "https://docs.google.com/document/d/1Xyz/edit",
+      addedAt: serverTimestamp(),
+      addedBy: ADMIN,
+    })
+  );
+  await assertFails(
+    setDoc(doc(asMember(), "episodes", "ep41", "private", "script"), {
+      url: SCRIPT_URL,
+      addedAt: serverTimestamp(),
+      addedBy: MEMBER,
+    })
+  );
+  await assertSucceeds(deleteDoc(doc(asAdmin(), "episodes", "ep41", "private", "script")));
+  await assertFails(deleteDoc(doc(asMember(), "episodes", "ep41", "private", "script")));
+});
+
+test("script: a link that is not Drive is refused at the rules, not only in the field", async () => {
+  // The app validates this too. The rules are the copy that matters: a
+  // member taps this link on trust, and the UI is not the boundary.
+  for (const url of [
+    "http://drive.google.com/file/d/1Abc/view",
+    "https://example.com/script.pdf",
+    "https://evilgoogle.com/file/d/1Abc/view",
+    "https://drive.google.com.attacker.test/file/d/1Abc/view",
+  ]) {
+    await assertFails(
+      setDoc(doc(asAdmin(), "episodes", "ep41", "private", "script"), {
+        url,
+        addedAt: serverTimestamp(),
+        addedBy: ADMIN,
+      })
+    );
+  }
+});
+
+test("script: an admin cannot write anything else into the subcollection", async () => {
+  // The roster is the trigger's to write. A hand-edited one would hand the
+  // script to whoever was added to it.
+  await assertFails(
+    setDoc(doc(asAdmin(), "episodes", "ep41", "private", "roster"), {
+      uids: [ADMIN, OTHER_MEMBER],
+      updatedAt: serverTimestamp(),
+    })
+  );
+});
+
+// ---------------------------------------------------------------------------
+// The episode life cycle
+// ---------------------------------------------------------------------------
+
+test("episodes: an admin moves one between in progress and broadcast", async () => {
+  const db = asAdmin();
+  await assertSucceeds(updateDoc(doc(db, "episodes", "ep41"), { status: "broadcast" }));
+  await assertSucceeds(updateDoc(doc(db, "episodes", "ep41"), { status: "in_progress" }));
+});
+
+test("episodes: a member cannot reopen a broadcast episode to get work onto it", async () => {
+  await assertFails(updateDoc(doc(asMember(), "episodes", "ep42"), { status: "in_progress" }));
+});
+
+test("episodes: a status outside the life cycle is refused", async () => {
+  await assertFails(updateDoc(doc(asAdmin(), "episodes", "ep41"), { status: "cancelled" }));
+  await assertFails(updateDoc(doc(asAdmin(), "episodes", "ep41"), { status: 3 }));
+});
+
+test("episodes: the two old spellings still in the live database are still writable", async () => {
+  // An admin editing a title on an episode created before the life cycle
+  // existed must not be rejected for a field they never touched.
+  await assertSucceeds(updateDoc(doc(asAdmin(), "episodes", "ep41"), { status: "production" }));
+  await assertSucceeds(updateDoc(doc(asAdmin(), "episodes", "ep41"), { status: "released" }));
 });

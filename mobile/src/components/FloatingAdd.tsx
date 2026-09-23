@@ -1,5 +1,9 @@
 /**
- * The yellow "+": 54px, 18px from the right, 96px from the bottom.
+ * The "+": 54px, 18px from the right, 96px from the bottom.
+ *
+ * Violet rather than yellow. Yellow is the logo's, and a 54px yellow circle
+ * floating over every screen was the brightest thing in the app — brighter
+ * than the mark it was borrowing from.
  *
  * It appears on Board, Episodes, episode detail, Team and person detail, and
  * nowhere else — on Assign, Requests and Notify it would cover the controls.
@@ -25,7 +29,7 @@ export function FloatingAdd({ onPress }: { onPress: () => void }) {
         width: layout.fab,
         height: layout.fab,
         borderRadius: radii.pill,
-        backgroundColor: pressed ? colors.yellowHover : colors.brandYellow,
+        backgroundColor: pressed ? colors.brandPressed : colors.brand,
         alignItems: "center",
         justifyContent: "center",
         elevation: 6,
@@ -40,7 +44,7 @@ export function FloatingAdd({ onPress }: { onPress: () => void }) {
           fontFamily: fontFamily.regular,
           fontSize: 30,
           lineHeight: 34,
-          color: colors.ink,
+          color: colors.onBar,
         }}
       >
         +

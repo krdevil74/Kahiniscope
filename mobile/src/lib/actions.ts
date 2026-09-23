@@ -6,8 +6,10 @@
 
 import {
   addDoc,
+  deleteDoc,
   doc,
   serverTimestamp,
+  setDoc,
   updateDoc,
   collection,
   Timestamp,
@@ -19,7 +21,8 @@ import { appFunctions } from "./region.ts";
 import { db } from "./firebase";
 import { firstName } from "./format.ts";
 
-import type { ChannelId, Task } from "./model";
+import { parseScriptLink } from "./script-link.ts";
+import type { ChannelId, EpisodeStatus, Task } from "./model";
 
 /**
  * Nudge one task.
@@ -169,7 +172,48 @@ export async function createEpisode(episode: {
     code: episode.code.trim(),
     title: episode.title.trim(),
     airDate: Timestamp.fromDate(episode.airDate),
-    status: "production",
+    status: "in_progress",
   });
   return created.id;
+}
+
+/**
+ * Move an episode between in progress and broadcast.
+ *
+ * Nothing is deleted and no task is touched: a broadcast episode keeps its
+ * work, its percentages and its payments, and an admin can still close out
+ * what was already assigned. The only thing that changes is that the
+ * new-task picker stops offering it — see lib/episode-status.ts.
+ */
+export async function setEpisodeStatus(
+  episodeId: string,
+  status: EpisodeStatus
+): Promise<void> {
+  await updateDoc(doc(db, "episodes", episodeId), { status });
+}
+
+/**
+ * Put the script link on an episode, or replace the one that is there.
+ *
+ * Validated here as well as in the field, because this is the function every
+ * caller goes through and a link that reached the database unchecked would
+ * be opened by whoever tapped it. The rules check the shape a third time.
+ */
+export async function setEpisodeScript(
+  episodeId: string,
+  rawUrl: string,
+  addedBy: string
+): Promise<void> {
+  const parsed = parseScriptLink(rawUrl);
+  if (!parsed.ok) throw new Error(parsed.reason);
+
+  await setDoc(doc(db, "episodes", episodeId, "private", "script"), {
+    url: parsed.url,
+    addedAt: serverTimestamp(),
+    addedBy,
+  });
+}
+
+export async function clearEpisodeScript(episodeId: string): Promise<void> {
+  await deleteDoc(doc(db, "episodes", episodeId, "private", "script"));
 }

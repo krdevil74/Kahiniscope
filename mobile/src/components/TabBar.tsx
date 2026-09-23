@@ -1,5 +1,6 @@
 /**
- * The bottom bar: four items on ink, a yellow dot above the active label.
+ * The bottom bar: five items on the near-black bar, a violet dot above the
+ * active label.
  *
  * Episode detail counts as Episodes and person detail counts as Team, so the
  * bar never goes blank when a screen is pushed on top of a tab.
@@ -61,7 +62,10 @@ export function TabBar({ items, active }: { items: TabItem[]; active: string }) 
                 width: 7,
                 height: 7,
                 borderRadius: radii.pill,
-                backgroundColor: on ? colors.brand : "transparent",
+                // The fill, not the text violet: #7B3FD4 is pitched to be
+                // read on white, and on a near-black bar a 7px dot of it is
+                // nearly invisible.
+                backgroundColor: on ? colors.brandFill : "transparent",
               }}
             />
             <AppText

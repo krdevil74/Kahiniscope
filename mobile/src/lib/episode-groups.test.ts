@@ -30,7 +30,7 @@ function task(overrides: Partial<Task>): Task {
 }
 
 function episode(id: string, code: string): Episode {
-  return { id, code, title: "রক্তমুখী নীলা", airDate: null, status: "production" };
+  return { id, code, title: "রক্তমুখী নীলা", airDate: null, status: "in_progress" };
 }
 
 test("tasks are gathered under the episode they belong to", () => {

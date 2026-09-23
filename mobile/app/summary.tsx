@@ -87,7 +87,7 @@ export default function Summary() {
               fontSize: 40,
               lineHeight: 44,
               letterSpacing: -2,
-              color: "#06342C",
+              color: colors.onMoneyFill,
               marginTop: 5,
             }}
           >

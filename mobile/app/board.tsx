@@ -82,11 +82,26 @@ export default function Board() {
       activeTab="board"
       showFab
     >
-      {/* Three equal cells, separated by 1px gutters showing through. */}
-      <View style={{ flexDirection: "row", gap: 1, backgroundColor: colors.gutter, marginBottom: 8 }}>
-        <StatCell value={stats.overdue} label="Overdue" tone={colors.danger} />
-        <StatCell value={stats.open} label="Open tasks" />
-        <StatCell value={stats.done} label="Done" />
+      {/* The same three tiles the member's summary opens on, in the same
+          soft fills. An admin and a member are looking at two views of one
+          set of tasks, and until now the two screens did not look related. */}
+      <View
+        style={{
+          flexDirection: "row",
+          gap: spacing.cardTight,
+          paddingHorizontal: spacing.screen,
+          paddingTop: spacing.cards,
+          marginBottom: spacing.cards,
+        }}
+      >
+        <StatCell
+          value={stats.overdue}
+          label="Overdue"
+          fill={colors.attentionSoft}
+          tone={colors.attention}
+        />
+        <StatCell value={stats.open} label="Open tasks" fill={colors.infoSoft} tone={colors.info} />
+        <StatCell value={stats.done} label="Done" fill={colors.moneySoft} tone={colors.money} />
       </View>
 
       {/* Work handed in and waiting on a decision. Above the registrations
@@ -455,22 +470,43 @@ export default function Board() {
   );
 }
 
-function StatCell({ value, label, tone = colors.ink }: { value: number; label: string; tone?: string }) {
+function StatCell({
+  value,
+  label,
+  fill,
+  tone,
+}: {
+  value: number;
+  label: string;
+  fill: string;
+  tone: string;
+}) {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surface, paddingVertical: 14, paddingHorizontal: 12 }}>
-      <AppText style={[type.statNumber, { fontFamily: fontFamily.monoSemibold, lineHeight: 26, color: tone }]}>
-        {String(value)}
-      </AppText>
+    <View style={{ flex: 1, backgroundColor: fill, borderRadius: radii.card, padding: 13 }}>
       <AppText
         style={{
-          fontFamily: fontFamily.regular,
-          fontSize: 10,
-          lineHeight: 13,
-          color: colors.muted,
-          marginTop: 5,
+          fontFamily: fontFamily.monoMedium,
+          fontSize: 9.5,
+          lineHeight: 11,
+          letterSpacing: 0.9,
+          textTransform: "uppercase",
+          color: tone,
         }}
       >
         {label}
+      </AppText>
+      <AppText
+        weight="semibold"
+        style={{
+          fontFamily: fontFamily.extrabold,
+          fontSize: 28,
+          lineHeight: 32,
+          letterSpacing: -1.2,
+          color: tone,
+          marginTop: 3,
+        }}
+      >
+        {String(value)}
       </AppText>
     </View>
   );

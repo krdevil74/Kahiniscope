@@ -62,6 +62,8 @@ export interface Palette {
   brandFill: string;
   infoFill: string;
   moneyFill: string;
+  /** Text on moneyFill. */
+  onMoneyFill: string;
   attentionFill: string;
   heatFill: string;
 
@@ -122,6 +124,8 @@ export const PALETTE: Palette = {
   brandFill: "#9B5DE5",
   infoFill: "#00BBF9",
   moneyFill: "#00F5D4",
+  /** Text on moneyFill: the mint is too bright for `money` to carry it. */
+  onMoneyFill: "#06342C",
   attentionFill: "#F15BB5",
   heatFill: "#FEE440",
 
