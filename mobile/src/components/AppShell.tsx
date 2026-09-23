@@ -49,7 +49,7 @@ export function AppShell({
 
   // The rules would refuse the reads anyway; this keeps a member from ever
   // seeing an empty admin screen if they somehow land on one.
-  if (!loading && !isAdmin) return <Redirect href="/my-tasks" />;
+  if (!loading && !isAdmin) return <Redirect href="/summary" />;
 
   const tabs: TabItem[] = [
     { key: "board", label: "Board", onPress: () => router.replace("/board") },

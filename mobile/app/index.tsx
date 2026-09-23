@@ -28,5 +28,5 @@ export default function Index() {
 
   if (!user) return <Redirect href="/sign-in" />;
   if (!isApproved) return <Redirect href="/pending" />;
-  return <Redirect href={isAdmin ? "/board" : "/my-tasks"} />;
+  return <Redirect href={isAdmin ? "/board" : "/summary"} />;
 }

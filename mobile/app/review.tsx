@@ -354,9 +354,8 @@ function ReviewCard({
 }
 
 /**
- * A function, not a constant. `colors` is swapped in place when the theme
- * changes, so an object built once at import would carry whichever theme
- * loaded first — for the life of the process.
+ * A function, not a constant, so the tones are read back from `colors` on
+ * each call rather than captured once at import.
  */
 function inputStyle() {
   return {
