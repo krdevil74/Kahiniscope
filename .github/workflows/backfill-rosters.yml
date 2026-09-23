@@ -1,0 +1,87 @@
+name: Backfill episode rosters
+
+# A one-off, run by hand after the episode-script work is deployed.
+#
+# syncEpisodeRosterOnTaskWrite keeps episodes/{id}/private/roster current from
+# the moment it is deployed, but it only fires on a task *write*. Every
+# episode and task that existed before the deploy has no roster, and the rules
+# deny a script read when there is none — so a script linked to an existing
+# episode would be invisible to the people working on it until something
+# happened to touch one of their tasks.
+#
+# This runs the same computation the trigger does, across every task at once.
+# It is idempotent: running it twice is the same as running it once, so it is
+# safe to re-run if a deploy is ever rolled forward again.
+#
+# It lives here rather than as a local command because the credentials are
+# already here. Running it from a laptop means a service-account key on that
+# laptop, and the whole point of the GitHub secret is that there is one copy.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type the project id to confirm (kahiniscope-5c9ee)'
+        required: true
+        type: string
+
+concurrency:
+  group: backfill-rosters
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    name: Write episodes/{id}/private/roster
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Writing to the production database wants more than a click. The
+      # project id has to be typed, and it has to match the one being written.
+      - name: Check the confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          FIREBASE_PROJECT: ${{ vars.FIREBASE_PROJECT_ID || 'kahiniscope-5c9ee' }}
+        run: |
+          if [ "$CONFIRM" != "$FIREBASE_PROJECT" ]; then
+            echo "::error::Confirmation '$CONFIRM' does not match the project '$FIREBASE_PROJECT'."
+            exit 1
+          fi
+
+      - name: Check for credentials
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SERVICE_ACCOUNT" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT is not set. See docs/11-ci-and-deploy.md."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install
+        run: npm ci --prefix functions
+
+      - name: Write the service account key
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          chmod 600 "$RUNNER_TEMP/sa.json"
+          node -e "JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP + '/sa.json','utf8'))"
+
+      - name: Backfill
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          GCLOUD_PROJECT: ${{ vars.FIREBASE_PROJECT_ID || 'kahiniscope-5c9ee' }}
+        run: node functions/scripts/backfill-episode-rosters.mjs
+
+      - name: Remove the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
