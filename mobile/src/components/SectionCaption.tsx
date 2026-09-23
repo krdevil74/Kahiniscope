@@ -22,7 +22,9 @@ export function SectionCaption({
       <AppText
         style={[
           type.caption,
-          { color: onInk ? "rgba(255,255,255,.45)" : colors.faint },
+          // .45 was pitched for near-black. The one block that sets onInk is
+          // now a violet fill, where it reads as half-erased.
+          { color: onInk ? "rgba(255,255,255,.72)" : colors.faint },
         ]}
       >
         {children}

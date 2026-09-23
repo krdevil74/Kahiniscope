@@ -87,11 +87,15 @@ export function ScreenHeader({ title, subtitle, onBack, onSignOut, style }: Scre
             paddingVertical: 7,
             borderRadius: radii.pill,
             borderWidth: 1,
-            borderColor: "rgba(255,194,10,.4)",
+            // The same pill as Sign out, which sits in the same place on the
+            // tabbed screens. They were a yellow outline around violet text:
+            // two brand colours in one 60px control, agreeing with neither
+            // the bar they sit on nor each other.
+            borderColor: colors.onInkMuted,
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <AppText style={{ fontFamily: fontFamily.medium, fontSize: 11, lineHeight: 11, color: colors.brand }}>
+          <AppText style={{ fontFamily: fontFamily.medium, fontSize: 11, lineHeight: 11, color: colors.onInkMuted }}>
             Back
           </AppText>
         </Pressable>

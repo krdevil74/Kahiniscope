@@ -29,6 +29,9 @@ initializeApp({ projectId });
 const db = getFirestore();
 const auth = getAuth();
 
+/** A real Drive share link shape, so the link row renders what it will in life. */
+const SCRIPT_URL = "https://drive.google.com/file/d/1KahiniscopeDemoScriptFileId/view?usp=sharing";
+
 const day = 86_400_000;
 const now = Date.now();
 const at = (days) => Timestamp.fromMillis(now + days * day);
@@ -49,8 +52,14 @@ const PENDING = [
   { uid: "seed-rupa", name: "Rupa Dutta", crafts: ["Translation"], phone: "+919876500008", registeredHoursAgo: 72, note: "Japanese to Bengali. Referred by Nabanita." },
 ];
 
+/**
+ * Two in progress and one already out, so the life cycle can be seen without
+ * having to set it up by hand: EP-40 is broadcast, and the new-task screen
+ * should not offer it.
+ */
 const EPISODES = [
-  { id: "seed-ep41", code: "EP-41", title: "রক্তমুখী নীলা", airInDays: 6 },
+  { id: "seed-ep40", code: "EP-40", title: "নিঝুম দ্বীপের ডাক", airInDays: -9, status: "broadcast" },
+  { id: "seed-ep41", code: "EP-41", title: "রক্তমুখী নীলা", airInDays: 6, script: SCRIPT_URL },
   { id: "seed-ep42", code: "EP-42", title: "শেষ ট্রামের যাত্রী", airInDays: 13 },
   { id: "seed-ep43", code: "EP-43", title: "কুয়াশার নিচে", airInDays: 20 },
 ];
@@ -68,6 +77,7 @@ const TASKS = [
   { ep: "seed-ep42", type: "Script writing", who: "seed-arif", due: -3, sent: 0, since: 0, done: true },
   { ep: "seed-ep43", type: "Script writing", who: "seed-arif", due: 9, sent: 0, since: 5, done: false },
   { ep: "seed-ep43", type: "Music / SFX", who: "seed-tanmoy", due: 12, sent: 0, since: 0, done: false },
+  { ep: "seed-ep40", type: "Editing", who: "seed-tanmoy", due: -20, sent: 0, since: 0, done: true },
 ];
 
 function userDoc(person, status) {
@@ -100,8 +110,19 @@ for (const episode of EPISODES) {
     code: episode.code,
     title: episode.title,
     airDate: at(episode.airInDays),
-    status: "production",
+    status: episode.status ?? "in_progress",
   });
+
+  // The script link, where there is one. The roster beside it is written by
+  // syncEpisodeRosterOnTaskWrite when the tasks below land — not here, so
+  // that seeding exercises the trigger rather than standing in for it.
+  if (episode.script) {
+    batch.set(db.doc(`episodes/${episode.id}/private/script`), {
+      url: episode.script,
+      addedAt: at(-2),
+      addedBy: "seed-piyali",
+    });
+  }
 }
 
 TASKS.forEach((task, index) => {

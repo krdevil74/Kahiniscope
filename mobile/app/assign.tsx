@@ -7,7 +7,7 @@
  * committing the person to.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -35,6 +35,7 @@ import {
   type AssignDraft,
 } from "../src/lib/assign.ts";
 import { byAirDate } from "../src/lib/completion.ts";
+import { assignableEpisodes } from "../src/lib/episode-status.ts";
 import { useEpisodes, useNow, useSettings, useTeam } from "../src/lib/data";
 import { airLabel, firstName } from "../src/lib/format.ts";
 import { TASK_TYPES, type ChannelId } from "../src/lib/model";
@@ -60,9 +61,16 @@ export default function Assign() {
   const { data: settings } = useSettings(isAdmin);
 
   const approved = useMemo(() => team.filter((m) => m.status === "approved"), [team]);
-  const ordered = useMemo(() => byAirDate(episodes), [episodes]);
 
-  // Arriving from a person or an episode, that choice is already made.
+  // Only what is still in progress. An episode that has been broadcast has
+  // gone out, and a task raised against it is the mistake the life cycle
+  // exists to prevent — see lib/episode-status.ts.
+  const ordered = useMemo(() => byAirDate(assignableEpisodes(episodes)), [episodes]);
+
+  // Arriving from a person or an episode, that choice is already made. A
+  // broadcast episode cannot arrive this way — its screen does not offer the
+  // "+" — but a stale link could, so the prefill is checked against the list
+  // that is actually on offer rather than trusted.
   const [draft, setDraft] = useState<AssignDraft>(() => ({
     ...INITIAL_DRAFT,
     assigneeUid: params.uid ?? null,
@@ -72,6 +80,16 @@ export default function Assign() {
   const [addingEpisode, setAddingEpisode] = useState(false);
 
   const patch = (next: Partial<AssignDraft>) => setDraft((d) => ({ ...d, ...next }));
+
+  // A prefilled episode that is no longer on offer — broadcast while this
+  // screen was open, or reached from a stale link — is dropped rather than
+  // left as an invisible selection the form would happily submit.
+  useEffect(() => {
+    if (!draft.episodeId) return;
+    if (episodes.length === 0) return;
+    if (ordered.some((e) => e.id === draft.episodeId)) return;
+    setDraft((d) => ({ ...d, episodeId: null }));
+  }, [draft.episodeId, ordered, episodes.length]);
 
   const [personQuery, setPersonQuery] = useState("");
   const [peopleExpanded, setPeopleExpanded] = useState(false);
@@ -245,6 +263,21 @@ export default function Assign() {
         <View>
           <SectionCaption style={{ marginBottom: 9 }}>Episode</SectionCaption>
           <View style={{ gap: spacing.chipsTight }}>
+            {ordered.length === 0 && !addingEpisode ? (
+              <AppText
+                style={{
+                  fontFamily: fontFamily.regular,
+                  fontSize: 12,
+                  lineHeight: 16.8,
+                  color: colors.muted,
+                  paddingBottom: 2,
+                }}
+              >
+                Every episode has been broadcast. Add the next one below, or reopen one from its
+                own screen.
+              </AppText>
+            ) : null}
+
             {ordered.map((episode) => {
               const on = episode.id === draft.episodeId;
               return (

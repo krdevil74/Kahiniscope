@@ -80,13 +80,35 @@ export const CRAFTS = [
 
 export type Craft = (typeof CRAFTS)[number];
 
+/**
+ * Where an episode is in its life. See lib/episode-status.ts — "broadcast"
+ * means it has gone out, and the new-task picker stops offering it.
+ */
+export type EpisodeStatus = "in_progress" | "broadcast";
+
 export interface Episode {
   id: string;
   code: string;
   /** Bengali. */
   title: string;
   airDate: Date | null;
-  status: "production" | "released";
+  status: EpisodeStatus;
+}
+
+/**
+ * The script for an episode: one Google Drive link, kept in a subcollection
+ * rather than on the episode itself.
+ *
+ * The episode document is readable by everyone approved — the member screens
+ * list it to put a code and a title against a task. The script is not: only
+ * the people with a task on that episode may open it, and the rules enforce
+ * that against a roster the tasks trigger maintains. A field on the episode
+ * would have been readable by the whole team the moment it was written.
+ */
+export interface EpisodeScript {
+  url: string;
+  addedAt: Date | null;
+  addedBy: string;
 }
 
 export interface Task {

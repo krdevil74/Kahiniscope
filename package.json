@@ -16,6 +16,7 @@
     "test:rules:run": "node --test \"tests/rules.test.mjs\"",
     "test:auth:run": "node --test --test-concurrency=1 \"tests/auth.test.mjs\"",
     "test:auth": "npm --prefix functions run build && OWNER_EMAILS=owner@kahiniscope.test firebase emulators:exec --project kahiniscope-demo --only auth,firestore,functions \"npm run test:auth:run\"",
+    "backfill:rosters": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 GCLOUD_PROJECT=kahiniscope-demo node functions/scripts/backfill-episode-rosters.mjs",
     "seed:demo": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=kahiniscope-demo node functions/scripts/seed-demo.mjs",
     "test:approval:run": "node --test --test-concurrency=1 \"tests/approval.test.mjs\"",
     "test:approval": "npm --prefix functions run build && OWNER_EMAILS=owner@kahiniscope.test firebase emulators:exec --project kahiniscope-demo --only auth,firestore,functions \"npm run test:approval:run\"",

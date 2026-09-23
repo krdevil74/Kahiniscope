@@ -171,8 +171,63 @@ service cloud.firestore {
     // ---- episodes ---------------------------------------------------------
 
     match /episodes/{episodeId} {
+      // Code, title, air date and life-cycle status. Every approved account
+      // lists these: the member's task list and payment rows put a code and
+      // a title against each row, and they cannot do that without the slate.
       allow read: if isApproved();
-      allow write: if isAdmin();
+
+      allow write: if isAdmin()
+        && (!('status' in request.resource.data)
+            // "production" and "released" are the two spellings written
+            // before the life cycle existed. They are still accepted so an
+            // admin editing an old episode is not rejected for a field they
+            // did not touch; the app only ever writes the new pair.
+            || request.resource.data.status in
+                 ['in_progress', 'broadcast', 'production', 'released']);
+
+      // ---- the script -----------------------------------------------------
+      //
+      // One Drive link per episode, kept off the episode document because
+      // that document is readable by the whole team. Only the people with a
+      // task on this episode may open it.
+      //
+      // The check is a get() against a roster kept by the tasks trigger
+      // (functions/src/episode-roster.ts), not against the tasks collection:
+      // task ids are generated, so there is no path a rule could construct
+      // to ask "does this person have a task here". The roster lives beside
+      // the script, under the same admin-only read, so maintaining it does
+      // not publish who is working on what.
+      match /private/{document} {
+        // No roster document, no access: get() on a document that is not
+        // there fails the expression, and a failed expression is a denial.
+        function onTheEpisode() {
+          return isApproved()
+            && uid() in get(
+                 /databases/$(database)/documents/episodes/$(episodeId)/private/roster
+               ).data.get('uids', []);
+        }
+
+        // The host list is the same one the app checks, spelled out rather
+        // than as a wildcard: '[a-z.]*google[.]com' would also accept
+        // evilgoogle.com, which is exactly the link this is here to stop.
+        function isDriveLink(url) {
+          return url is string
+            && url.size() <= 2000
+            && url.matches('^https://(drive|docs|drive[.]usercontent)[.]google[.]com/.*$');
+        }
+
+        // The roster itself is never handed to a member — it is a list of who
+        // works on the episode, and no member screen needs it.
+        allow read: if isAdmin() || (document == 'script' && onTheEpisode());
+
+        // Written by the admin from the episode screen. The trigger writes
+        // the roster with admin credentials, which bypass these rules.
+        allow create, update: if isAdmin()
+          && document == 'script'
+          && isDriveLink(request.resource.data.url);
+
+        allow delete: if isAdmin() && document == 'script';
+      }
     }
 
     // ---- tasks ------------------------------------------------------------

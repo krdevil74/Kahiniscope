@@ -14,7 +14,9 @@ import { Button } from "../../src/components/Button";
 import { EmptyState } from "../../src/components/EmptyState";
 import { HeatBadge } from "../../src/components/HeatBadge";
 import { ProgressBar } from "../../src/components/ProgressBar";
+import { ScriptCard } from "../../src/components/ScriptCard";
 import { SectionCaption } from "../../src/components/SectionCaption";
+import { StatusPill } from "../../src/components/StatusPill";
 import { craftLabel } from "../../src/lib/crafts";
 import { useSession } from "../../src/lib/auth";
 import {
@@ -23,11 +25,18 @@ import {
   nudgeFailedToast,
   nudgeTask,
   nudgeToast,
+  setEpisodeStatus,
   setTaskDone,
 } from "../../src/lib/actions";
 import { bestChannelFor, channelLabel } from "../../src/lib/channels.ts";
 import { completionOf, membersInEpisode, tasksForEpisode } from "../../src/lib/completion.ts";
-import { useEpisodes, useNow, useSettings, useTasks, useTeam } from "../../src/lib/data";
+import {
+  episodeStatusAction,
+  episodeStatusToast,
+  isBroadcast,
+  nextEpisodeStatus,
+} from "../../src/lib/episode-status.ts";
+import { useEpisodeScripts, useEpisodes, useNow, useSettings, useTasks, useTeam } from "../../src/lib/data";
 import { rowNote } from "../../src/lib/escalation.ts";
 import { airLabel } from "../../src/lib/format.ts";
 import type { Task } from "../../src/lib/model";
@@ -40,14 +49,17 @@ export default function EpisodeDetail() {
   const router = useRouter();
   const toast = useToast();
   const now = useNow();
-  const { isAdmin } = useSession();
+  const { isAdmin, user } = useSession();
 
   const { data: episodes } = useEpisodes(isAdmin);
   const { data: tasks } = useTasks({ enabled: isAdmin });
   const { data: team } = useTeam(isAdmin);
   const { data: settings } = useSettings(isAdmin);
+  const scriptIds = useMemo(() => (id ? [id] : []), [id]);
+  const { data: scripts } = useEpisodeScripts(scriptIds, isAdmin);
 
   const episode = useMemo(() => episodes.find((e) => e.id === id), [episodes, id]);
+  const broadcast = episode ? isBroadcast(episode) : false;
   const episodeTasks = useMemo(() => tasksForEpisode(tasks, id ?? ""), [tasks, id]);
   const completion = useMemo(() => completionOf(episodeTasks), [episodeTasks]);
   const approved = useMemo(() => team.filter((m) => m.status === "approved"), [team]);
@@ -59,6 +71,13 @@ export default function EpisodeDetail() {
   async function toggle(task: Task) {
     await setTaskDone(task, !task.done);
     toast(doneToast(task.type, !task.done));
+  }
+
+  async function switchStatus() {
+    if (!episode) return;
+    const next = nextEpisodeStatus(episode.status);
+    await setEpisodeStatus(episode.id, next);
+    toast(episodeStatusToast(episode.code, next));
   }
 
   async function nudge(task: Task) {
@@ -79,7 +98,7 @@ export default function EpisodeDetail() {
       title={episode ? `${episode.code} · ${episode.title}` : "Episode"}
       subtitle={airLabel(episode?.airDate ?? null)}
       activeTab="episodes"
-      showFab
+      showFab={!broadcast}
       assignHref={`/assign?episodeId=${id}`}
       onBack={() => router.back()}
     >
@@ -129,6 +148,57 @@ export default function EpisodeDetail() {
       </View>
 
       <View style={{ padding: spacing.screen, gap: spacing.cards }}>
+        {/* Life cycle. Broadcast is the state that changes what the rest of
+            the app will do — the new-task picker stops offering this episode
+            — so the consequence is spelled out beside the switch rather than
+            left for an admin to discover from an empty list. */}
+        {episode ? (
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.hairline,
+              borderRadius: radii.cardLarge,
+              padding: spacing.card,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: spacing.card,
+            }}
+          >
+            <View style={{ flex: 1, minWidth: 0, gap: 7 }}>
+              <StatusPill status={episode.status} />
+              <AppText
+                style={{
+                  fontFamily: fontFamily.regular,
+                  fontSize: 11,
+                  lineHeight: 15.4,
+                  color: colors.muted,
+                }}
+              >
+                {broadcast
+                  ? "Gone out. It is not offered on the new-task screen; the work already on it still is."
+                  : "Still open for new tasks."}
+              </AppText>
+            </View>
+            <Button
+              label={episodeStatusAction(episode.status)}
+              variant={broadcast ? "outline" : "ink"}
+              size="compact"
+              onPress={() => void switchStatus()}
+              accessibilityLabel={`${episodeStatusAction(episode.status)} ${episode.code}`}
+            />
+          </View>
+        ) : null}
+
+        {id ? (
+          <ScriptCard
+            episodeId={id}
+            script={scripts[id] ?? null}
+            addedBy={user?.uid ?? ""}
+            onToast={toast}
+          />
+        ) : null}
+
         <SectionCaption>Member status</SectionCaption>
 
         {slices.length === 0 ? (

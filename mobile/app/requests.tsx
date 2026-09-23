@@ -153,7 +153,7 @@ export default function Requests() {
 
               <View
                 style={{
-                  backgroundColor: "#fff4d6",
+                  backgroundColor: colors.heatSoft,
                   borderRadius: 3,
                   paddingVertical: 5,
                   paddingHorizontal: 6,
@@ -166,7 +166,7 @@ export default function Requests() {
                     lineHeight: 10,
                     letterSpacing: 0.63,
                     textTransform: "uppercase",
-                    color: "#8a6400",
+                    color: colors.heat,
                   }}
                 >
                   Pending
@@ -363,7 +363,7 @@ export default function Requests() {
                 disabled={member.role === "owner"}
                 style={({ pressed }) => ({
                   borderWidth: 1,
-                  borderColor: pressed ? "#f4b4b0" : "#eae4d8",
+                  borderColor: pressed ? colors.danger : colors.hairlineStronger,
                   borderRadius: radii.chip,
                   paddingVertical: 6,
                   paddingHorizontal: 8,

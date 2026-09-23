@@ -11,7 +11,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Linking, Pressable, ScrollView, TextInput, View } from "react-native";
 import { Redirect } from "expo-router";
 
 import { AppText } from "../src/components/AppText";
@@ -27,7 +27,7 @@ import { memberChainSentence } from "../src/lib/channel-meta.ts";
 import { money } from "../src/lib/payments.ts";
 import { connectTelegram } from "../src/lib/telegram-link";
 import { byDueDate } from "../src/lib/completion.ts";
-import { indexBy, useEpisodes, useNow, useSettings, useTasks } from "../src/lib/data";
+import { indexBy, useEpisodeScripts, useEpisodes, useNow, useSettings, useTasks } from "../src/lib/data";
 import { memberNote } from "../src/lib/escalation.ts";
 import { boardDateLabel } from "../src/lib/format.ts";
 import type { Task } from "../src/lib/model";
@@ -83,6 +83,14 @@ function MemberDashboard({
   const [notes, setNotes] = useState<Record<string, string>>({});
 
   const byEpisode = useMemo(() => indexBy(episodes, (e) => e.id), [episodes]);
+
+  // The scripts for the episodes they are actually working on. Any other
+  // episode's script is refused by the rules, so there is nothing to ask for.
+  const myEpisodeIds = useMemo(
+    () => [...new Set(tasks.map((t) => t.episodeId).filter(Boolean))],
+    [tasks]
+  );
+  const { data: scripts } = useEpisodeScripts(myEpisodeIds, approved);
   const ordered = useMemo(() => byDueDate(tasks, now), [tasks, now]);
   const open = useMemo(() => tasks.filter((t) => !t.done).length, [tasks]);
 
@@ -146,6 +154,7 @@ function MemberDashboard({
       >
         {ordered.map((task) => {
           const episode = byEpisode.get(task.episodeId);
+          const script = scripts[task.episodeId] ?? null;
           const heat = heatFor(task.remindersSent);
           return (
             <Card key={task.id} clip radius={radii.cardLarge}>
@@ -228,6 +237,73 @@ function MemberDashboard({
                     {memberNote(task, settings.plan, now)}
                   </AppText>
                 </View>
+
+                {/* The script, for the people working on this episode. It is
+                    not on the episode document — see lib/model.ts — so this
+                    row appearing at all is the rules having said yes. */}
+                {script ? (
+                  <Pressable
+                    onPress={() => void Linking.openURL(script.url)}
+                    accessibilityRole="link"
+                    accessibilityLabel={`Open the script for ${episode?.code ?? "this episode"}`}
+                    android_ripple={{ color: colors.ripple }}
+                    style={({ pressed }) => ({
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 10,
+                      marginTop: 8,
+                      backgroundColor: pressed ? colors.fill : colors.infoSoft,
+                      borderRadius: radii.chipLarge,
+                      paddingVertical: 10,
+                      paddingHorizontal: 11,
+                      minHeight: MIN_TAP_TARGET,
+                    })}
+                  >
+                    <View
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 7,
+                        backgroundColor: colors.infoFill,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <AppText
+                        style={{
+                          fontFamily: fontFamily.monoSemibold,
+                          fontSize: 8,
+                          lineHeight: 9,
+                          color: colors.onBar,
+                        }}
+                      >
+                        PDF
+                      </AppText>
+                    </View>
+                    <AppText
+                      weight="medium"
+                      style={{
+                        flex: 1,
+                        fontFamily: fontFamily.medium,
+                        fontSize: 12,
+                        lineHeight: 15,
+                        color: colors.ink,
+                      }}
+                    >
+                      Open the script
+                    </AppText>
+                    <AppText
+                      style={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: 10,
+                        lineHeight: 12,
+                        color: colors.info,
+                      }}
+                    >
+                      Drive
+                    </AppText>
+                  </Pressable>
+                ) : null}
 
                 {/* Why it came back, in the admin's own words. This is the
                     whole value of a rejection: "no" without a reason is a
