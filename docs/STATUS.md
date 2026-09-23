@@ -248,18 +248,23 @@ rules without the trigger means no member can open any script.
 
 - [x] **Run the app on a phone.** Done 20–21 Sep.
 - [x] **Deploy the contacts work.** Merged and deployed 21 Sep.
-- [ ] **Deploy the episode life cycle and the script link**, rules and
-      functions **together**. The script rule reads
-      `episodes/{id}/private/roster`, which only `syncEpisodeRosterOnTaskWrite`
-      writes. Rules without the trigger and every script read is denied; the
-      trigger without the rules and the subcollection is unreachable. Existing
-      episodes get their roster the first time any task on them is written —
-      to backfill sooner, touch each task once.
-- [ ] **Deploy the payments work**, rules and functions together. The member
-      write on `tasks` moved from `done` to `status`, so an app built from
-      this branch cannot submit anything against the old rules — and an old
-      build cannot mark anything done against the new ones. Ship the APK after
-      the deploy, not before.
+- [x] **Deployed the episode life cycle and the script link**, 23 Sep, run
+      `35882939729` off `82cb44b`. Rules and indexes released,
+      `syncEpisodeRosterOnTaskWrite` **created** in `asia-south2`, 22
+      functions live. The two had to go out together: the script rule reads
+      `episodes/{id}/private/roster`, which only the trigger writes.
+- [x] **Deployed the payments work**, 23 Sep, same run. `reviewTask`,
+      `markPaymentPaid` and `addAdvance` are live and the rules that go with
+      them are released. **The APK has to be rebuilt and shipped** — the
+      member write on `tasks` moved from `done` to `status`, so a build older
+      than this cannot submit work against the rules now in production.
+- [ ] **Backfill the episode rosters.** Run the **Backfill episode rosters**
+      workflow once (Actions → Run workflow → type the project id). Until it
+      runs, an episode that already had tasks before the deploy has no roster,
+      and a script linked to it is invisible to the people working on it —
+      the roster appears on its own only when something next writes one of
+      its tasks, which for an actively chased episode is the next nudge and
+      for a finished one is never.
 - [ ] **Confirm push on the device** with build `088d4596` — `fcmTokens`
       non-empty, then **Nudge now** buzzes.
 - [x] **Telegram bot — live, 21 Sep.** `@Kahiniscope_bot`. Both secrets hold
