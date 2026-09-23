@@ -258,13 +258,10 @@ rules without the trigger means no member can open any script.
       them are released. **The APK has to be rebuilt and shipped** — the
       member write on `tasks` moved from `done` to `status`, so a build older
       than this cannot submit work against the rules now in production.
-- [ ] **Backfill the episode rosters.** Run the **Backfill episode rosters**
-      workflow once (Actions → Run workflow → type the project id). Until it
-      runs, an episode that already had tasks before the deploy has no roster,
-      and a script linked to it is invisible to the people working on it —
-      the roster appears on its own only when something next writes one of
-      its tasks, which for an actively chased episode is the next nudge and
-      for a finished one is never.
+- [x] **Backfilled the episode rosters**, 23 Sep, run `35884033205`:
+      *Read 9 tasks. Wrote 2 rosters.* The script link now works on episodes
+      that existed before the deploy. The workflow stays for a re-run if the
+      trigger is ever rolled forward again; it is idempotent.
 - [ ] **Confirm push on the device** with build `088d4596` — `fcmTokens`
       non-empty, then **Nudge now** buzzes.
 - [x] **Telegram bot — live, 21 Sep.** `@Kahiniscope_bot`. Both secrets hold
