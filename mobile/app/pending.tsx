@@ -37,7 +37,7 @@ export default function Pending() {
   // route does not leave itself — this is what makes the holding screen give
   // way to the dashboard without anybody signing out.
   if (!loading && !user) return <Redirect href="/sign-in" />;
-  if (!loading && isApproved) return <Redirect href={isAdmin ? "/board" : "/my-tasks"} />;
+  if (!loading && isApproved) return <Redirect href={isAdmin ? "/board" : "/summary"} />;
 
   // The form is done once a craft is on the record — that is the field the
   // approval queue reads.

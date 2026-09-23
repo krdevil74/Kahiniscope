@@ -5,8 +5,7 @@
  */
 
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { Redirect } from "expo-router";
 
 import { AppText } from "../src/components/AppText";
@@ -63,7 +62,7 @@ export default function SignIn() {
   // they just pressed. Same three destinations the gate uses.
   if (!loading && user) {
     if (!isApproved) return <Redirect href="/pending" />;
-    return <Redirect href={isAdmin ? "/board" : "/my-tasks"} />;
+    return <Redirect href={isAdmin ? "/board" : "/summary"} />;
   }
 
   return (
@@ -128,18 +127,11 @@ export default function SignIn() {
               borderRadius: radii.buttonLarge,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: "transparent",
-          overflow: "hidden",
+              backgroundColor: pressed ? colors.brandPressed : colors.brand,
               opacity: disabled ? 0.6 : 1,
             })}
           >
-            <LinearGradient
-          colors={[...colors.brandGradient]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        {busy ? (
+            {busy ? (
               <ActivityIndicator color={colors.ink} />
             ) : (
               <AppText weight="semibold" style={[type.h4, { fontSize: 14, lineHeight: 14 }]}>

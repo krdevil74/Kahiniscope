@@ -19,6 +19,23 @@ import {
   type Firestore,
 } from "firebase/firestore";
 
+/**
+ * The emulators run under their own project id, and so must the app when it
+ * is pointed at them.
+ *
+ * This was the cause of a bug that wasted a great deal of time: the emulator
+ * suite, the seed script and every test use `kahiniscope-demo`, while the
+ * app's own config names the live project. Both halves connected to the same
+ * emulator quite happily and then read two different, equally empty
+ * databases inside it — no error, no permission failure, just nothing. An
+ * approved member with eleven tasks looked like a brand new account.
+ *
+ * Fixed by agreeing on one id. It has to be this way round: using the live
+ * project's id for local scratch data is a footgun, and the id is what the
+ * Firestore and Auth emulators partition on.
+ */
+const EMULATOR_PROJECT_ID = "kahiniscope-demo";
+
 const options: FirebaseOptions = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -58,7 +75,12 @@ export const usingEmulators =
 /** 10.0.2.2 is the host machine as seen from the Android emulator. */
 const emulatorHost = process.env.EXPO_PUBLIC_EMULATOR_HOST ?? "10.0.2.2";
 
-const app = getApps().length ? getApp() : initializeApp(options);
+const app = getApps().length
+  ? getApp()
+  : initializeApp(
+      usingEmulators ? { ...options, projectId: EMULATOR_PROJECT_ID } : options
+    );
+
 
 /**
  * Auth has to be initialised with React Native persistence, or the session is

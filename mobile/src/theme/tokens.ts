@@ -1,56 +1,25 @@
 /**
  * Design tokens.
  *
- * Colours are no longer constants: the app carries a light and a dark theme
- * and either can be chosen at runtime, so `colors` is a live object whose
- * contents are swapped by `applyPalette` when the choice changes.
+ * Colours come from one palette — see palettes.ts — and there is no theme to
+ * switch. An earlier version carried a light and a dark palette swapped in
+ * place at runtime; that is gone, along with the rule it imposed about never
+ * reading a colour at module scope. `colors` is an ordinary constant again.
  *
- * That is a deliberate trade, and worth being honest about. The textbook
- * answer is a `useTheme()` hook — but 308 references across 34 files read
- * `colors.x` directly, several of them from style helpers that sit outside a
- * component and cannot call a hook at all. Rewriting every one of those to
- * thread a theme through would have been a far larger and riskier change
- * than the feature warranted, and a half-converted app is worse than either
- * end of it.
- *
- * What makes the swap safe is that nothing here is captured: every screen
- * reads `colors.x` during render, into an inline style object, so a mutation
- * followed by a re-render is picked up everywhere at once. ThemeProvider does
- * exactly that — mutate, then bump a context value that re-renders the tree.
- * The one thing to avoid is hoisting a style object to module scope with a
- * colour baked into it; do that and it will not follow the theme.
- *
- * Sizes and spacing are genuinely final and stay constants.
+ * Sizes and spacing are final and always were.
  */
 
-import { DARK, DARK_HEAT, LIGHT, LIGHT_HEAT, type HeatStep, type Palette } from "./palettes.ts";
+import { HEAT, PALETTE, type HeatStep, type Palette } from "./palettes.ts";
 
 export type { HeatStep, Palette };
-export type ColorScheme = "light" | "dark";
 
-/** Live. Read during render; never destructured into module scope. */
-export const colors: Palette = { ...DARK };
-
-let heatSteps: readonly HeatStep[] = DARK_HEAT;
-
-/** Swap the palette in place. ThemeProvider re-renders the tree afterwards. */
-export function applyPalette(scheme: ColorScheme): void {
-  Object.assign(colors, scheme === "light" ? LIGHT : DARK);
-  heatSteps = scheme === "light" ? LIGHT_HEAT : DARK_HEAT;
-}
-
-/**
- * The escalation heat scale, indexed by reminders sent. Step 4 is the last
- * entry and every step past it reuses that entry — the ladder caps at daily.
- */
-/** The active heat scale. Swapped with the palette. */
-export const heat = { get steps(): readonly HeatStep[] { return heatSteps; } };
+export const colors = PALETTE;
+export const heat = HEAT;
 
 /** The heat for a task, capped at the last step. */
 export function heatFor(remindersSent: number): HeatStep {
-  const steps = heatSteps;
-  const index = Math.min(Math.max(Math.trunc(remindersSent) || 0, 0), steps.length - 1);
-  return steps[index];
+  const index = Math.min(Math.max(Math.trunc(remindersSent) || 0, 0), heat.length - 1);
+  return heat[index];
 }
 
 export const radii = {

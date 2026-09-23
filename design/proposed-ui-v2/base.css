@@ -1,0 +1,109 @@
+/* Three directions, one palette: 9B5DE5 · F15BB5 · FEE440 · 00BBF9 · 00F5D4
+   All light-based. The dark violet base is gone.
+   The yellow mark keeps its own colour and nothing else competes for it. */
+:root{
+  --purple:#9B5DE5; --pink:#F15BB5; --yellow:#FEE440; --blue:#00BBF9; --mint:#00F5D4;
+  --r-sm:10px; --r-md:14px; --r-lg:20px; --r-pill:999px;
+  --ui:"Plus Jakarta Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --bn:"Noto Sans Bengali",var(--ui);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a1f;font-family:var(--ui);-webkit-font-smoothing:antialiased}
+.sheet{display:flex;gap:24px;padding:24px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:12px}
+.lbl{color:#9a95a8;font:700 11px/1 var(--ui);letter-spacing:1.5px;text-transform:uppercase}
+.sub{color:#6f6a7d;font:500 10.5px/1.4 var(--ui);max-width:390px}
+
+.phone{width:390px;height:800px;border-radius:30px;overflow:hidden;
+       display:flex;flex-direction:column;position:relative}
+.bn{font-family:var(--bn)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.grow{flex:1;min-width:0}
+.row{display:flex;align-items:center;gap:11px}
+.mark{width:34px;height:34px;border-radius:50%;flex:none;object-fit:contain}
+
+/* ---------- A · PAPER : warm off-white, charcoal bar ---------- */
+.A{--bg:#F7F5F1;--surface:#FFFFFF;--sunken:#F1EEE8;--line:#E6E1D8;--line2:#D9D3C7;
+   --bar:#17181C;--onBar:#FFFFFF;--onBarMuted:rgba(255,255,255,.58);
+   --text:#17181C;--muted:rgba(23,24,28,.62);--faint:rgba(23,24,28,.40);
+   --brand:#7B3FD4;--info:#0090C7;--money:#00806C;--attn:#C4247F;--heat:#8A6400;}
+/* ---------- B · MINT : cool paper, deep teal bar ---------- */
+.B{--bg:#F2FAF8;--surface:#FFFFFF;--sunken:#E6F5F1;--line:#D5E9E4;--line2:#BFDDD6;
+   --bar:#0A2E2C;--onBar:#EAFFFB;--onBarMuted:rgba(234,255,251,.6);
+   --text:#0A2E2C;--muted:rgba(10,46,44,.66);--faint:rgba(10,46,44,.44);
+   --brand:#00806C;--info:#0090C7;--money:#00806C;--attn:#C4247F;--heat:#8A6400;}
+/* ---------- C · BLOCKS : white, colour as large fills ---------- */
+.C{--bg:#FFFFFF;--surface:#FFFFFF;--sunken:#F4F4F7;--line:#E8E8EE;--line2:#DADAE4;
+   --bar:#16161C;--onBar:#FFFFFF;--onBarMuted:rgba(255,255,255,.6);
+   --text:#1B1B2B;--muted:rgba(27,27,43,.62);--faint:rgba(27,27,43,.42);
+   --brand:#7B3FD4;--info:#0090C7;--money:#00806C;--attn:#C4247F;--heat:#8A6400;}
+
+.phone{background:var(--bg);color:var(--text)}
+.hdr{background:var(--bar);padding:46px 18px 16px;display:flex;align-items:center;gap:12px}
+.hdr h1{font-size:19px;font-weight:700;letter-spacing:-.3px;color:var(--onBar);line-height:1.15}
+.hdr .s{font-family:var(--mono);font-size:10.5px;color:var(--onBarMuted);margin-top:3px}
+.ghost{margin-left:auto;font-size:11px;font-weight:600;color:var(--onBarMuted);
+       border:1px solid rgba(255,255,255,.25);border-radius:var(--r-pill);padding:7px 12px}
+
+/* The tab strip sits on the page, not on the bar — that gap is what stops
+   the header colour and the active tab bleeding into each other. */
+.tabs{display:flex;gap:5px;margin:12px 16px 0;padding:4px;
+      background:var(--sunken);border:1px solid var(--line);border-radius:var(--r-pill)}
+.tab{flex:1;text-align:center;padding:9px 0;border-radius:var(--r-pill);
+     font-size:11.5px;font-weight:650;color:var(--muted)}
+.tab.on{background:var(--surface);color:var(--text);border:1px solid var(--line2);font-weight:750}
+
+.body{flex:1;overflow:hidden;padding:12px 16px 0;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:14px}
+.cap{font-family:var(--mono);font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--faint)}
+.t{font-size:14px;font-weight:650;letter-spacing:-.15px}
+.m{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:3px}
+.xs{font-size:11px;color:var(--muted);line-height:1.5}
+.big{font-size:28px;font-weight:800;letter-spacing:-1.2px;line-height:1}
+.huge{font-size:40px;font-weight:800;letter-spacing:-2px;line-height:1}
+.btn{border-radius:var(--r-sm);padding:13px;font-size:13px;font-weight:700;text-align:center;
+     background:var(--brand);color:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:var(--r-pill);
+      padding:5px 10px;font-size:10.5px;font-weight:700}
+.nav{margin-top:auto;display:flex;gap:4px;padding:10px 12px 22px;background:var(--surface);
+     border-top:1px solid var(--line)}
+.nav div{flex:1;text-align:center;font-size:10px;font-weight:600;color:var(--faint);padding:6px 0}
+.nav div.on{color:var(--text)}
+.nav div.on::after{content:"";display:block;width:16px;height:2px;border-radius:2px;
+                   background:var(--brand);margin:5px auto 0}
+.bars{display:flex;align-items:flex-end;gap:9px;height:74px}
+.bcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px}
+.pair{display:flex;align-items:flex-end;gap:3px}
+.bar{width:10px;border-radius:3px}
+
+/* ---------- payment page ---------- */
+/* A rubber stamp: rotated, ringed, letterspaced, and slightly faded the way
+   ink is when it has been pressed onto paper. */
+.stamp{position:relative;transform:rotate(-13deg);border:2.5px solid var(--money);
+       border-radius:9px;padding:7px 13px 6px;opacity:.92;flex:none}
+.stamp::after{content:"";position:absolute;inset:3px;border:1px solid var(--money);
+              border-radius:5px;opacity:.55}
+.stamp span{font-family:var(--ui);font-weight:800;font-size:19px;letter-spacing:3.5px;
+            color:var(--money);line-height:1;display:block}
+.stamp small{display:block;font-family:var(--mono);font-size:7.5px;letter-spacing:1.6px;
+             color:var(--money);opacity:.8;margin-top:3px;text-align:center}
+
+/* A ribbon: the label sits on a colour band whose ends are notched, so it
+   reads as a marker laid across the page rather than another card. */
+.ribbon{position:relative;margin:18px 0 2px;display:flex;align-items:center}
+.ribbon .band{background:var(--rib,#1B1B2B);color:#fff;font-weight:750;font-size:12.5px;
+              letter-spacing:.2px;padding:9px 16px 9px 14px;border-radius:5px 0 0 5px;
+              display:flex;align-items:center;gap:8px}
+.ribbon .tail{width:0;height:0;border-top:17px solid var(--rib,#1B1B2B);
+              border-bottom:17px solid var(--rib,#1B1B2B);border-right:11px solid transparent}
+.ribbon .rule{flex:1;height:1px;background:var(--line);margin-left:2px}
+.i{width:17px;height:17px;border-radius:50%;border:1.5px solid rgba(255,255,255,.7);
+   color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;font-style:italic}
+
+.prow{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);
+      padding:12px 13px;margin-top:8px}
+.pop{position:absolute;left:16px;right:16px;border-radius:12px;padding:13px 14px;
+     background:#1B1B2B;color:#fff;box-shadow:0 14px 34px rgba(0,0,0,.28);z-index:5}
+.pop:after{content:"";position:absolute;top:-6px;right:52px;width:12px;height:12px;
+           background:#1B1B2B;transform:rotate(45deg)}

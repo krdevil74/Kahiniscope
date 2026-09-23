@@ -17,7 +17,6 @@ import { Avatar } from "../src/components/Avatar";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { Toggle } from "../src/components/Toggle";
 import { craftLabel } from "../src/lib/crafts";
-import { ThemePicker } from "../src/components/ThemePicker";
 import { useSession } from "../src/lib/auth";
 import {
   CHANNEL_META,
@@ -63,12 +62,6 @@ export default function Notify() {
   return (
     <AppShell title="Notifications" subtitle="Channels and escalation" activeTab="notify">
       <View style={{ padding: 16, gap: 18 }}>
-        {/* ---- Appearance ---------------------------------------------- */}
-        <View>
-          <SectionCaption style={{ marginBottom: 9 }}>Appearance</SectionCaption>
-          <ThemePicker />
-        </View>
-
         {/* ---- Admin access ------------------------------------------- */}
         <View>
           <SectionCaption style={{ marginBottom: 9 }}>Admin access</SectionCaption>

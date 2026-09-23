@@ -64,9 +64,8 @@ export function useToast(): Show {
 }
 
 /**
- * Built per render rather than once at import. StyleSheet.create freezes what
- * it is given, and `colors` is swapped in place when the theme changes — a
- * frozen sheet would leave the toast in whichever theme loaded first.
+ * Built per render rather than once at import, so the sheet is read back from
+ * `colors` each time rather than frozen at module load.
  */
 function toastStyles() {
   return StyleSheet.create({

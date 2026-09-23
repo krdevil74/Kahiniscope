@@ -27,15 +27,6 @@ function style(size: number, family: Family, ratio: number, extra?: TextStyle): 
   };
 }
 
-/**
- * Every preset is a getter, not a value.
- *
- * `colors` is swapped in place when the theme changes (see tokens.ts), so a
- * style object built once at import would carry whichever theme happened to
- * be active when this module first loaded — and every heading in the app
- * would stay that colour forever. Reading at access time costs an object
- * allocation per render and buys a type scale that follows the theme.
- */
 
 
 /**
@@ -46,43 +37,43 @@ export const MIN_FONT_SIZE = 9;
 
 export const type = {
   /** Headings — 24/20/17/16 semibold. */
-  get h1(): TextStyle { return style(24, "semibold", lineHeight.heading); },
-  get h2(): TextStyle { return style(20, "semibold", lineHeight.heading); },
-  get h3(): TextStyle { return style(17, "semibold", lineHeight.heading); },
-  get h4(): TextStyle { return style(16, "semibold", lineHeight.heading); },
+  h1: style(24, "semibold", lineHeight.heading),
+  h2: style(20, "semibold", lineHeight.heading),
+  h3: style(17, "semibold", lineHeight.heading),
+  h4: style(16, "semibold", lineHeight.heading),
 
   /** Card titles — 13.5/13/12.5 semibold. */
-  get cardTitle(): TextStyle { return style(13.5, "semibold", lineHeight.body); },
-  get cardTitleSmall(): TextStyle { return style(13, "semibold", lineHeight.body); },
-  get cardTitleXSmall(): TextStyle { return style(12.5, "semibold", lineHeight.body); },
+  cardTitle: style(13.5, "semibold", lineHeight.body),
+  cardTitleSmall: style(13, "semibold", lineHeight.body),
+  cardTitleXSmall: style(12.5, "semibold", lineHeight.body),
 
   /** Body — 12/11.5/11. */
-  get body(): TextStyle { return style(12, "regular", lineHeight.body); },
-  get bodySmall(): TextStyle { return style(11.5, "regular", lineHeight.body); },
-  get bodyXSmall(): TextStyle { return style(11, "regular", lineHeight.body); },
-  get bodyLoose(): TextStyle { return style(12, "regular", lineHeight.loose); },
+  body: style(12, "regular", lineHeight.body),
+  bodySmall: style(11.5, "regular", lineHeight.body),
+  bodyXSmall: style(11, "regular", lineHeight.body),
+  bodyLoose: style(12, "regular", lineHeight.loose),
 
   /** Monospace meta — 10.5/10/9.5. */
-  get meta(): TextStyle { return style(10.5, "mono", lineHeight.body); },
-  get metaSmall(): TextStyle { return style(10, "mono", lineHeight.body); },
-  get metaXSmall(): TextStyle { return style(9.5, "mono", lineHeight.body); },
+  meta: style(10.5, "mono", lineHeight.body),
+  metaSmall: style(10, "mono", lineHeight.body),
+  metaXSmall: style(9.5, "mono", lineHeight.body),
 
   /** Section captions — 10px uppercase monospace, .1em tracking. */
-  get caption(): TextStyle { return style(10, "mono", lineHeight.body, {
+  caption: style(10, "mono", lineHeight.body, {
     textTransform: "uppercase",
     letterSpacing: 1,
-  }); },
+  }),
 
   /** Percentages and stat numbers — 42/38/26/24/22/15 monospace. */
-  get slatePercent(): TextStyle { return style(42, "mono", lineHeight.heading); },
-  get episodePercent(): TextStyle { return style(38, "mono", lineHeight.heading); },
-  get statNumber(): TextStyle { return style(26, "mono", lineHeight.heading); },
-  get cardPercent(): TextStyle { return style(24, "mono", lineHeight.heading); },
-  get stepperNumber(): TextStyle { return style(22, "mono", lineHeight.heading); },
-  get memberPercent(): TextStyle { return style(15, "mono", lineHeight.body); },
+  slatePercent: style(42, "mono", lineHeight.heading),
+  episodePercent: style(38, "mono", lineHeight.heading),
+  statNumber: style(26, "mono", lineHeight.heading),
+  cardPercent: style(24, "mono", lineHeight.heading),
+  stepperNumber: style(22, "mono", lineHeight.heading),
+  memberPercent: style(15, "mono", lineHeight.body),
 
   /** Stat cell labels — 10px. */
-  get statLabel(): TextStyle { return style(10, "regular", lineHeight.body); },
+  statLabel: style(10, "regular", lineHeight.body),
 };
 
 /**

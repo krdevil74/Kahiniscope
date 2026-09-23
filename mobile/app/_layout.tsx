@@ -34,7 +34,6 @@ import { shouldSendToSignIn } from "../src/lib/session-routing.ts";
 import { useNotificationTaps } from "../src/lib/notifications";
 import { ToastProvider } from "../src/lib/toast";
 import { colors } from "../src/theme/tokens";
-import { ThemeProvider } from "../src/theme/theme.tsx";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -64,7 +63,6 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
       <SessionProvider>
         <ToastProvider>
           <SignedOutGate />
@@ -83,7 +81,6 @@ export default function RootLayout() {
         </View>
         </ToastProvider>
       </SessionProvider>
-      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

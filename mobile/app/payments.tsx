@@ -21,9 +21,10 @@ import { Avatar } from "../src/components/Avatar";
 import { Button } from "../src/components/Button";
 import { Card } from "../src/components/Card";
 import { EmptyState } from "../src/components/EmptyState";
+import { MemberHeader } from "../src/components/MemberHeader";
 import { MemberTabs } from "../src/components/MemberTabs";
-import { ThemePicker } from "../src/components/ThemePicker";
-import { ScreenHeader } from "../src/components/ScreenHeader";
+import { PaidStamp } from "../src/components/PaidStamp";
+import { Ribbon, RibbonInfo } from "../src/components/Ribbon";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { useSession } from "../src/lib/auth";
 import { indexBy, useEpisodes, usePayments, useTeam } from "../src/lib/data";
@@ -298,13 +299,12 @@ function WorkingNote({ payment }: { payment: Payment }) {
 // ---------------------------------------------------------------------------
 
 function MemberPayments() {
-  const { user, isApproved, profile } = useSession();
+  const { user, isApproved } = useSession();
   const { data: payments } = usePayments({ uid: user?.uid, enabled: Boolean(user) && isApproved });
   const { data: episodes } = useEpisodes(isApproved);
 
   const byEpisode = useMemo(() => indexBy(episodes, (e) => e.id), [episodes]);
   const summary = useMemo(() => earningsFor(payments), [payments]);
-  const balance = profile?.balance ?? 0;
 
   const paid = useMemo(
     () =>
@@ -313,7 +313,7 @@ function MemberPayments() {
         .sort((a, b) => (b.paidAt?.getTime() ?? 0) - (a.paidAt?.getTime() ?? 0)),
     [payments]
   );
-  const pending = useMemo(
+  const upcoming = useMemo(
     () =>
       payments
         .filter((p) => p.status !== "paid")
@@ -322,105 +322,67 @@ function MemberPayments() {
   );
 
   const [paidShown, setPaidShown] = useState(PAGE_SIZE);
-  const [pendingShown, setPendingShown] = useState(PAGE_SIZE);
+  const [upcomingShown, setUpcomingShown] = useState(PAGE_SIZE);
+  const [explaining, setExplaining] = useState(false);
 
   const paidPage = pageOf(paid, paidShown);
-  const pendingPage = pageOf(pending, pendingShown);
+  const upcomingPage = pageOf(upcoming, upcomingShown);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surfaceAlt }}>
-      <ScreenHeader title="Payments" subtitle={`${paid.length + pending.length} entries`} />
+    <View style={{ flex: 1, backgroundColor: colors.page }}>
+      <MemberHeader title="Payments" subtitle={`${payments.length} entries`} />
       <MemberTabs active="payments" />
 
-      <ScrollView contentContainerStyle={{ padding: spacing.screen, paddingBottom: 40, gap: spacing.cardsTight }}>
-        {/* The seal. What somebody has actually been paid is the one figure
-            worth reading from across a room, and it is the only number on
-            this screen that is not an estimate of anything. */}
-        <View
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            paddingVertical: 26,
-            borderRadius: 999,
-            borderWidth: 3,
-            borderColor: colors.brand,
-            backgroundColor: colors.bar,
-            marginBottom: 4,
-          }}
-        >
-          <AppText
-            style={{
-              fontFamily: fontFamily.monoSemibold,
-              fontSize: 9.5,
-              lineHeight: 11,
-              letterSpacing: 1.6,
-              color: colors.brand,
-            }}
-          >
-            TOTAL EARNED
-          </AppText>
-          <AppText
-            weight="semibold"
-            style={{
-              fontFamily: fontFamily.semibold,
-              fontSize: 40,
-              lineHeight: 46,
-              color: colors.white,
-              marginTop: 4,
-            }}
-          >
-            {money(summary.paid)}
-          </AppText>
-          <AppText
-            style={{
-              fontFamily: fontFamily.mono,
-              fontSize: 10,
-              lineHeight: 13,
-              color: "rgba(255,255,255,.55)",
-            }}
-          >
-            {`paid across ${paid.length} ${paid.length === 1 ? "task" : "tasks"}`}
-          </AppText>
-        </View>
-
-        {balance > 0 ? (
-          <Card radius={13} style={{ padding: 14, gap: 3, backgroundColor: colors.bar, borderColor: colors.ink }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.screen, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* The total, clean, with the stamp beside it. Everything else on
+            this screen is a row; this is the one thing read at a glance. */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 4 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <AppText
               style={{
                 fontFamily: fontFamily.monoMedium,
                 fontSize: 9.5,
                 lineHeight: 11,
-                letterSpacing: 0.6,
-                color: "rgba(255,255,255,.6)",
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                color: colors.faint,
               }}
             >
-              AVAILABLE BALANCE
+              Total paid to you
             </AppText>
             <AppText
               weight="semibold"
-              style={{ fontFamily: fontFamily.semibold, fontSize: 22, lineHeight: 27, color: colors.white }}
+              style={{
+                fontFamily: fontFamily.extrabold,
+                fontSize: 40,
+                lineHeight: 44,
+                letterSpacing: -2,
+                marginTop: 6,
+              }}
             >
-              {money(balance)}
+              {money(summary.paid)}
             </AppText>
             <AppText
               style={{
-                fontFamily: fontFamily.regular,
-                fontSize: 11,
-                lineHeight: 15.5,
-                color: "rgba(255,255,255,.7)",
+                fontFamily: fontFamily.mono,
+                fontSize: 10,
+                lineHeight: 13,
+                color: colors.faint,
+                marginTop: 6,
               }}
             >
-              Advanced to you already. Approved work is paid out of this first.
+              {`across ${paid.length} ${paid.length === 1 ? "task" : "tasks"}`}
             </AppText>
-          </Card>
-        ) : null}
+          </View>
+          {/* Only once there is something to stamp. A PAID mark over ₹0 is a
+              claim about money that has not moved. */}
+          {paid.length > 0 ? <PaidStamp /> : null}
+        </View>
 
-        <SummaryBar
-          label="Paid so far"
-          amount={money(summary.paid)}
-          note={`${paid.length} ${paid.length === 1 ? "task" : "tasks"}`}
-          tone="paid"
-        />
+        <Ribbon label="Paid tasks" tone={colors.money} />
 
         {paid.length === 0 ? (
           <EmptyState
@@ -430,49 +392,58 @@ function MemberPayments() {
         ) : null}
 
         {paidPage.shown.map((payment) => (
-          <PaymentRow
-            key={payment.id}
-            payment={payment}
-            episode={byEpisode.get(payment.episodeId)}
-          />
+          <PaymentRow key={payment.id} payment={payment} episode={byEpisode.get(payment.episodeId)} />
         ))}
 
         {paidPage.hasMore ? (
           <Button
             label={moreLabel(paidPage.hidden)}
             variant="quiet"
+            style={{ marginTop: spacing.cardsTight, borderColor: colors.hairlineStrong }}
             onPress={() => setPaidShown((n) => n + PAGE_SIZE)}
-            style={{ borderColor: colors.hairlineStrong }}
           />
         ) : null}
 
-        <SummaryBar
-          label="Pending, estimated"
-          amount={
-            summary.pendingIncomplete
-              ? `${money(summary.pendingEstimate)}+`
-              : money(summary.pendingEstimate)
+        <Ribbon
+          label="Upcoming payments"
+          tone={colors.heat}
+          action={
+            <Pressable
+              onPress={() => setExplaining((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel="Why these amounts are estimates"
+              accessibilityState={{ expanded: explaining }}
+              hitSlop={10}
+            >
+              <RibbonInfo />
+            </Pressable>
           }
-          note={`${pending.length} ${pending.length === 1 ? "task" : "tasks"}`}
-          tone="pending"
         />
 
-        {pending.length > 0 ? (
+        {/* The caveat lives behind the (i) rather than sitting on screen
+            permanently — it is important the first time and furniture after. */}
+        {explaining ? (
           <View
             style={{
               backgroundColor: colors.bar,
-              borderRadius: radii.chipLarge,
-              paddingVertical: 10,
-              paddingHorizontal: 11,
+              borderRadius: radii.card,
+              padding: 14,
+              marginTop: spacing.cardsTight,
             }}
           >
             <AppText
               weight="semibold"
+              style={{ fontFamily: fontFamily.bold, fontSize: 12, lineHeight: 15, color: colors.white }}
+            >
+              Why “estimated”?
+            </AppText>
+            <AppText
               style={{
-                fontFamily: fontFamily.semibold,
+                fontFamily: fontFamily.regular,
                 fontSize: 11,
-                lineHeight: 16,
-                color: colors.white,
+                lineHeight: 17,
+                color: "rgba(255,255,255,.78)",
+                marginTop: 4,
               }}
             >
               {ESTIMATE_DISCLAIMER}
@@ -480,81 +451,26 @@ function MemberPayments() {
           </View>
         ) : null}
 
-        {pendingPage.shown.map((payment) => (
-          <PaymentRow
-            key={payment.id}
-            payment={payment}
-            episode={byEpisode.get(payment.episodeId)}
-          />
-        ))}
-
-        {pendingPage.hasMore ? (
-          <Button
-            label={moreLabel(pendingPage.hidden)}
-            variant="quiet"
-            onPress={() => setPendingShown((n) => n + PAGE_SIZE)}
-            style={{ borderColor: colors.hairlineStrong }}
+        {upcoming.length === 0 ? (
+          <EmptyState
+            title="Nothing waiting"
+            detail="Work an admin has approved but not yet paid for appears here."
           />
         ) : null}
 
-        {/* A member has no settings screen — this is the one page they have
-            that is not a list of work, so the theme lives at the foot of it. */}
-        <View style={{ marginTop: 18, gap: spacing.chips }}>
-          <SectionCaption>Appearance</SectionCaption>
-          <ThemePicker />
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
+        {upcomingPage.shown.map((payment) => (
+          <PaymentRow key={payment.id} payment={payment} episode={byEpisode.get(payment.episodeId)} />
+        ))}
 
-/** The horizontal bar that heads each half of the list. */
-function SummaryBar({
-  label,
-  amount,
-  note,
-  tone,
-}: {
-  label: string;
-  amount: string;
-  note: string;
-  tone: "paid" | "pending";
-}) {
-  return (
-    <View
-      style={{
-        marginTop: 10,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: spacing.chips,
-        backgroundColor: tone === "paid" ? colors.brand : colors.surfaceSunken,
-        borderWidth: 1,
-        borderColor: tone === "paid" ? colors.brand : colors.hairlineStrong,
-        borderRadius: radii.chipLarge,
-        paddingVertical: 11,
-        paddingHorizontal: 13,
-      }}
-    >
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <AppText weight="semibold" style={{ fontFamily: fontFamily.semibold, fontSize: 12.5, lineHeight: 15 }}>
-          {label}
-        </AppText>
-        <AppText
-          style={{
-            fontFamily: fontFamily.mono,
-            fontSize: 10,
-            lineHeight: 13,
-            color: colors.muted,
-            marginTop: 2,
-          }}
-        >
-          {note}
-        </AppText>
-      </View>
-      <AppText weight="semibold" style={{ fontFamily: fontFamily.semibold, fontSize: 17, lineHeight: 20 }}>
-        {amount}
-      </AppText>
+        {upcomingPage.hasMore ? (
+          <Button
+            label={moreLabel(upcomingPage.hidden)}
+            variant="quiet"
+            style={{ marginTop: spacing.cardsTight, borderColor: colors.hairlineStrong }}
+            onPress={() => setUpcomingShown((n) => n + PAGE_SIZE)}
+          />
+        ) : null}
+      </ScrollView>
     </View>
   );
 }
