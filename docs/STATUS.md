@@ -278,12 +278,19 @@ rules without the trigger means no member can open any script.
 - [ ] **Play Console**: developer account, identity verification (days), then
       the 14-day / 12-tester closed test if the account is newer than
       13 Nov 2023. Recruit 15. This is the long pole — start before the build
-      is ready, not after.
+      is ready, not after. **The ordered checklist is
+      `docs/14-play-store-runbook.md`.** As of 24 Sep the account has not been
+      opened, which makes it the critical path for everything else.
 - [ ] **Screenshots** for the listing: `npm run screenshots` captures from a
-      real device over adb. Not yet possible — no device has run the app.
-- [ ] **Privacy policy needs a public URL** and a **support contact address**
-      filled in (`mobile/store/privacy-policy.md` has a placeholder; the note
-      there argues against using the owner account).
+      real device over adb. Now possible — the preview APK has been installed
+      and run on a phone since 20 Sep.
+- [ ] **Privacy policy needs a public URL** and a **support contact address**.
+      The hosting is built: `site/build.mjs` generates the page from
+      `mobile/store/privacy-policy.md` and `.github/workflows/pages.yml`
+      publishes it to GitHub Pages. Two things outside the repository are
+      still needed — create the address, and set it as the repository
+      variable `SUPPORT_EMAIL` with Pages sourced from GitHub Actions. The
+      build refuses to publish a page carrying the placeholder.
 
 ### Worth doing, not blocking
 

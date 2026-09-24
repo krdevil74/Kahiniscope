@@ -4,6 +4,11 @@ Two things here need your accounts and cannot be done for you: `eas build`
 needs an Expo login, and the Play listing needs the Play Console. Everything
 that makes those two short is done.
 
+> **Doing it, rather than reading about it?** `docs/14-play-store-runbook.md`
+> is the ordered checklist — what to do first, what waits on what, and how
+> long the account verification and the mandatory 14-day closed test take.
+> This page is the reference behind it.
+
 ---
 
 ## Pre-flight, already verified
