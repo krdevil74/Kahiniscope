@@ -66,8 +66,13 @@ service cloud.firestore {
     // Crafts as listed in the handoff. telegramChatId is absent on purpose:
     // it is captured by the Telegram webhook, never typed by a client.
     function validProfile() {
+      // A name is required once it is being written at all. The registration
+      // form asks for one now, and an empty string would reach the admin's
+      // new-task screen as a blank chip with nothing to identify it. The cap
+      // matches MAX_NAME in the app.
       return (!('name' in request.resource.data)
               || (request.resource.data.name is string
+                  && request.resource.data.name.size() > 0
                   && request.resource.data.name.size() <= 80))
         && (!('phone' in request.resource.data)
             || request.resource.data.phone == null
