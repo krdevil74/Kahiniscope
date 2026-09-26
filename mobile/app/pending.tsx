@@ -26,6 +26,7 @@ import { CRAFTS } from "../src/lib/model";
 import { normalisePhone } from "../src/lib/phone.ts";
 import { PhoneField } from "../src/components/PhoneField";
 import { submitRegistration } from "../src/lib/registrations";
+import { MAX_NAME, isNameValid } from "../src/lib/format.ts";
 import { useToast } from "../src/lib/toast";
 import { colors, fontFamily, layout, radii, spacing } from "../src/theme/tokens";
 import { type } from "../src/theme/typography";
@@ -172,6 +173,11 @@ function RegistrationForm({
   onSignOut: () => Promise<void>;
 }) {
   const toast = useToast();
+  // Prefilled from the Google account, because it is usually right and
+  // retyping it would be busywork — but editable, because it is often not
+  // what this person is called on the team. Whatever is here is the name the
+  // admin sees on every screen from now on.
+  const [ownName, setOwnName] = useState(name);
   const [crafts, setCrafts] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
@@ -181,13 +187,19 @@ function RegistrationForm({
   // a Bangladeshi number typed the local way is accepted and normalised.
   const normalisedPhone = useMemo(() => normalisePhone(phone), [phone]);
   const phoneValid = normalisedPhone !== null;
-  const canSubmit = crafts.length > 0 && phoneValid && !busy;
+  const nameValid = isNameValid(ownName);
+  const canSubmit = nameValid && crafts.length > 0 && phoneValid && !busy;
 
   async function submit() {
     if (!canSubmit || crafts.length === 0 || !normalisedPhone) return;
     setBusy(true);
     try {
-      await submitRegistration(uid, { phone: normalisedPhone, crafts, note: note.trim() });
+      await submitRegistration(uid, {
+        name: ownName,
+        phone: normalisedPhone,
+        crafts,
+        note: note.trim(),
+      });
       // No navigation: the snapshot on our own document brings the holding
       // screen in by itself.
     } catch (err) {
@@ -211,7 +223,7 @@ function RegistrationForm({
       <View style={{ alignItems: "center", gap: spacing.cardTight, marginBottom: 4 }}>
         <Logo size={56} />
         <AppText weight="semibold" style={[type.h2, { textAlign: "center" }]}>
-          {`Welcome, ${name.split(" ")[0] || "there"}`}
+          {`Welcome, ${ownName.trim().split(/\s+/)[0] || "there"}`}
         </AppText>
         <AppText
           style={[type.bodySmall, { color: colors.muted, textAlign: "center" }]}
@@ -219,6 +231,33 @@ function RegistrationForm({
           Tell the admin what you do and how to reach you. They approve
           registrations by hand.
         </AppText>
+      </View>
+
+      <View style={{ gap: spacing.chips }}>
+        <SectionCaption>Your name</SectionCaption>
+        <AppText style={[type.bodySmall, { color: colors.faint, marginTop: -4 }]}>
+          This is what the admin sees when they assign you work.
+        </AppText>
+        <TextInput
+          value={ownName}
+          onChangeText={(next: string) => setOwnName(next.slice(0, MAX_NAME))}
+          placeholder="Your name"
+          placeholderTextColor={colors.faint}
+          autoCapitalize="words"
+          autoCorrect={false}
+          accessibilityLabel="Your name, as the admin will see it"
+          style={{
+            borderWidth: 1,
+            borderColor: colors.hairlineStrong,
+            borderRadius: radii.chipLarge,
+            paddingVertical: 12,
+            paddingHorizontal: 13,
+            fontFamily: fontFamily.medium,
+            fontSize: 14,
+            color: colors.ink,
+            backgroundColor: colors.surface,
+          }}
+        />
       </View>
 
       <View style={{ gap: spacing.chips }}>

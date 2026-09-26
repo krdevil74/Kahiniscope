@@ -766,3 +766,65 @@ test("episodes: the two old spellings still in the live database are still writa
   await assertSucceeds(updateDoc(doc(asAdmin(), "episodes", "ep41"), { status: "production" }));
   await assertSucceeds(updateDoc(doc(asAdmin(), "episodes", "ep41"), { status: "released" }));
 });
+
+// ---------------------------------------------------------------------------
+// The name on the registration form
+//
+// The form asks for a name now rather than taking the Google display name
+// silently, because that name is what the admin reads on the new-task screen.
+// ---------------------------------------------------------------------------
+
+test("registration: a pending account sets its own name", async () => {
+  await assertSucceeds(
+    updateDoc(doc(asPending(), "users", PENDING), {
+      name: "Newcomer Ahmed",
+      phone: "+919876543210",
+      crafts: ["Voice"],
+      note: null,
+    })
+  );
+});
+
+test("registration: a Bengali name is accepted", async () => {
+  await assertSucceeds(
+    updateDoc(doc(asPending(), "users", PENDING), { name: "রিজু আহমেদ" })
+  );
+});
+
+test("registration: an empty name is refused", async () => {
+  // It would reach the admin's new-task screen as a blank chip with nothing
+  // on it to identify who is being assigned the work.
+  await assertFails(updateDoc(doc(asPending(), "users", PENDING), { name: "" }));
+});
+
+test("registration: a name past the cap is refused", async () => {
+  await assertFails(
+    updateDoc(doc(asPending(), "users", PENDING), { name: "a".repeat(81) })
+  );
+  await assertSucceeds(
+    updateDoc(doc(asPending(), "users", PENDING), { name: "a".repeat(80) })
+  );
+});
+
+test("registration: a name that is not a string is refused", async () => {
+  await assertFails(updateDoc(doc(asPending(), "users", PENDING), { name: 7 }));
+  await assertFails(updateDoc(doc(asPending(), "users", PENDING), { name: null }));
+});
+
+test("registration: naming yourself is still not approving yourself", async () => {
+  await assertFails(
+    updateDoc(doc(asPending(), "users", PENDING), { name: "Newcomer", status: "approved" })
+  );
+  await assertFails(
+    updateDoc(doc(asPending(), "users", PENDING), { name: "Newcomer", role: "admin" })
+  );
+});
+
+test("registration: you cannot rename somebody else", async () => {
+  await assertFails(updateDoc(doc(asPending(), "users", MEMBER), { name: "Not Rizu" }));
+  await assertFails(updateDoc(doc(asMember(), "users", OTHER_MEMBER), { name: "Not Tanvir" }));
+});
+
+test("registration: an approved member can still correct their own name", async () => {
+  await assertSucceeds(updateDoc(doc(asMember(), "users", MEMBER), { name: "Rizu Ahmed" }));
+});

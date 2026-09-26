@@ -2,6 +2,35 @@
  * Small formatters. Pure, unit tested.
  */
 
+/**
+ * The longest a name may be. The rules enforce the same number, because the
+ * field is the one thing on this form that an admin reads on every screen
+ * and a 400-character name would wreck all of them.
+ */
+export const MAX_NAME = 80;
+
+/**
+ * Tidy up what was typed: collapse runs of whitespace, trim the ends, and cut
+ * to the cap.
+ *
+ * Names arrive pasted as often as typed — "  Rizu   Ahmed " is what a paste
+ * off a chat message looks like — and the admin screens put this straight
+ * into a chip.
+ */
+export function normaliseName(raw: string): string {
+  return (raw ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_NAME);
+}
+
+/**
+ * A name is required, because the whole point of asking is that the Google
+ * display name is often not what this person is called on the team. Anything
+ * that survives normalisation is accepted — one word, a mononym, Bengali
+ * script — and only emptiness is refused.
+ */
+export function isNameValid(raw: string): boolean {
+  return normaliseName(raw).length > 0;
+}
+
 /** "Rizu Ahmed" → "RA". Two letters, upper case, for the avatar circles. */
 export function initials(name: string | null | undefined): string {
   return (name ?? "")

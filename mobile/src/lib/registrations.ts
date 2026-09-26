@@ -13,6 +13,7 @@ import { httpsCallable } from "firebase/functions";
 import { appFunctions } from "./region.ts";
 
 import { db } from "./firebase";
+import { normaliseName } from "./format.ts";
 import type { TeamMember } from "./model";
 
 /** Functions live in the same region as Firestore. */
@@ -61,7 +62,7 @@ export async function submitRegistration(
   details: { name?: string; phone: string; crafts: string[]; note: string }
 ): Promise<void> {
   await updateDoc(doc(db, "users", uid), {
-    ...(details.name ? { name: details.name } : {}),
+    ...(details.name ? { name: normaliseName(details.name) } : {}),
     phone: details.phone,
     crafts: details.crafts,
     note: details.note || null,

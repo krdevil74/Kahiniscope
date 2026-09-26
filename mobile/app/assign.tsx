@@ -217,6 +217,12 @@ export default function Assign() {
                     }}
                   >
                     <Avatar name={member.name} size={22} variant={on ? "yellow" : "light"} />
+                    {/* The whole name, which is the one they gave when they
+                        registered — not the first word of it. Two people
+                        called Rizu are not an edge case on a team this size,
+                        and the chip is where they are told apart. The row
+                        wraps, so a long name costs a line rather than an
+                        overflow. */}
                     <AppText
                       style={{
                         fontFamily: fontFamily.medium,
@@ -225,7 +231,7 @@ export default function Assign() {
                         color: on ? colors.white : colors.ink,
                       }}
                     >
-                      {firstName(member.name)}
+                      {member.name}
                     </AppText>
                   </Pressable>
                 );

@@ -127,14 +127,23 @@ export default function SignIn() {
               borderRadius: radii.buttonLarge,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: pressed ? colors.brandPressed : colors.brand,
+              // The mark's own yellow. This is the first screen anybody
+              // sees and the only thing on it to press, so it wears the
+              // brand colour rather than the violet the buttons inside the
+              // app use — and the label goes back to reading properly:
+              // type.h4 sets ink, which on violet was dark text on a dark
+              // fill.
+              backgroundColor: pressed ? colors.yellowHover : colors.brandYellow,
               opacity: disabled ? 0.6 : 1,
             })}
           >
             {busy ? (
               <ActivityIndicator color={colors.ink} />
             ) : (
-              <AppText weight="semibold" style={[type.h4, { fontSize: 14, lineHeight: 14 }]}>
+              <AppText
+                weight="semibold"
+                style={[type.h4, { fontSize: 14, lineHeight: 14, color: colors.ink }]}
+              >
                 Continue with Google
               </AppText>
             )}
