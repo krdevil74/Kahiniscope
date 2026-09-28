@@ -14,6 +14,12 @@ mobile/.render-check/
 *.jks
 *.keystore
 
+# `eas credentials` can write this, and it carries the keystore password, the
+# key alias and the key password in plain text. The repository is public: a
+# signing key with its passwords in it is the one secret that cannot be
+# rotated — Play identifies the app by that key forever.
+credentials.json
+
 # Secrets and per-project credentials — never commit these.
 # See .env.example files for what belongs in each.
 .env
