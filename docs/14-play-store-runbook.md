@@ -93,6 +93,18 @@ thing a listing must never do.
 Use real data rather than the demo seed if the phone has it — the screens
 read better with real Bengali episode titles in them.
 
+Tablet shots — 7-inch and 10-inch, two each — come from a different command,
+because there is no tablet:
+
+```bash
+cd mobile && npm run screenshots:tablet 7 admin   # also 7 member, 10 admin, 10 member
+```
+
+It drives a headless Chrome sized to a tablet's screen in dp against the web
+target, which lays out identically to React Native. The emulators, the demo
+seed and Metro have to be running first; the script's header comment lists
+the three commands. Files land in `design/store-screenshots/`.
+
 ## 5. The production build
 
 ```bash

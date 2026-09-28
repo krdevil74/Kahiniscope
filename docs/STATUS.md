@@ -281,9 +281,13 @@ rules without the trigger means no member can open any script.
       is ready, not after. **The ordered checklist is
       `docs/14-play-store-runbook.md`.** As of 24 Sep the account has not been
       opened, which makes it the critical path for everything else.
-- [ ] **Screenshots** for the listing: `npm run screenshots` captures from a
-      real device over adb. Now possible — the preview APK has been installed
-      and run on a phone since 20 Sep.
+- [ ] **Screenshots** for the listing: `npm run screenshots` captures the
+      phone ones from a real device over adb. Now possible — the preview APK
+      has been installed and run on a phone since 20 Sep. The three taken on
+      28 Sep are in `design/actual-ui-v1/`. Play wants 7-inch and 10-inch
+      tablet shots too, and there is no tablet: `npm run screenshots:tablet`
+      captures those off the web target at tablet dp sizes, and the eighteen
+      it produced are in `design/store-screenshots/`.
 - [ ] **Privacy policy needs a public URL** and a **support contact address**.
       The hosting is built: `site/build.mjs` generates the page from
       `mobile/store/privacy-policy.md` and `.github/workflows/pages.yml`
