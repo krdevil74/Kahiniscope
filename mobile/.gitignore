@@ -18,6 +18,12 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# `eas credentials` can write this, and it carries the keystore password, the
+# key alias and the key password in plain text. The repository is public: a
+# signing key with its passwords in it is the one secret that cannot be
+# rotated — Play identifies the app by that key forever.
+credentials.json
+
 # Metro
 .metro-health-check*
 
