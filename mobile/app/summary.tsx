@@ -18,6 +18,7 @@ import { Redirect } from "expo-router";
 
 import { ActivityChart } from "../src/components/ActivityChart";
 import { AppText } from "../src/components/AppText";
+import { Bounded } from "../src/components/Bounded";
 import { Card } from "../src/components/Card";
 import { MemberHeader } from "../src/components/MemberHeader";
 import { MemberTabs } from "../src/components/MemberTabs";
@@ -56,9 +57,10 @@ export default function Summary() {
       <MemberTabs active="summary" />
 
       <ScrollView
-        contentContainerStyle={{ padding: spacing.screen, paddingBottom: 40, gap: spacing.cardsTight }}
+        contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
+      <Bounded style={{ padding: spacing.screen, gap: spacing.cardsTight }}>
         {/* The three counts, each in the colour of what it means. */}
         <View style={{ flexDirection: "row", gap: spacing.chipsTight }}>
           <Count label="Pending" value={summary.pending} fill={colors.attentionSoft} tone={colors.attention} />
@@ -146,6 +148,7 @@ export default function Summary() {
           <SectionCaption>Last six months</SectionCaption>
           <ActivityChart months={activity} />
         </Card>
+      </Bounded>
       </ScrollView>
     </View>
   );

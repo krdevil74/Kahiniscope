@@ -59,6 +59,16 @@ export const spacing = {
 export const MIN_TAP_TARGET = 44;
 
 export const layout = {
+  /**
+   * The widest the content ever draws, whatever the screen.
+   *
+   * A phone is narrower than this, so it changes nothing there. On a tablet
+   * it is what stops a card running the full width with its own label
+   * stranded at the left edge. 760 rather than something wider because the
+   * type sizes are a phone's: at 1200px a 13px label in a full-width row is
+   * a long way from the number it belongs to.
+   */
+  contentMax: 760,
   headerLogo: 40,
   pendingLogo: 76,
   fab: 54,

@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 
 import { AppShell } from "../src/components/AppShell";
 import { AppText } from "../src/components/AppText";
+import { Bounded } from "../src/components/Bounded";
 import { Avatar } from "../src/components/Avatar";
 import { Button } from "../src/components/Button";
 import { Card } from "../src/components/Card";
@@ -334,9 +335,10 @@ function MemberPayments() {
       <MemberTabs active="payments" />
 
       <ScrollView
-        contentContainerStyle={{ padding: spacing.screen, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
+      <Bounded style={{ padding: spacing.screen }}>
         {/* The total, clean, with the stamp beside it. Everything else on
             this screen is a row; this is the one thing read at a glance. */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 4 }}>
@@ -470,6 +472,7 @@ function MemberPayments() {
             onPress={() => setUpcomingShown((n) => n + PAGE_SIZE)}
           />
         ) : null}
+      </Bounded>
       </ScrollView>
     </View>
   );

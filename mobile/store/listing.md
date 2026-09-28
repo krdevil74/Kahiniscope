@@ -80,10 +80,16 @@ The interface is in English. Episode titles are in Bengali.
 | App icon | `mobile/assets/store-icon-512.png` | 512×512, no alpha |
 | Feature graphic | `mobile/assets/store-feature-graphic-1024x500.png` | 1024×500, no alpha |
 | Phone screenshots | `mobile/store/screenshots/` | from `npm run screenshots` |
+| Tablet screenshots | `design/store-screenshots/tablet-7in`, `tablet-10in` | 1200×1920 and 1600×2560, from `npm run screenshots:tablet` |
 
 At least two phone screenshots are required. Capture them from a real device or
 emulator running the app with the demo data seeded — **not** from the HTML
 prototype, which is drawn in an iOS frame and is not what installs.
+
+Two per tablet size are required as well. There is no tablet here, so those
+are captured from the web target at a tablet's dp size — see "Tablet
+screenshots" in `docs/10-release.md` for why that represents the app and
+where it differs from Android.
 
 ## Contact details
 

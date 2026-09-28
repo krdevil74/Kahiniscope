@@ -18,6 +18,7 @@ import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { AppText } from "./AppText";
+import { Bounded } from "./Bounded";
 import { colors, fontFamily, radii, spacing, MIN_TAP_TARGET } from "../theme/tokens";
 
 export type MemberTab = "summary" | "tasks" | "payments";
@@ -32,13 +33,11 @@ export function MemberTabs({ active }: { active: MemberTab }) {
   const router = useRouter();
 
   return (
+    <Bounded style={{ paddingHorizontal: spacing.screen, paddingTop: spacing.cardTight }}>
     <View
       style={{
         flexDirection: "row",
         gap: 5,
-        margin: spacing.cardTight,
-        marginHorizontal: spacing.screen,
-        marginBottom: 0,
         padding: 4,
         borderRadius: radii.pill,
         backgroundColor: colors.surfaceSunken,
@@ -85,5 +84,6 @@ export function MemberTabs({ active }: { active: MemberTab }) {
         );
       })}
     </View>
+    </Bounded>
   );
 }

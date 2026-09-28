@@ -1,10 +1,11 @@
 /**
- * Build the public privacy-policy page.
+ * Build the public policy pages.
  *
- * Play rejects a listing without a privacy policy at a public URL, and the
- * policy has to stay true as the app changes. So the page is generated from
- * `mobile/store/privacy-policy.md` rather than written twice — there is one
- * copy of the text, and the published page is a view of it.
+ * Play rejects a listing without a privacy policy at a public URL, and — for
+ * any app whose users can create an account — without a page saying how to
+ * delete one. Both have to stay true as the app changes, so both are
+ * generated from the markdown in `mobile/store/` rather than written twice:
+ * there is one copy of each text, and the published page is a view of it.
  *
  * The support address is substituted here rather than typed into the
  * markdown, so it lives in exactly one place and a change to it cannot leave
@@ -30,8 +31,6 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
  */
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "";
 
-const source = await readFile(join(root, "mobile/store/privacy-policy.md"), "utf8");
-
 if (!SUPPORT_EMAIL) {
   throw new Error(
     "SUPPORT_EMAIL is not set. The policy must carry a real contact address " +
@@ -40,22 +39,27 @@ if (!SUPPORT_EMAIL) {
   );
 }
 
-const body = source
-  // The instruction to whoever fills this in is for the repository, not for
-  // the public page.
-  .replace(/^> Fill this in before publishing[\s\S]*?\n\n/m, "")
-  .replaceAll("<support address>", SUPPORT_EMAIL);
+/** Read one markdown source and put the real contact address into it. */
+async function textOf(file) {
+  const source = await readFile(join(root, "mobile/store", file), "utf8");
+  const body = source
+    // The instruction to whoever fills this in is for the repository, not for
+    // the public page.
+    .replace(/^> Fill this in before publishing[\s\S]*?\n\n/m, "")
+    .replaceAll("<support address>", SUPPORT_EMAIL);
 
-if (body.includes("<support address>")) {
-  throw new Error("A placeholder survived substitution.");
+  if (body.includes("<support address>")) {
+    throw new Error(`A placeholder survived substitution in ${file}.`);
+  }
+  return body;
 }
 
-const html = `<!doctype html>
+const page = (title, body) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Privacy Policy — Kahiniscope Production</title>
+<title>${title}</title>
 <style>
   :root { color-scheme: light dark; }
   body {
@@ -88,13 +92,30 @@ ${marked.parse(body)}
 </html>
 `;
 
-await mkdir(join(root, "site/dist"), { recursive: true });
-await writeFile(join(root, "site/dist/index.html"), html);
+/** Write one page at `site/dist/<path>/index.html`, or at the root for "". */
+async function emit(path, html) {
+  const dir = path ? join(root, "site/dist", path) : join(root, "site/dist");
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, "index.html"), html);
+}
+
+const privacy = page(
+  "Privacy Policy — Kahiniscope Production",
+  await textOf("privacy-policy.md")
+);
 
 // Play's crawler follows the exact URL given on the listing. Serving the
 // policy at /privacy as well as at the root means the listing link can be
 // the tidier of the two and still resolve if the other is ever used.
-await mkdir(join(root, "site/dist/privacy"), { recursive: true });
-await writeFile(join(root, "site/dist/privacy/index.html"), html);
+await emit("", privacy);
+await emit("privacy", privacy);
+
+// The account-deletion page is its own URL because Play asks for one
+// separately from the policy, and wants the steps to be what the page is
+// about rather than a line inside something longer.
+await emit(
+  "delete-account",
+  page("Delete your account — Kahiniscope Production", await textOf("delete-account.md"))
+);
 
 console.log(`Built site/dist/ with contact ${SUPPORT_EMAIL}`);

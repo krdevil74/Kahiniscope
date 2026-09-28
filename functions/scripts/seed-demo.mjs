@@ -142,6 +142,68 @@ TASKS.forEach((task, index) => {
   });
 });
 
+/**
+ * A member's earnings history. Rizu is the one the app's emulator sign-in
+ * offers, so the money lands on him: without it his Summary opens on three
+ * zeros and an empty mint band, which says nothing about what the screen is
+ * for. Paid work only — `payments.episodeId` is a plain id, not a reference,
+ * which is what `toPayment` reads.
+ *
+ * episode, unit, minutes, rate, what was actually paid, how many days ago
+ */
+const PAYMENTS = [
+  ["seed-ep40", "voice-character", 12, 60, 720, 9],
+  ["seed-ep40", "voice-narration", 15, 50, 750, 24],
+  ["seed-ep40", "voice-character", 11, 60, 660, 41],
+  ["seed-ep40", "voice-narration", 14, 50, 700, 68],
+  ["seed-ep40", "voice-character", 13, 60, 790, 96],
+];
+
+PAYMENTS.forEach(([episodeId, unit, quantity, rate, finalAmount, daysAgo], index) => {
+  batch.set(db.doc(`payments/seed-payment-${index + 1}`), {
+    taskId: `seed-payment-task-${index + 1}`,
+    uid: "seed-rizu",
+    episodeId,
+    taskType: "Voice recording",
+    status: "paid",
+    unit,
+    quantity,
+    rate,
+    estimatedAmount: quantity * rate,
+    finalAmount,
+    recordingMinutes: quantity,
+    wordCount: null,
+    comment: null,
+    approvedAt: at(-(daysAgo + 2)),
+    paidAt: at(-daysAgo),
+    settledFromAdvance: false,
+  });
+});
+
+/**
+ * One approved and not yet paid, so the difference the whole payments module
+ * exists to make — money that is real against money that is arithmetic — is
+ * on screen rather than only in the code.
+ */
+batch.set(db.doc("payments/seed-payment-pending"), {
+  taskId: "seed-payment-task-pending",
+  uid: "seed-rizu",
+  episodeId: "seed-ep41",
+  taskType: "Voice recording",
+  status: "pending",
+  unit: "voice-character",
+  quantity: 14,
+  rate: 60,
+  estimatedAmount: 840,
+  finalAmount: null,
+  recordingMinutes: 14,
+  wordCount: null,
+  comment: null,
+  approvedAt: at(-1),
+  paidAt: null,
+  settledFromAdvance: false,
+});
+
 /** A morning's sends, so the reminder feed has something in it. */
 const FEED = [
   { task: 8, uid: "seed-rizu", channel: "whatsapp", minutesAgo: 200, result: "delivered" },
@@ -195,7 +257,8 @@ for (const person of [...PEOPLE, ...PENDING]) {
 
 console.log(
   `Seeded ${EPISODES.length} episodes, ${PEOPLE.length} approved members, ` +
-    `${PENDING.length} pending registrations, ${TASKS.length} tasks and ${FEED.length} log entries.`
+    `${PENDING.length} pending registrations, ${TASKS.length} tasks, ` +
+    `${PAYMENTS.length + 1} payments and ${FEED.length} log entries.`
 );
 console.log("Sign in as the address in OWNER_EMAILS to see the board.");
 process.exit(0);

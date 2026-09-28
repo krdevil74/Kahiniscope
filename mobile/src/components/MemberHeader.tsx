@@ -10,6 +10,7 @@ import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText } from "./AppText";
+import { Bounded } from "./Bounded";
 import { Logo } from "./Logo";
 import { useSession } from "../lib/auth";
 import { SignOutPill } from "./SignOutPill";
@@ -25,12 +26,16 @@ export function MemberHeader({ title, subtitle }: { title: string; subtitle: str
         backgroundColor: colors.bar,
         paddingTop: insets.top + 14,
         paddingBottom: 16,
-        paddingHorizontal: spacing.screen,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: spacing.cardTight,
       }}
     >
+      <Bounded
+        style={{
+          paddingHorizontal: spacing.screen,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.cardTight,
+        }}
+      >
       <Logo size={layout.headerLogo} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <AppText
@@ -54,6 +59,7 @@ export function MemberHeader({ title, subtitle }: { title: string; subtitle: str
         </AppText>
       </View>
       <SignOutPill onSignOut={() => void signOut()} />
+      </Bounded>
     </View>
   );
 }
