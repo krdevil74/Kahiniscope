@@ -2,6 +2,17 @@
 
 ## App details
 
+- **Package name / application ID**: `com.kahiniscope.production`
+
+  Set in `mobile/app.config.ts` and already baked into the signed AAB. Play
+  will not ask for it on the *Create app* form — it is taken from the first
+  bundle uploaded — but it is asked for often enough elsewhere (Firebase, the
+  Google sign-in client, any support page) that it belongs here rather than
+  only in the app config.
+
+  **It can never be changed once published.** It is half of the pair that
+  identifies the app forever; the signing key is the other half.
+
 - **App name** (30 characters max): `Kahiniscope Production`  *(22)*
 - **Default language**: English (United Kingdom) or English (India)
 - **App or game**: App
