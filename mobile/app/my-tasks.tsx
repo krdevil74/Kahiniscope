@@ -15,6 +15,7 @@ import { Linking, Pressable, ScrollView, TextInput, View } from "react-native";
 import { Redirect } from "expo-router";
 
 import { AppText } from "../src/components/AppText";
+import { Bounded } from "../src/components/Bounded";
 import { MemberHeader } from "../src/components/MemberHeader";
 import { MemberTabs } from "../src/components/MemberTabs";
 import { Card } from "../src/components/Card";
@@ -149,9 +150,10 @@ function MemberDashboard({
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: spacing.screen, paddingBottom: 40, gap: 9 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
+      <Bounded style={{ padding: spacing.screen, gap: 9 }}>
         {ordered.map((task) => {
           const episode = byEpisode.get(task.episodeId);
           const script = scripts[task.episodeId] ?? null;
@@ -404,6 +406,7 @@ function MemberDashboard({
           </AppText>
         </View>
 
+      </Bounded>
       </ScrollView>
     </View>
   );

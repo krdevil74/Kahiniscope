@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { ScrollView, View } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 
+import { Bounded } from "./Bounded";
 import { FloatingAdd } from "./FloatingAdd";
 import { ScreenHeader } from "./ScreenHeader";
 import { TabBar, type TabItem } from "./TabBar";
@@ -79,10 +80,12 @@ export function AppShell({
           contentContainerStyle={{ paddingBottom: bottomPadding }}
           showsVerticalScrollIndicator={false}
         >
-          {children}
+          <Bounded>{children}</Bounded>
         </ScrollView>
       ) : (
-        <View style={{ flex: 1 }}>{children}</View>
+        <View style={{ flex: 1 }}>
+          <Bounded style={{ flex: 1 }}>{children}</Bounded>
+        </View>
       )}
 
       {showFab ? <FloatingAdd onPress={() => router.push(assignHref as never)} /> : null}

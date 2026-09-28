@@ -10,6 +10,7 @@ import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText } from "./AppText";
+import { Bounded } from "./Bounded";
 import { colors, fontFamily, radii } from "../theme/tokens";
 
 export interface TabItem {
@@ -31,14 +32,12 @@ export function TabBar({ items, active }: { items: TabItem[]; active: string }) 
         zIndex: 65,
         backgroundColor: colors.bar,
         paddingTop: 11,
-        paddingHorizontal: 10,
         // The design's 30px bottom padding is the gesture bar's space; on a
         // device that reports its own inset, use that instead.
         paddingBottom: Math.max(insets.bottom, 14) + 8,
-        flexDirection: "row",
-        alignItems: "center",
       }}
     >
+      <Bounded style={{ paddingHorizontal: 10, flexDirection: "row", alignItems: "center" }}>
       {items.map((item) => {
         const on = item.key === active;
         return (
@@ -81,6 +80,7 @@ export function TabBar({ items, active }: { items: TabItem[]; active: string }) 
           </Pressable>
         );
       })}
+      </Bounded>
     </View>
   );
 }

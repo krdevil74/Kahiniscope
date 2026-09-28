@@ -8,6 +8,7 @@ import { Pressable, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText } from "./AppText";
+import { Bounded } from "./Bounded";
 import { SignOutPill } from "./SignOutPill";
 import { Logo } from "./Logo";
 import { colors, fontFamily, layout, radii, spacing, MIN_TAP_TARGET } from "../theme/tokens";
@@ -38,14 +39,18 @@ export function ScreenHeader({ title, subtitle, onBack, onSignOut, style }: Scre
           backgroundColor: colors.bar,
           paddingTop: insets.top + spacing.cardTight,
           paddingBottom: spacing.cardTight,
-          paddingHorizontal: spacing.screen,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: spacing.cardTight,
         },
         style,
       ]}
     >
+      <Bounded
+        style={{
+          paddingHorizontal: spacing.screen,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.cardTight,
+        }}
+      >
       <Logo size={layout.headerLogo} />
 
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -100,6 +105,7 @@ export function ScreenHeader({ title, subtitle, onBack, onSignOut, style }: Scre
           </AppText>
         </Pressable>
       ) : null}
+      </Bounded>
     </View>
   );
 }
