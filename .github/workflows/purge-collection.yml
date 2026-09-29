@@ -15,8 +15,9 @@ name: Purge a collection
 #    takes by surprise.
 #  - the project id has to be typed, as in every other workflow here that
 #    writes to production.
-#  - the date cannot be within the last week. Deleting the last few days is
-#    not a clean-up, it is deleting the work in progress.
+#  - the date cannot be today. "Everything before now" is the one
+#    sensible-looking date that is not one; anything older is a decision, and
+#    the count is there to check it.
 #
 # What it will not touch, on purpose: `users` and `settings`. A user document
 # is half of an account — the other half is a Firebase Auth record with a

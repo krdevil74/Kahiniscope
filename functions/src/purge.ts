@@ -84,12 +84,15 @@ export const PURGE_TARGETS: readonly PurgeTarget[] = [
 /**
  * How recent a cutoff may be.
  *
- * A clean-up job never needs to delete the last few days: that is not old
- * data, it is the work in progress. Like the retention floor this is not
- * negotiable from the outside — a mistyped year is the failure this catches,
- * and an escape hatch is exactly what a mistyped year would use.
+ * A day is enough. What this is really guarding against is a date that reads
+ * as sensible and is not — today's, or a mistyped year — rather than a
+ * considered decision to clear out last week; the dry run is what catches
+ * that one. So the floor sits at the smallest value that still refuses
+ * "everything before now", and the rest is left to the person reading the
+ * count. Like the retention floor it is not negotiable from the outside: an
+ * escape hatch is exactly what a mistyped year would use.
  */
-export const MIN_AGE_DAYS = 7;
+export const MIN_AGE_DAYS = 1;
 
 export function targetFor(collection: string): PurgeTarget {
   const name = collection.trim();
@@ -161,6 +164,8 @@ export function startOfDay(day: string, timeZone: string = TIME_ZONE): Date {
   return new Date(naive - offsetMs(new Date(guess), timeZone));
 }
 
+const days = (n: number) => `${n} day${n === 1 ? "" : "s"}`;
+
 /**
  * The instant before which a document is old enough for this job to delete.
  *
@@ -182,8 +187,8 @@ export function cutoffFor(day: string, now: Date = new Date(), timeZone: string 
   const floor = now.getTime() - MIN_AGE_DAYS * 86_400_000;
   if (cutoff.getTime() > floor) {
     throw new Error(
-      `${day} is less than ${MIN_AGE_DAYS} days ago. This job only clears out old data; ` +
-        `pick a date at least ${MIN_AGE_DAYS} days back.`
+      `${day} is less than ${days(MIN_AGE_DAYS)} ago. This job only clears out old data; ` +
+        `pick a date at least ${days(MIN_AGE_DAYS)} back.`
     );
   }
 
