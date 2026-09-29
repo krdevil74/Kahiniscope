@@ -233,6 +233,66 @@ year — retention here is data hygiene and a promise the privacy policy can
 keep, rather than a bill being avoided. The thing that actually costs money is
 WhatsApp, and that ships off.
 
+For a one-off — a single collection, a date that is not a year ago — see
+the next section rather than editing the window here.
+
+## Cleaning out a collection by hand
+
+The retention sweep answers one question — "is this older than a year?" — and
+it answers it every Sunday. **Purge a collection**, in the Actions tab, answers
+the other one: *this* collection, *this* date, everything before it goes.
+
+Four inputs: a collection from a dropdown, a date as `YYYY-MM-DD`, a mode, and
+the project id typed out. The rules it obeys are in `functions/src/purge.ts`
+and are unit tested, because a tool whose entire purpose is deleting
+production data should have its limits readable rather than buried in a
+script.
+
+- **The collection is a dropdown, not a text box.** A mistyped collection name
+  is a no-op against Firestore, which is the worst outcome available: the run
+  goes green and nothing happened.
+- **It counts before it deletes.** `dry-run` is the default and deletes
+  nothing: it prints how many documents match, how many do not, and the three
+  newest that would go — the ones a wrong date takes by surprise. Switch to
+  `delete` once that list looks right.
+- **The date is read in Dhaka**, at midnight. "Before 2026-04-01" takes the
+  31st of March and keeps the 1st of April. Read as UTC it would have taken six
+  hours more than anyone asked for.
+- **The date cannot be inside the last week.** Deleting the last few days is
+  not a clean-up, it is deleting the work in progress. Like the retention
+  floor, this is not negotiable from the form — a mistyped year is the mistake
+  it is there to catch, and an escape hatch is what a mistyped year would use.
+- **Each collection is judged on the same clock the sweep uses** — episodes by
+  `airDate`, tasks by `assignedAt`, logs by `sentAt`, payments by `approvedAt`,
+  advances by `createdAt` — so the automatic job and the manual one can never
+  disagree about what old means.
+- **Subcollections go with their parent.** Firestore does not cascade, so
+  deleting `episodes/EP-12` on its own would leave `episodes/EP-12/private/roster`
+  behind: unreachable from the app, still stored, still readable by anyone who
+  knows the path. Episodes are deleted recursively for that reason.
+- **A document with no date field is never touched.** A range filter skips it
+  rather than matching it, so it is not deleted and not counted; the dry run
+  says how many of those there are so the silence cannot be read as "none".
+
+`users` and `settings` are deliberately not on the list and should stay off it.
+A user document is half of an account — the other half is a Firebase Auth
+record with a custom claim on it — so deleting one by date leaves an account
+that can still sign in and has nothing to sign in to. `settings/global` is the
+one document every screen reads. Adding to the list is a code change and a
+review, which is the point.
+
+One run stops at 25,000 documents and says so; run it again. It lives as a
+workflow rather than a local command for the same reason the roster backfill
+does: the credentials are already here, and running it from a laptop means a
+service-account key on that laptop.
+
+Against the emulators, where it is worth trying first:
+
+```bash
+npm run purge:collection -- --collection reminderLog --before 2026-01-01
+npm run purge:collection -- --collection reminderLog --before 2026-01-01 --delete
+```
+
 ## Android build
 
 Manual, from the Actions tab, with a choice of `preview` (an APK you can

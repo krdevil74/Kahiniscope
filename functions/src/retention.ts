@@ -16,6 +16,10 @@
  *    so a slow sweep can never half-delete an episode.
  *  - **Everything is counted and logged.** A silent deletion job is a job
  *    nobody can audit after the fact.
+ *
+ * The by-hand counterpart is functions/src/purge.ts — one collection, one
+ * date, run from the Actions tab. The two share the same idea of which field
+ * dates which collection, and they must go on agreeing.
  */
 
 import { getFirestore, Timestamp, type Query } from "firebase-admin/firestore";

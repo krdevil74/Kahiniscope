@@ -262,6 +262,13 @@ rules without the trigger means no member can open any script.
       *Read 9 tasks. Wrote 2 rosters.* The script link now works on episodes
       that existed before the deploy. The workflow stays for a re-run if the
       trigger is ever rolled forward again; it is idempotent.
+- [x] **Collection clean-up workflow**, 29 Sep. *Purge a collection* in the
+      Actions tab: pick a collection from a dropdown, a date, and everything
+      dated before it goes. Counts first — `dry-run` is the default and
+      deletes nothing. Answers the request the weekly one-year sweep cannot,
+      without anybody editing the retention window to get at one collection.
+      `users` and `settings` are deliberately not on the dropdown.
+      **Never run against production yet.**
 - [ ] **Confirm push on the device** with build `088d4596` — `fcmTokens`
       non-empty, then **Nudge now** buzzes.
 - [x] **Telegram bot — live, 21 Sep.** `@Kahiniscope_bot`. Both secrets hold
