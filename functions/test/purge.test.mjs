@@ -81,13 +81,41 @@ test("a future date is refused before it deletes everything there is", () => {
   assert.throws(() => cutoffFor("2026-09-30", NOW), /in the future/);
 });
 
-test("the last week is work in progress, not old data", () => {
-  assert.throws(() => cutoffFor("2026-09-28", NOW), /less than 7 days ago/);
-  assert.throws(() => cutoffFor("2026-09-23", NOW), /less than 7 days ago/);
+test("today is refused; a day back is enough", () => {
+  // "Everything before today" is the one sensible-looking date that is not.
+  // Anything older is a decision, and the dry run is what checks that.
+  assert.throws(() => cutoffFor("2026-09-29", NOW), /less than 1 day ago/);
 
-  // Seven clear days back is fine.
-  assert.equal(cutoffFor("2026-09-21", NOW).toISOString(), "2026-09-20T18:00:00.000Z");
-  assert.equal(MIN_AGE_DAYS, 7);
+  assert.equal(cutoffFor("2026-09-28", NOW).toISOString(), "2026-09-27T18:00:00.000Z");
+  assert.equal(MIN_AGE_DAYS, 1);
+});
+
+test("the floor holds at every hour of the day it is refusing", () => {
+  // The cutoff is a Dhaka midnight and `now` is an instant, so the floor has
+  // to hold from one minute past midnight to one minute to. These are the
+  // hours that are still the 29th in Dhaka — 18:00Z is next morning there.
+  for (const hour of ["18:01", "23:59"]) {
+    const now = new Date(`2026-09-28T${hour}:00Z`); // early on the 29th, Dhaka
+    assert.throws(() => cutoffFor("2026-09-29", now), /less than 1 day ago/, hour);
+    assert.doesNotThrow(() => cutoffFor("2026-09-28", now), hour);
+  }
+  for (const hour of ["00:30", "09:00", "17:59"]) {
+    const now = new Date(`2026-09-29T${hour}:00Z`); // still the 29th in Dhaka
+    assert.throws(() => cutoffFor("2026-09-29", now), /less than 1 day ago/, hour);
+    assert.doesNotThrow(() => cutoffFor("2026-09-28", now), hour);
+  }
+});
+
+test("a date becomes purgeable when Dhaka's day rolls over, not UTC's", () => {
+  // 18:00Z is midnight in Dhaka. One minute before, the 29th is today and is
+  // refused; one minute after, it is yesterday and goes through. The team's
+  // day is the one that counts, because it is the one they are reading off
+  // the wall when they type the date.
+  assert.throws(
+    () => cutoffFor("2026-09-29", new Date("2026-09-29T17:59:00Z")),
+    /less than 1 day ago/
+  );
+  assert.doesNotThrow(() => cutoffFor("2026-09-29", new Date("2026-09-29T18:01:00Z")));
 });
 
 test("an ordinary clean-up passes", () => {

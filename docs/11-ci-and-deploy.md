@@ -258,10 +258,12 @@ script.
 - **The date is read in Dhaka**, at midnight. "Before 2026-04-01" takes the
   31st of March and keeps the 1st of April. Read as UTC it would have taken six
   hours more than anyone asked for.
-- **The date cannot be inside the last week.** Deleting the last few days is
-  not a clean-up, it is deleting the work in progress. Like the retention
-  floor, this is not negotiable from the form — a mistyped year is the mistake
-  it is there to catch, and an escape hatch is what a mistyped year would use.
+- **The date cannot be today.** A day back is the floor, and a day is enough:
+  what it is guarding against is a date that reads as sensible and is not —
+  today's, or a mistyped year — rather than a considered decision to clear out
+  last week, which is what the count is for. Like the retention floor it is
+  not negotiable from the form, because an escape hatch is what a mistyped
+  year would use. The day that has to have passed is Dhaka's, not UTC's.
 - **Each collection is judged on the same clock the sweep uses** — episodes by
   `airDate`, tasks by `assignedAt`, logs by `sentAt`, payments by `approvedAt`,
   advances by `createdAt` — so the automatic job and the manual one can never
