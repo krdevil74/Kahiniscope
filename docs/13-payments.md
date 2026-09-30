@@ -299,6 +299,24 @@ ladder.
   on Android: Save to Files, Save to Photos, or send it on. That also avoids
   asking for the media-library permission, which is a lot to ask for one image.
 
+### The episode on a payment row
+
+`payments.episodeId` is a plain id string, and is read with the same
+two-shape reader the task converter uses (`toId` in `src/lib/convert.ts`).
+
+Both halves of that sentence are load-bearing, and they are there because of a
+bug. A task's `episodeId` is a **DocumentReference** — the data model says so
+and the Assign form writes one — and `reviewTask` copied the field onto the
+payment whole. Both sides of the app look the episode up by id, so every
+payment row on a member's screen read **"No episode"**, which is the title of
+the episode they had just been paid for. The admin's card showed a blank code
+for the same reason.
+
+`reviewTask` now writes `episodeIdOf(data.episodeId)` — the helper already in
+`functions/src/episode-roster.ts`, which exists for exactly this two-shape
+field — and `toPayment` reads either shape, so payments approved before the fix
+keep working without a migration.
+
 ---
 
 ## Who can do what

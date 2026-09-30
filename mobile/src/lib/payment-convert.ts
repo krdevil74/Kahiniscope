@@ -8,7 +8,7 @@
 
 import type { DocumentData, DocumentSnapshot, QueryDocumentSnapshot } from "firebase/firestore";
 
-import { toDate, toNumber, toStringOrNull } from "./convert.ts";
+import { toDate, toId, toNumber, toStringOrNull } from "./convert.ts";
 import { EMPTY_RATES, type Rates, type TaskStatus } from "./model.ts";
 import type { PaymentProof } from "./payment-proof.ts";
 import type { Advance, Payment, PaymentStatus, PayUnit } from "./payments.ts";
@@ -60,7 +60,11 @@ export function toPayment(snap: QueryDocumentSnapshot<DocumentData>): Payment {
     id: snap.id,
     taskId: d.taskId ?? "",
     uid: d.uid ?? "",
-    episodeId: d.episodeId ?? "",
+    // Read the same two shapes the task converter reads. Payments written
+    // before this was fixed carry the task's DocumentReference rather than an
+    // id, and they have to keep working — the episode title on a member's own
+    // payment row is not worth a migration.
+    episodeId: toId(d.episodeId),
     taskType: d.taskType ?? "",
     status: (d.status === "paid" ? "paid" : "pending") as PaymentStatus,
     unit,
