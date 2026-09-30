@@ -83,6 +83,19 @@ const config: ExpoConfig = {
       },
     ],
     "@react-native-google-signin/google-signin",
+    [
+      // Picking the payment screenshot out of the gallery. The permission
+      // string is what the system dialog shows, so it says what it is for
+      // rather than asking for access to photos in the abstract.
+      "expo-image-picker",
+      {
+        photosPermission:
+          "Kahiniscope needs one photo at a time, so you can attach the screenshot of a payment you have just made.",
+      },
+    ],
+    // Handing the saved screenshot to the share sheet, which is how a member
+    // gets it out of the app and into their own storage.
+    "expo-sharing",
   ],
 
   // Web is not a shipping target. Static output exists so `expo export

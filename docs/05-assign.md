@@ -9,8 +9,32 @@ then one yellow button that names the person it is about to commit.
 
 Built to the design: person pills that go dark with a yellow avatar when
 picked, full-width episode rows that fill `#fff8e3` with a `#ffc20a` border and
-a filled dot, a two-column grid of the nine task types that inverts to ink on
+a filled dot, a two-column grid of task types that inverts to ink on
 selection, a −/+ stepper that stops at one day, and three channel tiles.
+
+### The twelve types, and the box under them
+
+`Narration`, `Introduction` and `Special task` joined the original nine on
+30 September, and under the grid there is a dashed **Something else** chip with
+a text box behind it. `Task.type` was always a plain string rather than a union,
+so a typed-in type is a task like any other — it reads back in reminders, on the
+board and on a payment row, and it is paid as a figure the admin types.
+
+The box exists because the alternative is shipping a build every time this
+channel invents a kind of work. What it produces is normalised
+(`normaliseTaskType` in `src/lib/assign.ts`): trimmed, inner whitespace
+collapsed onto one line, capped at 40 characters. One line because the type ends
+up inside a reminder sentence; 40 characters because it is a label, not a
+description. Only whitespace produces nothing, which keeps the submit button
+saying "Pick a task".
+
+**`Narration` is the one that is priced.** It maps to the per-minute narration
+rate an artist already carries, so approving it asks no unit question —
+`Voice recording` still does, because nothing in that task says whether it was a
+character or a read. `Introduction` and `Special task`, like a typed-in type, are
+a figure somebody decides. The mapping lives in `unitsForTaskType`, in both
+`mobile/src/lib/payments.ts` and `functions/src/payments.ts`, tested against the
+same examples on both sides.
 
 Two things are shown but not edited here:
 
@@ -69,7 +93,7 @@ rather episodes were created somewhere else, this is the piece to move.**
   reference for `episodeId`, `serverTimestamp()` for `assignedAt` — read it
   back, confirm the assignee can see and tick it, and confirm a member cannot
   assign work to themselves or anyone else. Same for creating an episode.
-- The whole form static-renders: all nine task types, the stepper, the ladder
+- The whole form static-renders: every task type, the stepper, the ladder
   at `7d 4d 3d 2d 1d` with its sentence, the three channel tiles, and the
   button in its "Pick a person" state.
 

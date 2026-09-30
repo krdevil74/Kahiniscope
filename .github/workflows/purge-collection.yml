@@ -38,6 +38,7 @@ on:
           - tasks
           - episodes
           - payments
+          - paymentProofs
           - advances
       before:
         description: 'Delete documents dated before this day, YYYY-MM-DD (midnight, Asia/Dhaka)'

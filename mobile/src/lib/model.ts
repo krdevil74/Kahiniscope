@@ -52,17 +52,33 @@ export const EMPTY_RATES: Rates = {
   cover: null,
 };
 
-/** The nine task types, exactly as written. */
+/**
+ * The twelve task types the picker offers.
+ *
+ * Not a closed set, and `Task.type` is deliberately a plain string rather than
+ * this union: the Assign form also has a text box, because the next kind of
+ * work this channel invents will turn up before anybody can ship a build for
+ * it. A typed-in type behaves like any other — it is paid as a figure the
+ * admin types, which is what everything outside the four priced units gets
+ * anyway.
+ *
+ * The order is the order of a production: written, translated, read, mixed,
+ * cut, dressed, published. `Special task` sits at the end with the catch-all
+ * beside it.
+ */
 export const TASK_TYPES = [
   "Script writing",
   "Translation",
   "Voice recording",
+  "Narration",
+  "Introduction",
   "Dubbing / mixing",
   "Editing",
   "Thumbnail / graphics",
   "Upload & SEO",
   "Music / SFX",
   "Proofreading",
+  "Special task",
 ] as const;
 
 export type TaskType = (typeof TASK_TYPES)[number];
