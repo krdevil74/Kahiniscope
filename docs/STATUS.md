@@ -34,7 +34,7 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 248 backend, 249 app.** All green. `npm test` at the root runs the
+**Tests: 248 backend, 252 app.** All green. `npm test` at the root runs the
 backend suites (unit + rules + six emulator suites); `npm run verify` in
 `mobile/` runs typecheck, unit tests and a render of all 17 routes.
 
@@ -244,6 +244,13 @@ Detail and the state table: `docs/13-payments.md`.
   every total in the app loads payment documents, and nobody should pay to fetch
   a JPEG to add up a column. The payment keeps two dates so no screen has to load
   an image to know whether to offer the download.
+
+**Bug found on the device, 30 September:** every payment row on a member's
+screen read "No episode". A task's `episodeId` is a DocumentReference and
+`reviewTask` copied it onto the payment whole, but both sides look an episode
+up by id. The server now writes the id, and the payment converter reads either
+shape — so the payments already written keep working, no migration. It was the
+one converter in the app that did not go through `toId`.
 
 Two new callables and one new scheduled job: `attachPaymentProof`,
 `purgeExpiredProofs`. One new collection, `paymentProofs`, that no client may

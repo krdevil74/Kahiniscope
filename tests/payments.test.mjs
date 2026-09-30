@@ -219,6 +219,11 @@ test("approving opens a payment at the rate that applied when it was approved", 
   const payment = await read("payments", data.paymentId);
   assert.equal(payment.status, "pending");
   assert.equal(payment.uid, artistUser.uid);
+  // An id, not the DocumentReference the task carries. Both sides of the app
+  // look the episode up by id, so a reference here is what made every payment
+  // row read "No episode".
+  assert.equal(payment.episodeId, "ep61");
+  assert.equal(typeof payment.episodeId, "string");
   assert.equal(payment.unit, "voice-character");
   assert.equal(payment.quantity, 12);
   assert.equal(payment.rate, 50);

@@ -30,6 +30,7 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 
 import { REGION } from "./config";
+import { episodeIdOf } from "./episode-roster";
 import { TELEGRAM_BOT_TOKEN } from "./messaging/telegram";
 import { TEXTBELT_KEY, WHATSAPP_PHONE_ID, WHATSAPP_TOKEN } from "./messaging/pending-channels";
 
@@ -238,7 +239,11 @@ export const reviewTask = onCall<ReviewRequest>(
       tx.set(paymentRef, {
         taskId,
         uid: assigneeUid,
-        episodeId: data.episodeId ?? "",
+        // The id, not the reference the task carries. A payment is a flat
+        // record that both sides of the app look an episode up by, and a
+        // DocumentReference sitting in a field called `episodeId` is what made
+        // every payment row read "No episode".
+        episodeId: episodeIdOf(data.episodeId),
         taskType: data.type ?? "",
         status: settlement.settled ? "paid" : "pending",
         unit,
