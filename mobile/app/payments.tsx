@@ -29,7 +29,30 @@ import { ProofAttach, ProofDownload, ProofNote } from "../src/components/Payment
 import { Ribbon, RibbonInfo } from "../src/components/Ribbon";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { useSession } from "../src/lib/auth";
-import { indexBy, useEpisodes, useNow, usePayments, useTeam } from "../src/lib/data";
+import {
+  indexBy,
+  useEarliestPaidYear,
+  useEpisodes,
+  useMonthlyPaidTotals,
+  useNow,
+  usePaidInMonth,
+  usePayments,
+  usePendingPayments,
+  useTeam,
+} from "../src/lib/data";
+import { MonthlyPaidChart, YearFilter } from "../src/components/MonthlyPaidChart";
+import {
+  countOf,
+  lastMonths,
+  monthSummary,
+  monthsOfYear,
+  pendingSummary,
+  rangeLabel,
+  sameMonth,
+  sumOf,
+  yearsFrom,
+  type MonthSlot,
+} from "../src/lib/payment-history.ts";
 import type { Episode } from "../src/lib/model";
 import {
   amountToShow,
@@ -63,83 +86,204 @@ function AdminPayments() {
   const now = useNow();
   const { isAdmin } = useSession();
 
-  const { data: payments } = usePayments({ enabled: isAdmin });
+  // Three bounded queries instead of the whole collection. What this screen
+  // costs to open no longer grows with the number of payments ever made — see
+  // lib/payment-history.ts.
+  const { data: pendingRaw } = usePendingPayments(isAdmin);
   const { data: team } = useTeam(isAdmin);
   const { data: episodes } = useEpisodes(isAdmin);
 
   const byUid = useMemo(() => indexBy(team, (m) => m.uid), [team]);
   const byEpisode = useMemo(() => indexBy(episodes, (e) => e.id), [episodes]);
 
+  // Oldest first: somebody approved a fortnight ago should not sit behind
+  // somebody approved this morning.
   const pending = useMemo(
-    () =>
-      payments
-        .filter((p) => p.status === "pending")
-        .sort((a, b) => (a.approvedAt?.getTime() ?? 0) - (b.approvedAt?.getTime() ?? 0)),
-    [payments]
+    () => [...pendingRaw].sort((a, b) => (a.approvedAt?.getTime() ?? 0) - (b.approvedAt?.getTime() ?? 0)),
+    [pendingRaw]
   );
-  const paid = useMemo(
-    () =>
-      payments
-        .filter((p) => p.status === "paid")
-        .sort((a, b) => (b.paidAt?.getTime() ?? 0) - (a.paidAt?.getTime() ?? 0)),
-    [payments]
-  );
-
-  // Paged rather than cut off at twenty: the total underneath the caption is
-  // the total of everything paid, so a list that silently stopped was a list
-  // that did not add up to the figure above it.
-  const [paidShown, setPaidShown] = useState(PAGE_SIZE);
-  const paidPage = pageOf(paid, paidShown);
-
   const owed = pending.reduce((sum, p) => sum + (p.estimatedAmount ?? 0), 0);
-  const paidTotal = paid.reduce((sum, p) => sum + (p.finalAmount ?? 0), 0);
+
+  /** The queue is folded away by default — it is a panel, not the page. */
+  const [queueOpen, setQueueOpen] = useState(false);
+
+  // The chart: a rolling twelve months, or one calendar year if the admin
+  // picks one.
+  const [year, setYear] = useState<number | null>(null);
+  const [selected, setSelected] = useState<MonthSlot | null>(null);
+  const earliestYear = useEarliestPaidYear(isAdmin);
+  const years = useMemo(() => yearsFrom(earliestYear, now), [earliestYear, now]);
+
+  const months = useMemo(
+    () => (year === null ? lastMonths(now) : monthsOfYear(year, now)),
+    [year, now]
+  );
+  const { data: totals, loading: totalsLoading, reload: reloadTotals } =
+    useMonthlyPaidTotals(months, isAdmin);
+
+  // Only the month on screen is ever fetched as documents.
+  const { data: monthPayments, loading: monthLoading, reload: reloadMonth } =
+    usePaidInMonth(selected, isAdmin);
+  const [monthShown, setMonthShown] = useState(PAGE_SIZE);
+  const monthPage = pageOf(monthPayments, monthShown);
+  const monthTotal = monthPayments.reduce((sum, p) => sum + (p.finalAmount ?? 0), 0);
+
+  function pickMonth(slot: MonthSlot) {
+    // Tapping the open month closes it, so the chart is never a trap.
+    setSelected((current) => (sameMonth(current, slot) ? null : slot));
+    setMonthShown(PAGE_SIZE);
+  }
+
+  /** Paying something moves it out of the queue and into a month. */
+  function afterPaid(name: string, amount: number) {
+    toast(paidToast(name, money(amount)));
+    reloadTotals();
+    reloadMonth();
+  }
 
   return (
     <AppShell
       title="Payments"
-      subtitle={
-        pending.length === 0
-          ? "Nothing waiting"
-          : `${pending.length} waiting · ${money(owed)} estimated`
-      }
+      subtitle={pendingSummary(pending.length, money(owed))}
       activeTab="payments"
     >
       <View style={{ padding: spacing.screen, gap: spacing.cardsTight }}>
-        {pending.length === 0 ? (
-          <EmptyState
-            title="No payments waiting"
-            detail="A payment opens when you approve somebody's work from the review queue on the Board."
-          />
-        ) : (
-          <SectionCaption>Waiting to be paid</SectionCaption>
-        )}
+        {/* ---- Panel one: what is owed ---------------------------------- */}
+        <Card radius={radii.card} style={{ paddingVertical: 14, paddingHorizontal: 15, gap: 12 }}>
+          <Pressable
+            onPress={() => setQueueOpen((v) => !v)}
+            disabled={pending.length === 0}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: queueOpen, disabled: pending.length === 0 }}
+            accessibilityLabel={`${pendingSummary(pending.length, money(owed))}. ${
+              queueOpen ? "Hide" : "Show"
+            } the queue`}
+            android_ripple={{ color: colors.ripple }}
+            style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}
+          >
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <AppText
+                style={{
+                  fontFamily: fontFamily.monoMedium,
+                  fontSize: 9.5,
+                  lineHeight: 11,
+                  letterSpacing: 1.2,
+                  textTransform: "uppercase",
+                  color: colors.faint,
+                }}
+              >
+                Payment pending
+              </AppText>
+              {/* The one hero figure on the screen: how many people are owed. */}
+              <AppText
+                weight="semibold"
+                style={{
+                  fontFamily: fontFamily.extrabold,
+                  fontSize: 40,
+                  lineHeight: 44,
+                  letterSpacing: -2,
+                  marginTop: 4,
+                }}
+              >
+                {pending.length}
+              </AppText>
+              <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 4 }]}>
+                {pending.length === 0
+                  ? "Nothing waiting to be paid"
+                  : `${money(owed)} estimated · tap to ${queueOpen ? "hide" : "work through them"}`}
+              </AppText>
+            </View>
+            {pending.length > 0 ? (
+              <AppText
+                style={{
+                  fontFamily: fontFamily.monoSemibold,
+                  fontSize: 13,
+                  lineHeight: 15,
+                  color: colors.muted,
+                }}
+              >
+                {queueOpen ? "▴" : "▾"}
+              </AppText>
+            ) : null}
+          </Pressable>
+        </Card>
 
-        {pending.map((payment) => (
-          <PendingCard
-            key={payment.id}
-            payment={payment}
-            name={byUid.get(payment.uid)?.name ?? "Somebody"}
-            balance={byUid.get(payment.uid)?.balance ?? 0}
-            episodeCode={byEpisode.get(payment.episodeId)?.code ?? ""}
-            now={now}
-            onPaid={(amount) => {
-              toast(paidToast(byUid.get(payment.uid)?.name ?? "them", money(amount)));
-            }}
-            onError={(message) => toast(message)}
-            onOpenPerson={() => router.push(`/person/${payment.uid}`)}
-          />
-        ))}
+        {/* One after another, oldest first, only once asked for. */}
+        {queueOpen
+          ? pending.map((payment) => (
+              <PendingCard
+                key={payment.id}
+                payment={payment}
+                name={byUid.get(payment.uid)?.name ?? "Somebody"}
+                balance={byUid.get(payment.uid)?.balance ?? 0}
+                episodeCode={byEpisode.get(payment.episodeId)?.code ?? ""}
+                now={now}
+                onPaid={(amount) => afterPaid(byUid.get(payment.uid)?.name ?? "them", amount)}
+                onError={(message) => toast(message)}
+                onOpenPerson={() => router.push(`/person/${payment.uid}`)}
+              />
+            ))
+          : null}
 
-        {paid.length > 0 ? (
+        {/* ---- Panel two: what has gone out ----------------------------- */}
+        <Card radius={radii.card} style={{ paddingVertical: 14, paddingHorizontal: 15, gap: 12 }}>
+          <View>
+            <AppText
+              style={{
+                fontFamily: fontFamily.monoMedium,
+                fontSize: 9.5,
+                lineHeight: 11,
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                color: colors.faint,
+              }}
+            >
+              Paid month by month
+            </AppText>
+            <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 3 }]}>
+              {`${rangeLabel(months)} · ${money(sumOf(totals))} across ${countOf(totals)} payments`}
+            </AppText>
+            {/* Said once, under the heading: a bar chart on a phone does not
+                look tappable until somebody tells you it is. */}
+            <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
+              {selected ? "Tap the month again to close it" : "Tap a month to list what went out"}
+            </AppText>
+          </View>
+
+          <YearFilter years={years} selected={year} onSelect={(next) => {
+            setYear(next);
+            setSelected(null);
+          }} />
+
+          <MonthlyPaidChart
+            totals={totals}
+            selected={selected}
+            loading={totalsLoading}
+            onSelect={pickMonth}
+          />
+        </Card>
+
+        {/* The month's own payments, fetched only when a month is open. */}
+        {selected ? (
           <>
-            <SectionCaption style={{ marginTop: 10 }}>
-              {`Paid recently · ${money(paidTotal)}`}
+            <SectionCaption>
+              {monthSummary(selected, monthPayments.length, money(monthTotal))}
             </SectionCaption>
-            {/* The same row a member reads on their own screen, with the name
-                and the avatar added. It used to be name, type and an episode
-                code — which answered "who" and left "for what, and how did we
-                get to that figure" to be reconstructed from memory. */}
-            {paidPage.shown.map((payment) => (
+
+            {monthLoading && monthPayments.length === 0 ? (
+              <AppText style={[type.metaXSmall, { color: colors.faint, paddingHorizontal: 4 }]}>
+                Loading that month…
+              </AppText>
+            ) : null}
+
+            {!monthLoading && monthPayments.length === 0 ? (
+              <EmptyState
+                title="Nothing paid that month"
+                detail="Pick another bar, or a different year."
+              />
+            ) : null}
+
+            {monthPage.shown.map((payment) => (
               <PaymentRow
                 key={payment.id}
                 payment={payment}
@@ -149,15 +293,23 @@ function AdminPayments() {
                 canAttach
               />
             ))}
-            {paidPage.hasMore ? (
+
+            {monthPage.hasMore ? (
               <Button
-                label={moreLabel(paidPage.hidden)}
+                label={moreLabel(monthPage.hidden)}
                 variant="quiet"
-                style={{ marginTop: spacing.cardsTight, borderColor: colors.hairlineStrong }}
-                onPress={() => setPaidShown((n) => n + PAGE_SIZE)}
+                style={{ borderColor: colors.hairlineStrong }}
+                onPress={() => setMonthShown((n) => n + PAGE_SIZE)}
               />
             ) : null}
           </>
+        ) : null}
+
+        {pending.length === 0 && totals.length === 0 && !totalsLoading ? (
+          <EmptyState
+            title="No payments yet"
+            detail="A payment opens when you approve somebody's work from the review queue on the Board."
+          />
         ) : null}
       </View>
     </AppShell>

@@ -25,11 +25,15 @@ import {
 import {
   addDoc,
   collection,
+  count,
+  getAggregateFromServer,
+  sum,
   connectFirestoreEmulator,
   doc,
   getDoc,
   getDocs,
   getFirestore,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -340,6 +344,155 @@ test("only work that is waiting can be reviewed", async () => {
 const balanceOf = async (uid) => Number((await read("users", uid)).balance ?? 0);
 
 // ---------------------------------------------------------------------------
+// What the admin's Payments screen actually asks for
+//
+// It used to subscribe to this whole collection and add it up on the phone,
+// which got slower every month the operation ran. These are the three bounded
+// questions that replaced it.
+// ---------------------------------------------------------------------------
+
+/** The half-open range the app asks a month for, on the device's own clock. */
+function monthRange(date) {
+  return {
+    start: new Date(date.getFullYear(), date.getMonth(), 1),
+    end: new Date(date.getFullYear(), date.getMonth() + 1, 1),
+  };
+}
+
+const paidBetween = (db, start, end) =>
+  query(
+    collection(db, "payments"),
+    where("status", "==", "paid"),
+    where("paidAt", ">=", Timestamp.fromDate(start)),
+    where("paidAt", "<", Timestamp.fromDate(end))
+  );
+
+test("a month bar is a sum and a count, not a download", async () => {
+  // `payments` is unwritable by every client, admin included, so a payment
+  // cannot be backdated from here — these land in the month the emulator is
+  // running in, and the assertion is what the bar changes by.
+  const { start, end } = monthRange(new Date());
+  const totals = async () =>
+    (
+      await getAggregateFromServer(paidBetween(owner.db, start, end), {
+        total: sum("finalAmount"),
+        count: count(),
+      })
+    ).data();
+
+  const before = await totals();
+  await paidPayment(300);
+  await paidPayment(450);
+  const after = await totals();
+
+  assert.equal(after.count - before.count, 2, "two more payments in this month");
+  assert.equal(after.total - before.total, 750, "and ₹750 more, added by Firestore");
+});
+
+test("a month nothing was paid in counts nothing", async () => {
+  // The bar for last month must not pick up this month's work — the ranges
+  // are half-open, so no payment is in two months and none is in neither.
+  const previous = monthRange(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1));
+  const before = (
+    await getAggregateFromServer(paidBetween(owner.db, previous.start, previous.end), {
+      total: sum("finalAmount"),
+      count: count(),
+    })
+  ).data();
+
+  await paidPayment(500);
+
+  const after = (
+    await getAggregateFromServer(paidBetween(owner.db, previous.start, previous.end), {
+      total: sum("finalAmount"),
+      count: count(),
+    })
+  ).data();
+  assert.equal(after.count, before.count, "last month did not move");
+  assert.equal(after.total, before.total);
+});
+
+test("opening one month reads that month and nothing else", async () => {
+  const paymentId = await paidPayment(425);
+  const now = new Date();
+
+  const thisMonth = await getDocs(
+    query(paidBetween(owner.db, monthRange(now).start, monthRange(now).end), orderBy("paidAt", "desc"))
+  );
+  assert.ok(
+    thisMonth.docs.some((d) => d.id === paymentId),
+    "the payment just made is in this month"
+  );
+  assert.ok(
+    thisMonth.docs.every((d) => d.data().status === "paid"),
+    "and nothing still waiting is in the list"
+  );
+
+  // Every document the query returned falls inside the month it asked for:
+  // that is what keeps opening one month from loading the collection.
+  const { start, end } = monthRange(now);
+  for (const d of thisMonth.docs) {
+    const at = d.data().paidAt.toDate();
+    assert.ok(at >= start && at < end, `${d.id} paid at ${at.toISOString()} is outside the month`);
+  }
+
+  const lastMonth = monthRange(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  const before = await getDocs(paidBetween(owner.db, lastMonth.start, lastMonth.end));
+  assert.equal(
+    before.docs.some((d) => d.id === paymentId),
+    false,
+    "and it is not in the month before"
+  );
+});
+
+test("the pending queue is a query, so paying something removes it from the screen", async () => {
+  const before = await getDocs(
+    query(collection(owner.db, "payments"), where("status", "==", "pending"))
+  );
+
+  const taskId = await newTask();
+  await updateDoc(doc(artist.db, "tasks", taskId), { status: "submitted", submittedAt: Timestamp.now() });
+  const { data } = await call(owner, "reviewTask", {
+    taskId,
+    decision: "approve",
+    unit: "voice-character",
+    recordingMinutes: 3,
+  });
+
+  const waiting = await getDocs(
+    query(collection(owner.db, "payments"), where("status", "==", "pending"))
+  );
+  assert.equal(waiting.size, before.size + 1, "approving adds one to the queue");
+
+  await call(owner, "markPaymentPaid", { paymentId: data.paymentId, amount: 195 });
+
+  const after = await getDocs(
+    query(collection(owner.db, "payments"), where("status", "==", "pending"))
+  );
+  assert.equal(after.size, before.size, "paying takes it out again, for good");
+  // And it is now countable in its month instead.
+  assert.equal((await read("payments", data.paymentId)).status, "paid");
+});
+
+test("a member cannot run the admin's totals across everybody", async () => {
+  // The aggregation is subject to the same rules as the documents: a query
+  // that does not name the member is refused before it counts anything.
+  await assert.rejects(() =>
+    getAggregateFromServer(
+      query(collection(artist.db, "payments"), where("status", "==", "paid")),
+      { total: sum("finalAmount") }
+    )
+  );
+
+  // Their own still works, which is what their Payments screen asks for.
+  const mine = await getAggregateFromServer(
+    query(collection(artist.db, "payments"), where("uid", "==", artistUser.uid)),
+    { count: count() }
+  );
+  assert.ok(mine.data().count > 0);
+});
+
+// ---------------------------------------------------------------------------
 // The screenshot that proves the money went out
 //
 // Its own collection, keyed by the payment id, deleted after thirty days. The
@@ -354,7 +507,7 @@ const PIXEL =
   "AAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/E" +
   "ABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJQA/9k=";
 
-async function paidPayment() {
+async function paidPayment(amount = 200) {
   const taskId = await newTask();
   await updateDoc(doc(artist.db, "tasks", taskId), { status: "submitted", submittedAt: Timestamp.now() });
   const { data } = await call(owner, "reviewTask", {
@@ -363,7 +516,7 @@ async function paidPayment() {
     unit: "voice-character",
     recordingMinutes: 4,
   });
-  await call(owner, "markPaymentPaid", { paymentId: data.paymentId, amount: 200 });
+  await call(owner, "markPaymentPaid", { paymentId: data.paymentId, amount });
   return data.paymentId;
 }
 
