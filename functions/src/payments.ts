@@ -76,6 +76,12 @@ export function unitsForTaskType(taskType: string): PayUnit[] {
   switch (taskType) {
     case "Voice recording":
       return ["voice-character", "voice-narration"];
+    // Narration is what it says it is — one rate, per minute, no question for
+    // the admin to answer. "Introduction" and "Special task" are not: an intro
+    // read is a few lines and a special is by definition unlike the last one,
+    // so both are a figure somebody decides.
+    case "Narration":
+      return ["voice-narration"];
     case "Dubbing / mixing":
       return ["sound-design"];
     case "Thumbnail / graphics":

@@ -74,6 +74,15 @@ export const PURGE_TARGETS: readonly PurgeTarget[] = [
     hasSubcollections: false,
   },
   {
+    // Ordinarily swept by its own daily job thirty days after upload; on the
+    // list because an admin clearing out a date range should not have to leave
+    // the screenshots behind.
+    collection: "paymentProofs",
+    dateField: "uploadedAt",
+    describes: "payment screenshots, by when they were uploaded",
+    hasSubcollections: false,
+  },
+  {
     collection: "advances",
     dateField: "createdAt",
     describes: "advances, by when they were recorded",

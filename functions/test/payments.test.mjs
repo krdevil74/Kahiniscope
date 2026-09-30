@@ -26,8 +26,24 @@ test("voice work offers both rates, because nothing in the task says which", () 
   assert.deepEqual(unitsForTaskType("Thumbnail / graphics"), ["cover"]);
 });
 
+test("narration is one rate, because the task already says which", () => {
+  assert.deepEqual(unitsForTaskType("Narration"), ["voice-narration"]);
+});
+
 test("everything else is a figure the admin types", () => {
-  for (const type of ["Script writing", "Translation", "Editing", "Upload & SEO", "Music / SFX", "Proofreading"]) {
+  for (const type of [
+    "Script writing",
+    "Translation",
+    "Introduction",
+    "Editing",
+    "Upload & SEO",
+    "Music / SFX",
+    "Proofreading",
+    "Special task",
+    // A type somebody typed into the box on the Assign form. It has no rate
+    // and cannot have one, which is exactly what "manual" means.
+    "Cover redraw",
+  ]) {
     assert.deepEqual(unitsForTaskType(type), ["manual"], type);
   }
 });

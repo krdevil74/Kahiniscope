@@ -204,6 +204,14 @@ with the working shown (`12 min × ₹50`) and an amount field pre-filled with t
 estimate — a field rather than a label, because the admin decides. Marking one
 paid closes it and moves the task to `paid`.
 
+Under the queue, **Paid recently** is the same row a member reads on their own
+screen, with the name and avatar added — tap it for the episode, the minutes, the
+rate, and what was actually paid against the estimate. It used to be a name, a
+task type and an episode code, which answered "who" and left "for what, and how
+did we get to that figure" to be reconstructed from memory. It is paged rather
+than cut off at twenty, because the total in the caption is the total of
+everything paid and a list that silently stopped did not add up to it.
+
 **A member** sees their **available balance** first, if they have one — it is
 the question somebody opens this screen to answer — then two figures kept
 apart: paid all time, and approved-but-not-yet-paid as an estimate, with the
@@ -213,6 +221,83 @@ admin's record of what is owed.
 
 If a pending entry has no rate behind it, the member's pending total shows
 `₹1,200+` rather than pretending to be complete, and says why.
+
+---
+
+## The screenshot that proves it
+
+Added 30 September. An admin pays by transfer, screenshots the confirmation, and
+the artist can save that image against the payment — a small ⤓ beside the amount
+on their own Payments screen.
+
+**The bytes are not on the payment record**, and that is the whole design. A
+payment is read constantly: every total on both sides of the app loads these
+documents, and a few hundred kilobytes of base64 in one would be paid for on
+every one of those reads, for a year, long after anybody cared to look at the
+image. So:
+
+| | Where | Kept | Read when |
+| --- | --- | --- | --- |
+| The payment | `payments/{id}` | a year, with everything else | always |
+| The screenshot | `paymentProofs/{paymentId}` | **30 days** | somebody taps download |
+
+The payment keeps two small dates instead — `proofAttachedAt` and
+`proofExpiresAt` — and those are all any screen needs to decide whether to offer
+the download. Two dates rather than one flag, because "there was a screenshot and
+it has expired" is a different sentence from saying nothing, and a member who saw
+the image last month should read the first one.
+
+### Deleting only the image
+
+The proof document is keyed by the payment id, so deleting it is a one-document
+delete that leaves the amount, the date and the working untouched. That is the
+reason for a separate collection rather than a field on the payment: clearing one
+field out of a document a month later is a read, a write and a migration nobody
+wants to run.
+
+`purgeExpiredProofs` (`functions/src/payment-proof.ts`) runs **daily at 03:30
+Dhaka** and deletes everything past its `expiresAt` — daily rather than weekly,
+because "a month" should not mean thirty-seven days. It deliberately does **not**
+write to the payment: an expiry in the past is already what both sides read as
+"gone", and clearing the field would cost a write to say the same thing.
+
+A native Firestore TTL policy on `paymentProofs.expiresAt` would do the same
+work, and the two are compatible — whichever runs first wins. It is not the
+mechanism here because a TTL policy is configured against the project with
+gcloud, so it cannot be declared in this repository, there would be nothing to
+test, and it would be a step somebody has to remember on a new project.
+
+### What the limits are, and why
+
+`attachPaymentProof` is a callable, like every other write near money, and for
+one extra reason: **the expiry is set from the server's clock.** A phone with the
+wrong date would otherwise decide for itself when the evidence disappears, and
+this codebase has already been bitten by a device clock once, on the reminder
+ladder.
+
+- A Firestore document cannot exceed **1 MiB**, and base64 is a third larger
+  than the bytes it encodes, so the payload cap is **700,000 characters** —
+  about a 500 KB image.
+- The app does not hope to fit that. It resizes to a longest edge of **1280** and
+  re-encodes as **JPEG at 60%** before measuring, which puts a UPI confirmation
+  around 100–200 KB. Large flat text on a plain ground survives that easily.
+- Anything else — a `data:` prefix left on, a PDF, something over the cap — is
+  refused by the callable with a sentence the admin can act on, rather than
+  failing on the way into Firestore.
+- Replacing a screenshot overwrites it and restarts the thirty days. One
+  screenshot per payment, the way there is one amount. No history.
+
+### Where the controls are
+
+- **Attach** is on the pending card, where the admin is already typing the figure
+  they just transferred. It does not block **Mark paid** in either direction — an
+  evidence step that holds up the money is an evidence step people work around —
+  and it is also inside an expanded paid row, for when somebody records the
+  payment and remembers the screenshot afterwards.
+- **Download** is the ⤓ beside the amount, for whoever can read the payment. It
+  writes the file and hands it to the share sheet, which is what "download" means
+  on Android: Save to Files, Save to Photos, or send it on. That also avoids
+  asking for the media-library permission, which is a lot to ask for one image.
 
 ---
 
@@ -227,6 +312,8 @@ If a pending entry has no rate behind it, the member's pending total shows
 | Set a rate card | ❌ | ✅ |
 | Pay an advance | ❌ | ✅ |
 | Change a balance | ❌ | ❌ — Cloud Functions only |
+| Attach a payment screenshot | ❌ | ✅ — through a callable |
+| Read a payment screenshot | ✅ (their own) | ✅ (everyone's) |
 
 Submitting is a direct Firestore write, because the rules can express exactly
 that transition and a round trip would make the one button a member has feel
@@ -268,5 +355,16 @@ reopenable.
 - **4 unit tests** on which of the three things the tick does, including that
   an unread session is nobody's own work — `"" === ""` is the one comparison
   that would hand somebody else's task an approval.
+- **9 unit tests and 6 more on the server** on the screenshot: what the row says
+  in each of its three states, that expiry is judged by the date rather than by
+  the sweep having run, the payload cap, the file name a download lands in, the
+  base64 check that stops a `data:` prefix reaching a document, and that a
+  nonsense retention never means no retention.
+- **6 emulator tests** on the screenshot end to end: it lands in its own
+  collection with none of the bytes on the payment; replacing it restarts the
+  thirty days; a member can read their own and neither write one nor attach one;
+  junk and oversize payloads are refused with a sentence; and **the sweep deletes
+  the image and leaves the payment alone** — run with a clock a month ahead,
+  which is the only honest way to test a deletion job.
 - **11 rules tests** on who may write what, including that the balance is
   beyond an admin's reach as well as a member's.

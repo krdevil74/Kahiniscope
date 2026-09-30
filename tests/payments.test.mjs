@@ -39,6 +39,14 @@ import {
 } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/functions";
 
+// The proof sweep is a scheduled job rather than a callable, so it is run here
+// directly — a job whose whole purpose is deleting data should be run by a test
+// rather than trusted. Importing the functions bundle is what initialises the
+// Admin app it uses, exactly as it does in production; everything it touches is
+// this emulator, because emulators:exec has set FIRESTORE_EMULATOR_HOST.
+import "../functions/lib/index.js";
+import { PROOF_TTL_DAYS, runProofSweep } from "../functions/lib/payment-proof.js";
+
 const OWNER_EMAIL = "owner@kahiniscope.test";
 const REGION = "asia-south2";
 
@@ -325,6 +333,176 @@ test("only work that is waiting can be reviewed", async () => {
 // ---------------------------------------------------------------------------
 
 const balanceOf = async (uid) => Number((await read("users", uid)).balance ?? 0);
+
+// ---------------------------------------------------------------------------
+// The screenshot that proves the money went out
+//
+// Its own collection, keyed by the payment id, deleted after thirty days. The
+// payment keeps two dates so no screen has to load an image to decide whether
+// to offer the download.
+// ---------------------------------------------------------------------------
+
+/** A one-pixel JPEG is enough: what is under test is the plumbing, not the image. */
+const PIXEL =
+  "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a" +
+  "HBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAQAAAAAA" +
+  "AAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/E" +
+  "ABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJQA/9k=";
+
+async function paidPayment() {
+  const taskId = await newTask();
+  await updateDoc(doc(artist.db, "tasks", taskId), { status: "submitted", submittedAt: Timestamp.now() });
+  const { data } = await call(owner, "reviewTask", {
+    taskId,
+    decision: "approve",
+    unit: "voice-character",
+    recordingMinutes: 4,
+  });
+  await call(owner, "markPaymentPaid", { paymentId: data.paymentId, amount: 200 });
+  return data.paymentId;
+}
+
+test("a screenshot lands in its own collection, and the payment only points at it", async () => {
+  const paymentId = await paidPayment();
+
+  const { data } = await call(owner, "attachPaymentProof", {
+    paymentId,
+    data: PIXEL,
+    contentType: "image/jpeg",
+  });
+  assert.ok(data.byteSize > 0);
+
+  const proof = await read("paymentProofs", paymentId);
+  assert.equal(proof.paymentId, paymentId);
+  assert.equal(proof.uid, artistUser.uid, "copied on, so the rule need not get() the payment");
+  assert.equal(proof.data, PIXEL);
+  assert.equal(proof.contentType, "image/jpeg");
+
+  // Thirty days, off the server's clock rather than a phone's.
+  const days = (proof.expiresAt.toDate() - proof.uploadedAt.toDate()) / 86_400_000;
+  assert.ok(Math.abs(days - 30) < 0.01, `expected 30 days, got ${days}`);
+
+  // The payment carries the dates and none of the bytes: every total on both
+  // sides of the app loads these documents.
+  const payment = await read("payments", paymentId);
+  assert.ok(payment.proofAttachedAt, "there is a screenshot");
+  assert.equal(
+    payment.proofExpiresAt.toMillis(),
+    proof.expiresAt.toMillis(),
+    "the app decides from the payment alone whether to offer the download"
+  );
+  assert.equal(payment.data, undefined);
+  assert.equal(JSON.stringify(payment).includes(PIXEL.slice(0, 40)), false);
+});
+
+test("replacing a screenshot overwrites it and restarts the thirty days", async () => {
+  const paymentId = await paidPayment();
+  await call(owner, "attachPaymentProof", { paymentId, data: PIXEL, contentType: "image/jpeg" });
+  const first = await read("paymentProofs", paymentId);
+
+  await call(owner, "attachPaymentProof", { paymentId, data: "AAAA", contentType: "image/png" });
+  const second = await read("paymentProofs", paymentId);
+
+  // One screenshot per payment, the way there is one amount. No history.
+  assert.equal(second.data, "AAAA");
+  assert.equal(second.contentType, "image/png");
+  assert.ok(second.expiresAt.toMillis() >= first.expiresAt.toMillis());
+});
+
+test("a member cannot attach evidence about their own payment", async () => {
+  const paymentId = await paidPayment();
+  await assert.rejects(
+    () => call(artist, "attachPaymentProof", { paymentId, data: PIXEL, contentType: "image/jpeg" }),
+    /admin/
+  );
+  // Nor write the document the callable would have written.
+  await assert.rejects(() =>
+    setDoc(doc(artist.db, "paymentProofs", paymentId), { uid: artistUser.uid, data: PIXEL })
+  );
+});
+
+test("a member reads their own screenshot and nobody else's", async () => {
+  const paymentId = await paidPayment();
+  await call(owner, "attachPaymentProof", { paymentId, data: PIXEL, contentType: "image/jpeg" });
+
+  const mine = await getDoc(doc(artist.db, "paymentProofs", paymentId));
+  assert.equal(mine.data().data, PIXEL, "this is the evidence they were paid");
+
+  // The collection is not theirs to sweep up.
+  await assert.rejects(() => getDocs(collection(artist.db, "paymentProofs")));
+});
+
+test("junk is refused before it reaches a document", async () => {
+  const paymentId = await paidPayment();
+
+  // A data: prefix the app should have stripped — it would render as a broken
+  // image on the other side.
+  await assert.rejects(
+    () =>
+      call(owner, "attachPaymentProof", {
+        paymentId,
+        data: `data:image/png;base64,${PIXEL}`,
+        contentType: "image/png",
+      }),
+    /did not arrive in one piece/
+  );
+
+  await assert.rejects(
+    () => call(owner, "attachPaymentProof", { paymentId, data: PIXEL, contentType: "application/pdf" }),
+    /JPEG, PNG or WebP/
+  );
+
+  // Over the cap. Refused here rather than failing on the way into Firestore,
+  // so the admin gets a sentence instead of an internal error.
+  await assert.rejects(
+    () =>
+      call(owner, "attachPaymentProof", {
+        paymentId,
+        data: "A".repeat(700_004),
+        contentType: "image/jpeg",
+      }),
+    /too large/
+  );
+
+  await assert.rejects(
+    () => call(owner, "attachPaymentProof", { paymentId: "nope", data: PIXEL, contentType: "image/jpeg" }),
+    /gone/
+  );
+});
+
+test("the sweep deletes the image and leaves the payment alone", async () => {
+  const paymentId = await paidPayment();
+  await call(owner, "attachPaymentProof", { paymentId, data: PIXEL, contentType: "image/jpeg" });
+
+  // Nothing has expired yet, so a sweep today must not touch it. A job that
+  // deletes a document a day early is worse than one that runs a day late.
+  assert.deepEqual(await runProofSweep(new Date()), { deleted: 0 });
+  assert.ok((await read("paymentProofs", paymentId)).data, "still there");
+
+  // Run it with a clock a day past the thirty days, which is the only honest
+  // way to test a deletion job — the same trick the retention sweep uses.
+  const later = new Date(Date.now() + (PROOF_TTL_DAYS + 1) * 86_400_000);
+  // Every screenshot this suite attached is a month old by that clock, so the
+  // count is "at least this one" rather than exactly one.
+  const swept = await runProofSweep(later);
+  assert.ok(swept.deleted >= 1, `nothing was swept (${swept.deleted})`);
+
+  // The image is gone.
+  assert.equal((await getDoc(doc(owner.db, "paymentProofs", paymentId))).exists(), false);
+
+  // The payment is not. This is the whole point of keeping the two apart: what
+  // was paid, when, and how it was worked out all survive the screenshot.
+  const payment = await read("payments", paymentId);
+  assert.equal(payment.status, "paid");
+  assert.equal(payment.finalAmount, 200);
+  assert.equal(payment.quantity, 4);
+  // And the payment still records that there was a screenshot, with the date it
+  // stopped being available. The sweep deliberately does not write here: an
+  // expiry in the past is what both sides of the app already read as "gone",
+  // and clearing it would cost a write to say the same thing.
+  assert.ok(payment.proofAttachedAt, "it still records that there was one");
+  assert.ok(payment.proofExpiresAt.toMillis() < later.getTime());
+});
 
 // ---------------------------------------------------------------------------
 // An admin's own work

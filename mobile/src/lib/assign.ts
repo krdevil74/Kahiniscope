@@ -45,6 +45,34 @@ export function missingFrom(draft: AssignDraft): string | null {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// A kind of work the picker does not list
+// ---------------------------------------------------------------------------
+
+/**
+ * How long a typed-in task type may be.
+ *
+ * Forty characters is a label, not a description. The type is read back in a
+ * reminder ("Cover redraw for EP-61 is 4 days overdue"), on a chip, and on a
+ * payment row, and a sentence typed into this box would break all three.
+ */
+export const MAX_TASK_TYPE_LENGTH = 40;
+
+/**
+ * What the text box actually produces.
+ *
+ * Trimmed, inner runs of space collapsed, capped. `null` for anything that is
+ * only whitespace, which is what keeps the Assign button saying "Pick a task"
+ * instead of writing a task with no name.
+ *
+ * Newlines go because this ends up on one line everywhere it appears, and a
+ * type with a line break in it is a reminder with a line break in it.
+ */
+export function normaliseTaskType(raw: string): string | null {
+  const collapsed = (raw ?? "").replace(/\s+/g, " ").trim();
+  return collapsed ? collapsed.slice(0, MAX_TASK_TYPE_LENGTH) : null;
+}
+
 export function dueDateFrom(now: Date, dueInDays: number): Date {
   const due = new Date(now);
   due.setDate(due.getDate() + Math.max(MIN_DUE_DAYS, Math.trunc(dueInDays)));

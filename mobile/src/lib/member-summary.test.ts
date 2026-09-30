@@ -27,6 +27,8 @@ function payment(overrides: Partial<Payment>): Payment {
     estimatedAmount: null, finalAmount: null, recordingMinutes: null,
     wordCount: null, comment: null, approvedAt: null, paidAt: null,
     settledFromAdvance: false,
+    proofAttachedAt: null,
+    proofExpiresAt: null,
     ...overrides,
   };
 }

@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: **30 September 2026** (the tick on the episode screen)
+Last updated: **30 September 2026** (payment screenshots)
 
 A running record of where this stands and what is left. Written to be read
 cold, after a gap, by someone who has forgotten the details.
@@ -34,7 +34,7 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 233 backend, 236 app.** All green. `npm test` at the root runs the
+**Tests: 248 backend, 249 app.** All green. `npm test` at the root runs the
 backend suites (unit + rules + six emulator suites); `npm run verify` in
 `mobile/` runs typecheck, unit tests and a render of all 17 routes.
 
@@ -55,9 +55,12 @@ hit this because `functions/.env` is not in the repo.
   `BLOCKING_REGION` = asia-south2, `SCHEDULER_REGION` = **asia-south1**
   because Cloud Scheduler does not exist in asia-south2.
 - **13 functions deployed**, rules and indexes released. The contacts work
-  adds five more, not yet deployed.
-- **Two scheduled jobs are armed and have never been observed running:**
-  `escalateDaily` at 09:00 Asia/Dhaka, `purgeOldData` Sundays at 03:00.
+  adds five more, and the payments work adds `attachPaymentProof` and
+  `purgeExpiredProofs` — none of them deployed yet.
+- **Scheduled jobs, none yet observed running:** `escalateDaily` at 09:00
+  Asia/Dhaka, `purgeOldData` Sundays at 03:00, and `purgeExpiredProofs` daily at
+  03:30 — the last one is the only mechanism deleting payment screenshots, so it
+  is the one to check first after deploying.
 - **GitHub: `krdevil74/Kahiniscope`, public.** Push to `main` → CI → deploy,
   automatically.
 
@@ -219,6 +222,35 @@ build can never be paid for twice. The three note lines that promised
 "reminder #1 in 3d" on work that is in review say "in review" instead.
 
 Detail and the state table: `docs/13-payments.md`.
+
+## Asked for on 30 September, in the same branch
+
+- **Three more task types, and a box.** `Narration`, `Introduction` and
+  `Special task` join the original nine, and under the grid a dashed **Something
+  else** chip opens a text box — because the alternative is shipping a build
+  every time a new kind of work appears. `Task.type` was always a plain string,
+  so a typed-in type is a task like any other; it is normalised to one line and
+  40 characters. `Narration` is priced off the per-minute narration rate an
+  artist already carries, so approving it asks no unit question. Everything else
+  new is a figure the admin types.
+- **The admin's paid list reads like the member's.** It is now the same row —
+  name and avatar added — so the episode, the minutes, the rate and what was
+  actually paid against the estimate are one tap away instead of being
+  reconstructed from a name and a task type. Paged rather than cut off at twenty.
+- **A screenshot proves the payment.** The admin attaches the confirmation image
+  where they type the figure; the artist gets a ⤓ that saves it through the share
+  sheet. The bytes live in `paymentProofs/{paymentId}`, **not** on the payment,
+  and are deleted after 30 days by `purgeExpiredProofs` (daily, 03:30 Dhaka) —
+  every total in the app loads payment documents, and nobody should pay to fetch
+  a JPEG to add up a column. The payment keeps two dates so no screen has to load
+  an image to know whether to offer the download.
+
+Two new callables and one new scheduled job: `attachPaymentProof`,
+`purgeExpiredProofs`. One new collection, `paymentProofs`, that no client may
+write. **A new Android build is required** — four native modules were added
+(`expo-image-picker`, `expo-image-manipulator`, `expo-file-system`,
+`expo-sharing`), two of them with config plugins, so the existing dev client
+cannot pick or save an image until it is rebuilt.
 
 ---
 
