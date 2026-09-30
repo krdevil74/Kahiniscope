@@ -21,13 +21,18 @@ import { craftLabel } from "../../src/lib/crafts";
 import { useSession } from "../../src/lib/auth";
 import {
   channelWord,
-  doneToast,
   nudgeFailedToast,
   nudgeTask,
   nudgeToast,
   setEpisodeStatus,
-  setTaskDone,
 } from "../../src/lib/actions";
+import {
+  approveOwnTask,
+  ownApprovalToast,
+  sentToReviewToast,
+  submitTask,
+} from "../../src/lib/review-actions.ts";
+import { tickActionFor, tickLabel } from "../../src/lib/review.ts";
 import { bestChannelFor, channelLabel } from "../../src/lib/channels.ts";
 import { completionOf, membersInEpisode, tasksForEpisode } from "../../src/lib/completion.ts";
 import {
@@ -68,9 +73,26 @@ export default function EpisodeDetail() {
     [episodeTasks, approved, now]
   );
 
-  async function toggle(task: Task) {
-    await setTaskDone(task, !task.done);
-    toast(doneToast(task.type, !task.done));
+  /**
+   * The box next to a task. What it does depends on whose work it is — the
+   * admin's own is accepted on the spot and opens a payment, anybody else's
+   * goes to the review queue where the form that prices it lives. See
+   * lib/review.ts. Nothing here writes `done`: closing work without a payment
+   * behind it is the bug this replaced.
+   */
+  async function tick(task: Task, name: string) {
+    const action = tickActionFor(task, user?.uid ?? "");
+    if (action === "locked") return;
+    try {
+      if (action === "approve") {
+        toast(ownApprovalToast(task.type, await approveOwnTask(task)));
+      } else {
+        await submitTask(task.id);
+        toast(sentToReviewToast(task.type, name));
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "That did not go through.");
+    }
   }
 
   async function switchStatus() {
@@ -271,90 +293,104 @@ export default function EpisodeDetail() {
               </View>
             </Pressable>
 
-            {memberTasks.map((task) => (
-              <View
-                key={task.id}
-                style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 13,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 11,
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.surfaceSunken,
-                  minHeight: MIN_TAP_TARGET,
-                }}
-              >
-                <Pressable
-                  onPress={() => void toggle(task)}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: task.done }}
-                  accessibilityLabel={`${task.type}, ${task.done ? "done" : "not done"}`}
-                  hitSlop={12}
+            {memberTasks.map((task) => {
+              // Locked means it is already in — accepted, or handed in and
+              // waiting to be priced. There is no un-opening a payment, so
+              // there is no untick.
+              const locked = tickActionFor(task, user?.uid ?? "") === "locked";
+              const waiting = task.status === "submitted";
+              return (
+                <View
+                  key={task.id}
                   style={{
-                    width: layout.tickBox,
-                    height: layout.tickBox,
-                    borderRadius: radii.tick,
-                    borderWidth: 1.5,
-                    borderColor: task.done ? colors.ink : colors.hairlineStronger,
-                    backgroundColor: task.done ? colors.ink : colors.surface,
+                    paddingVertical: 10,
+                    paddingHorizontal: 13,
+                    flexDirection: "row",
                     alignItems: "center",
-                    justifyContent: "center",
+                    gap: 11,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.surfaceSunken,
+                    minHeight: MIN_TAP_TARGET,
                   }}
                 >
-                  {task.done ? (
+                  <Pressable
+                    onPress={() => void tick(task, member.name)}
+                    disabled={locked}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: task.done, disabled: locked }}
+                    accessibilityLabel={tickLabel(task, task.type)}
+                    hitSlop={12}
+                    style={{
+                      width: layout.tickBox,
+                      height: layout.tickBox,
+                      borderRadius: radii.tick,
+                      borderWidth: 1.5,
+                      // Handed in is not closed: the box takes the strong border
+                      // without the fill, so a row waiting on a decision does not
+                      // read as a row that is finished with.
+                      borderColor: task.done || waiting ? colors.ink : colors.hairlineStronger,
+                      backgroundColor: task.done ? colors.ink : colors.surface,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {task.done || waiting ? (
+                      <AppText
+                        style={{
+                          fontFamily: fontFamily.monoSemibold,
+                          fontSize: 11,
+                          lineHeight: 12,
+                          color: task.done ? colors.brand : colors.ink,
+                        }}
+                      >
+                        {task.done ? "✓" : "·"}
+                      </AppText>
+                    ) : null}
+                  </Pressable>
+
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <AppText
+                      weight="medium"
                       style={{
-                        fontFamily: fontFamily.monoSemibold,
-                        fontSize: 11,
-                        lineHeight: 12,
-                        color: colors.brand,
+                        fontFamily: fontFamily.medium,
+                        fontSize: 12.5,
+                        lineHeight: 15.6,
+                        color: task.done ? colors.faint : colors.ink,
+                        textDecorationLine: task.done ? "line-through" : "none",
                       }}
                     >
-                      ✓
+                      {task.type}
                     </AppText>
-                  ) : null}
-                </Pressable>
+                    <AppText
+                      numberOfLines={1}
+                      style={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: 10,
+                        lineHeight: 14,
+                        color: colors.faint,
+                        marginTop: 3,
+                      }}
+                    >
+                      {rowNote(task, settings.plan, now)}
+                    </AppText>
+                  </View>
 
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <AppText
-                    weight="medium"
-                    style={{
-                      fontFamily: fontFamily.medium,
-                      fontSize: 12.5,
-                      lineHeight: 15.6,
-                      color: task.done ? colors.faint : colors.ink,
-                      textDecorationLine: task.done ? "line-through" : "none",
-                    }}
-                  >
-                    {task.type}
-                  </AppText>
-                  <AppText
-                    numberOfLines={1}
-                    style={{
-                      fontFamily: fontFamily.mono,
-                      fontSize: 10,
-                      lineHeight: 14,
-                      color: colors.faint,
-                      marginTop: 3,
-                    }}
-                  >
-                    {rowNote(task, settings.plan, now)}
-                  </AppText>
+                  <Button
+                    label={task.done ? "Done" : waiting ? "In review" : "Nudge"}
+                    size="compact"
+                    variant={task.done || waiting ? "quiet" : "yellow"}
+                    radius={7}
+                    // Nobody is chased about work that is in. Nudging somebody
+                    // who is waiting on this admin would be the app blaming them
+                    // for the admin's own queue.
+                    disabled={task.done || waiting}
+                    onPress={() => void nudge(task)}
+                    style={{ paddingVertical: 7, paddingHorizontal: 9 }}
+                    accessibilityLabel={`Nudge ${member.name} about ${task.type}`}
+                  />
                 </View>
-
-                <Button
-                  label={task.done ? "Done" : "Nudge"}
-                  size="compact"
-                  variant={task.done ? "quiet" : "yellow"}
-                  radius={7}
-                  disabled={task.done}
-                  onPress={() => void nudge(task)}
-                  style={{ paddingVertical: 7, paddingHorizontal: 9 }}
-                  accessibilityLabel={`Nudge ${member.name} about ${task.type}`}
-                />
-              </View>
-            ))}
+              );
+            })}
           </View>
         ))}
       </View>

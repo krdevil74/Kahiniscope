@@ -16,6 +16,8 @@ import {
   statusLabel,
   submitLabel,
   submittedTasks,
+  tickActionFor,
+  tickLabel,
 } from "./review.ts";
 
 function task(overrides: Partial<Task>): Task {
@@ -117,4 +119,39 @@ test("status reads plainly on both sides", () => {
   assert.equal(statusLabel(task({ status: "paid" })), "Paid");
   assert.equal(statusLabel(task({ status: "open", rejectedAt: new Date() })), "Sent back");
   assert.equal(statusLabel(task({ status: "open" })), "Open");
+});
+
+// ---------------------------------------------------------------------------
+// The tick on the episode screen
+// ---------------------------------------------------------------------------
+
+test("an admin ticking their own task accepts it; anybody else's goes to review", () => {
+  const mine = task({ assigneeUid: "admin" });
+  const theirs = task({ assigneeUid: "u1" });
+  assert.equal(tickActionFor(mine, "admin"), "approve");
+  assert.equal(tickActionFor(theirs, "admin"), "submit");
+});
+
+test("work that is already in cannot be ticked again", () => {
+  // Every one of these would otherwise open a second payment for one job.
+  assert.equal(tickActionFor(task({ assigneeUid: "admin", status: "submitted" }), "admin"), "locked");
+  assert.equal(tickActionFor(task({ assigneeUid: "admin", status: "approved" }), "admin"), "locked");
+  assert.equal(tickActionFor(task({ assigneeUid: "admin", status: "paid" }), "admin"), "locked");
+  // Closed by a build that predates any of this: `done` and nothing else.
+  assert.equal(tickActionFor(task({ assigneeUid: "admin", done: true }), "admin"), "locked");
+});
+
+test("a signed-out tick is nobody's own work", () => {
+  // `assigneeUid` is never empty, but an unread session is — and "" === "" is
+  // the one comparison that would hand somebody else's work an approval.
+  assert.equal(tickActionFor(task({ assigneeUid: "" }), ""), "submit");
+});
+
+test("the box says which of the three states it is in", () => {
+  assert.equal(tickLabel(task({}), "Voice recording"), "Voice recording, not done");
+  assert.equal(tickLabel(task({ status: "submitted" }), "Voice recording"), "Voice recording, in review");
+  assert.equal(
+    tickLabel(task({ status: "approved", done: true }), "Voice recording"),
+    "Voice recording, done"
+  );
 });

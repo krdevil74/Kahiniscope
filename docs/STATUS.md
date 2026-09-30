@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: **21 September 2026** (payments)
+Last updated: **30 September 2026** (the tick on the episode screen)
 
 A running record of where this stands and what is left. Written to be read
 cold, after a gap, by someone who has forgotten the details.
@@ -34,7 +34,7 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 180 backend, 149 app.** All green. `npm test` at the root runs the
+**Tests: 233 backend, 236 app.** All green. `npm test` at the root runs the
 backend suites (unit + rules + six emulator suites); `npm run verify` in
 `mobile/` runs typecheck, unit tests and a render of all 17 routes.
 
@@ -198,6 +198,27 @@ A task written before any of this reads as `approved`, and no migration runs.
 
 Three new callables: `reviewTask`, `markPaymentPaid`, `addAdvance`. Two new
 collections, `payments` and `advances`, that no client may write.
+
+## The bug the payments work left behind
+
+Found on 30 September: **an admin's own task closed without opening a payment.**
+The box on the episode screen still wrote `done` straight onto the task, the way
+it did when `done` was the whole model. Nothing else on an admin's side closes a
+task — `/my-tasks` redirects them to the board, so they have no **Submit for
+review** button — so their own work went in, counted as complete everywhere, and
+was never owed to anybody. It could not be rescued after the fact either: the
+member-submit rule requires `done == false` and `reviewTask` only accepted
+`submitted`, so the task was a dead end.
+
+The box is now a decision, not a write: the admin's own task is **approved on
+the spot and opens a payment**, anybody else's goes to the review queue where
+the form that prices it lives, and a task already in is locked because there is
+no un-opening a payment. `reviewTask` allows exactly one exception to "approve
+follows submit" — your own work — guarded on `done` so a task closed by an older
+build can never be paid for twice. The three note lines that promised
+"reminder #1 in 3d" on work that is in review say "in review" instead.
+
+Detail and the state table: `docs/13-payments.md`.
 
 ---
 
