@@ -290,6 +290,28 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- paymentProofs ----------------------------------------------------
+    //
+    // The screenshot that proves a transfer happened. One document per payment,
+    // under the payment's own id, holding the image as base64 — kept apart from
+    // the payment for cost rather than for secrecy: a payment record is read by
+    // every total on both sides of the app, and nobody should pay to load a
+    // few hundred kilobytes of JPEG to add up a column.
+    //
+    // `uid` is copied onto the document so this rule does not have to get() the
+    // payment to answer "is this yours" — a get() in a rule is a billed read on
+    // every single check.
+    //
+    // Deleted thirty days after it is attached, by functions/src/payment-proof.ts.
+
+    match /paymentProofs/{paymentId} {
+      allow read: if isAdmin()
+        || (isApproved() && resource.data.uid == uid());
+      // Attached through a callable, like the payment itself. The expiry has to
+      // be the server's clock, not a phone's.
+      allow write: if false;
+    }
+
     // ---- advances ---------------------------------------------------------
     //
     // Money handed over before the work existed. Each one is its own record

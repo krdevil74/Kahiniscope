@@ -10,7 +10,8 @@
  *
  * Voice work is the awkward one: the same artist is worth a different rate
  * reading narration than performing a character, so they carry two, and the
- * admin says which at the moment of approval.
+ * admin says which at the moment of approval — unless the task itself already
+ * says, which is what the Narration type is for.
  *
  * Nothing here is an amount that has been agreed. An estimate is arithmetic
  * on a rate that was true when the work was approved; the admin sets the real
@@ -80,6 +81,15 @@ export interface Payment {
    * screen rather than leaving it looking like an ordinary payment.
    */
   settledFromAdvance: boolean;
+  /**
+   * The screenshot of the transfer. Two dates rather than the image, because
+   * the image is a separate document that is deleted after a month and this
+   * record is kept for a year — see lib/payment-proof.ts. `proofAttachedAt`
+   * with an expiry in the past means there was one and it has gone, which is a
+   * different thing to say from saying nothing.
+   */
+  proofAttachedAt: Date | null;
+  proofExpiresAt: Date | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +126,12 @@ export function unitsForTaskType(taskType: string): PayUnit[] {
   switch (taskType) {
     case "Voice recording":
       return ["voice-character", "voice-narration"];
+    // Narration is what it says it is — one rate, per minute, no question for
+    // the admin to answer. "Introduction" and "Special task" are not: an intro
+    // read is a few lines and a special is by definition unlike the last one,
+    // so both are a figure somebody decides.
+    case "Narration":
+      return ["voice-narration"];
     case "Dubbing / mixing":
       return ["sound-design"];
     case "Thumbnail / graphics":

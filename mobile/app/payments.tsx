@@ -25,10 +25,11 @@ import { EmptyState } from "../src/components/EmptyState";
 import { MemberHeader } from "../src/components/MemberHeader";
 import { MemberTabs } from "../src/components/MemberTabs";
 import { PaidStamp } from "../src/components/PaidStamp";
+import { ProofAttach, ProofDownload, ProofNote } from "../src/components/PaymentProof";
 import { Ribbon, RibbonInfo } from "../src/components/Ribbon";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { useSession } from "../src/lib/auth";
-import { indexBy, useEpisodes, usePayments, useTeam } from "../src/lib/data";
+import { indexBy, useEpisodes, useNow, usePayments, useTeam } from "../src/lib/data";
 import type { Episode } from "../src/lib/model";
 import {
   amountToShow,
@@ -59,6 +60,7 @@ export default function Payments() {
 function AdminPayments() {
   const router = useRouter();
   const toast = useToast();
+  const now = useNow();
   const { isAdmin } = useSession();
 
   const { data: payments } = usePayments({ enabled: isAdmin });
@@ -79,10 +81,15 @@ function AdminPayments() {
     () =>
       payments
         .filter((p) => p.status === "paid")
-        .sort((a, b) => (b.paidAt?.getTime() ?? 0) - (a.paidAt?.getTime() ?? 0))
-        .slice(0, 20),
+        .sort((a, b) => (b.paidAt?.getTime() ?? 0) - (a.paidAt?.getTime() ?? 0)),
     [payments]
   );
+
+  // Paged rather than cut off at twenty: the total underneath the caption is
+  // the total of everything paid, so a list that silently stopped was a list
+  // that did not add up to the figure above it.
+  const [paidShown, setPaidShown] = useState(PAGE_SIZE);
+  const paidPage = pageOf(paid, paidShown);
 
   const owed = pending.reduce((sum, p) => sum + (p.estimatedAmount ?? 0), 0);
   const paidTotal = paid.reduce((sum, p) => sum + (p.finalAmount ?? 0), 0);
@@ -114,6 +121,7 @@ function AdminPayments() {
             name={byUid.get(payment.uid)?.name ?? "Somebody"}
             balance={byUid.get(payment.uid)?.balance ?? 0}
             episodeCode={byEpisode.get(payment.episodeId)?.code ?? ""}
+            now={now}
             onPaid={(amount) => {
               toast(paidToast(byUid.get(payment.uid)?.name ?? "them", money(amount)));
             }}
@@ -127,24 +135,28 @@ function AdminPayments() {
             <SectionCaption style={{ marginTop: 10 }}>
               {`Paid recently · ${money(paidTotal)}`}
             </SectionCaption>
-            {paid.map((payment) => (
-              <Card key={payment.id} radius={11} style={{ paddingVertical: 11, paddingHorizontal: 12 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}>
-                  <Avatar name={byUid.get(payment.uid)?.name ?? "?"} size={26} variant="light" />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <AppText weight="semibold" style={[type.bodySmall]}>
-                      {byUid.get(payment.uid)?.name ?? "Somebody"}
-                    </AppText>
-                    <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
-                      {`${payment.taskType} · ${byEpisode.get(payment.episodeId)?.code ?? ""}`}
-                    </AppText>
-                  </View>
-                  <AppText weight="semibold" style={[type.bodySmall]}>
-                    {money(payment.finalAmount)}
-                  </AppText>
-                </View>
-              </Card>
+            {/* The same row a member reads on their own screen, with the name
+                and the avatar added. It used to be name, type and an episode
+                code — which answered "who" and left "for what, and how did we
+                get to that figure" to be reconstructed from memory. */}
+            {paidPage.shown.map((payment) => (
+              <PaymentRow
+                key={payment.id}
+                payment={payment}
+                episode={byEpisode.get(payment.episodeId)}
+                name={byUid.get(payment.uid)?.name ?? "Somebody"}
+                now={now}
+                canAttach
+              />
             ))}
+            {paidPage.hasMore ? (
+              <Button
+                label={moreLabel(paidPage.hidden)}
+                variant="quiet"
+                style={{ marginTop: spacing.cardsTight, borderColor: colors.hairlineStrong }}
+                onPress={() => setPaidShown((n) => n + PAGE_SIZE)}
+              />
+            ) : null}
           </>
         ) : null}
       </View>
@@ -157,6 +169,7 @@ function PendingCard({
   name,
   balance,
   episodeCode,
+  now,
   onPaid,
   onError,
   onOpenPerson,
@@ -165,6 +178,7 @@ function PendingCard({
   name: string;
   balance: number;
   episodeCode: string;
+  now: Date;
   onPaid: (amount: number) => void;
   onError: (message: string) => void;
   onOpenPerson: () => void;
@@ -252,6 +266,13 @@ function PendingCard({
         />
       </View>
 
+      {/* The screenshot of the transfer, attached where the transfer is being
+          recorded — the admin has just made it and has the confirmation open.
+          It can be attached before or after Mark paid; the payment does not
+          wait on it, because an evidence step that blocks the money is an
+          evidence step people work around. */}
+      <ProofAttach payment={payment} now={now} />
+
       <Button
         label="Open their page"
         variant="quiet"
@@ -300,6 +321,7 @@ function WorkingNote({ payment }: { payment: Payment }) {
 // ---------------------------------------------------------------------------
 
 function MemberPayments() {
+  const now = useNow();
   const { user, isApproved } = useSession();
   const { data: payments } = usePayments({ uid: user?.uid, enabled: Boolean(user) && isApproved });
   const { data: episodes } = useEpisodes(isApproved);
@@ -394,7 +416,12 @@ function MemberPayments() {
         ) : null}
 
         {paidPage.shown.map((payment) => (
-          <PaymentRow key={payment.id} payment={payment} episode={byEpisode.get(payment.episodeId)} />
+          <PaymentRow
+            key={payment.id}
+            payment={payment}
+            episode={byEpisode.get(payment.episodeId)}
+            now={now}
+          />
         ))}
 
         {paidPage.hasMore ? (
@@ -461,7 +488,12 @@ function MemberPayments() {
         ) : null}
 
         {upcomingPage.shown.map((payment) => (
-          <PaymentRow key={payment.id} payment={payment} episode={byEpisode.get(payment.episodeId)} />
+          <PaymentRow
+            key={payment.id}
+            payment={payment}
+            episode={byEpisode.get(payment.episodeId)}
+            now={now}
+          />
         ))}
 
         {upcomingPage.hasMore ? (
@@ -479,67 +511,101 @@ function MemberPayments() {
 }
 
 /**
- * One entry. Both the episode and the kind of work are on it: "Voice
- * recording" alone does not tell somebody which of the eleven they did.
+ * One entry, on either side of the app.
+ *
+ * Both the episode and the kind of work are on it: "Voice recording" alone
+ * does not tell somebody which of the twelve they did. The working — minutes,
+ * rate, and what the admin actually paid against the estimate — is one tap
+ * away rather than on screen for every row.
+ *
+ * `name` is what makes it the admin's version. With it the row leads with the
+ * person and folds the kind of work into the line beneath; without it the kind
+ * of work leads, because a member already knows who they are.
  */
-function PaymentRow({ payment, episode }: { payment: Payment; episode?: Episode }) {
+function PaymentRow({
+  payment,
+  episode,
+  name,
+  now,
+  canAttach = false,
+}: {
+  payment: Payment;
+  episode?: Episode;
+  name?: string;
+  now: Date;
+  /** An admin can still attach a screenshot to a payment already marked paid. */
+  canAttach?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const detail = breakdownOf(payment);
 
+  // Admin: "Voice recording · EP-61 · রক্তমুখী নীলা". Member: the episode alone,
+  // since the kind of work is the headline above it.
+  const context =
+    [name ? payment.taskType : null, episode?.code, episode?.title].filter(Boolean).join(" · ") ||
+    "No episode";
+
   return (
     <Card radius={11} style={{ paddingVertical: 11, paddingHorizontal: 12 }}>
-      {/* The amount is the question and the working is the answer, so the
-          answer is one tap away rather than on screen for every row. */}
-      <Pressable
-        onPress={() => setOpen((v) => !v)}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        accessibilityLabel={`${payment.taskType}, ${detail.total}. ${open ? "Hide" : "Show"} how it was worked out`}
-        android_ripple={{ color: colors.ripple }}
-        style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}
-      >
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <AppText weight="semibold" style={[type.bodySmall]}>
-            {payment.taskType}
-          </AppText>
-          {/* Bengali title: AppText gives it Noto Sans Bengali. */}
-          <AppText
-            numberOfLines={1}
-            style={{
-              fontFamily: fontFamily.regular,
-              fontSize: 11.5,
-              lineHeight: 16,
-              color: colors.muted,
-              marginTop: 2,
-            }}
-          >
-            {[episode?.code, episode?.title].filter(Boolean).join(" · ") || "No episode"}
-          </AppText>
-          <AppText
-            style={{
-              fontFamily: fontFamily.mono,
-              fontSize: 10,
-              lineHeight: 13,
-              color: payment.status === "paid" ? colors.money : colors.faint,
-              marginTop: 3,
-            }}
-          >
-            {payment.status !== "paid"
-              ? "Waiting to be paid"
-              : payment.settledFromAdvance
-                ? "Paid from your advance"
-                : "Paid"}
-          </AppText>
-        </View>
-        <View style={{ alignItems: "flex-end" }}>
-          <AppText weight="semibold" style={[type.bodySmall]}>
-            {detail.total}
-          </AppText>
-          <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
-            {payment.status !== "paid" ? "estimate" : open ? "hide" : "how?"}
-          </AppText>
-        </View>
-      </Pressable>
+      {/* The download sits beside the row rather than inside it: tapping the row
+          opens the working, and tapping the icon saves a file. Two actions on
+          one line, so they are two controls. */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}>
+        <Pressable
+          onPress={() => setOpen((v) => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          accessibilityLabel={`${name ? `${name}, ` : ""}${payment.taskType}, ${detail.total}. ${open ? "Hide" : "Show"} how it was worked out`}
+          android_ripple={{ color: colors.ripple }}
+          style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: spacing.chips }}
+        >
+          {name ? <Avatar name={name} size={26} variant="light" /> : null}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <AppText weight="semibold" style={[type.bodySmall]}>
+              {name ?? payment.taskType}
+            </AppText>
+            {/* Bengali title: AppText gives it Noto Sans Bengali. */}
+            <AppText
+              numberOfLines={1}
+              style={{
+                fontFamily: fontFamily.regular,
+                fontSize: 11.5,
+                lineHeight: 16,
+                color: colors.muted,
+                marginTop: 2,
+              }}
+            >
+              {context}
+            </AppText>
+            <AppText
+              style={{
+                fontFamily: fontFamily.mono,
+                fontSize: 10,
+                lineHeight: 13,
+                color: payment.status === "paid" ? colors.money : colors.faint,
+                marginTop: 3,
+              }}
+            >
+              {payment.status !== "paid"
+                ? "Waiting to be paid"
+                : payment.settledFromAdvance
+                  ? name
+                    ? "Paid from their advance"
+                    : "Paid from your advance"
+                  : "Paid"}
+            </AppText>
+          </View>
+          <View style={{ alignItems: "flex-end" }}>
+            <AppText weight="semibold" style={[type.bodySmall]}>
+              {detail.total}
+            </AppText>
+            <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
+              {payment.status !== "paid" ? "estimate" : open ? "hide" : "how?"}
+            </AppText>
+          </View>
+        </Pressable>
+        <ProofDownload payment={payment} now={now} />
+      </View>
 
       {open ? (
         <View
@@ -567,6 +633,13 @@ function PaymentRow({ payment, episode }: { payment: Payment; episode?: Episode 
             </AppText>
           ) : null}
 
+          {/* How long the screenshot has left, or that it has gone. The icon
+              above is only drawn while there is something to download, so this
+              is the line that accounts for the one that vanished. */}
+          <ProofNote payment={payment} now={now} />
+
+          {canAttach ? <ProofAttach payment={payment} now={now} compact /> : null}
+
           {/* What the admin said when they approved it. Worth surfacing:
               it is the only feedback most work ever gets. */}
           {payment.comment ? (
@@ -580,7 +653,7 @@ function PaymentRow({ payment, episode }: { payment: Payment; episode?: Episode 
               }}
             >
               <AppText style={[type.metaXSmall, { color: colors.faint }]}>
-                Note from the admin
+                {name ? "Note left on approval" : "Note from the admin"}
               </AppText>
               <AppText style={[type.bodySmall, { color: colors.muted, marginTop: 3 }]}>
                 {`“${payment.comment}”`}

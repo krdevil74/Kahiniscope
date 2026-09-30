@@ -6,10 +6,11 @@
  * converters for one feature sit together.
  */
 
-import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore";
+import type { DocumentData, DocumentSnapshot, QueryDocumentSnapshot } from "firebase/firestore";
 
 import { toDate, toNumber, toStringOrNull } from "./convert.ts";
 import { EMPTY_RATES, type Rates, type TaskStatus } from "./model.ts";
+import type { PaymentProof } from "./payment-proof.ts";
 import type { Advance, Payment, PaymentStatus, PayUnit } from "./payments.ts";
 
 const UNITS: PayUnit[] = [
@@ -73,6 +74,28 @@ export function toPayment(snap: QueryDocumentSnapshot<DocumentData>): Payment {
     approvedAt: toDate(d.approvedAt),
     paidAt: toDate(d.paidAt),
     settledFromAdvance: d.settledFromAdvance === true,
+    // Absent on every payment written before screenshots existed, which reads
+    // correctly as "there was never one".
+    proofAttachedAt: toDate(d.proofAttachedAt),
+    proofExpiresAt: toDate(d.proofExpiresAt),
+  };
+}
+
+/**
+ * The screenshot itself, read only when somebody taps the download. The bytes
+ * are the whole point of the document, so nothing here is loaded speculatively.
+ */
+export function toProof(snap: DocumentSnapshot<DocumentData>): PaymentProof | null {
+  const d = snap.data();
+  if (!d || typeof d.data !== "string" || !d.data) return null;
+  return {
+    paymentId: snap.id,
+    uid: d.uid ?? "",
+    data: d.data,
+    contentType: typeof d.contentType === "string" ? d.contentType : "image/jpeg",
+    byteSize: toNumber(d.byteSize),
+    uploadedAt: toDate(d.uploadedAt),
+    expiresAt: toDate(d.expiresAt),
   };
 }
 

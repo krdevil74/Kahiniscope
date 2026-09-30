@@ -10,7 +10,9 @@ import {
   ladderBars,
   ladderNote,
   missingFrom,
+  MAX_TASK_TYPE_LENGTH,
   nextEpisodeCode,
+  normaliseTaskType,
   searchPeople,
   stepDueDays,
   submitLabel,
@@ -125,4 +127,26 @@ test("an empty query is not a filter", () => {
 test("no match returns nothing rather than everything", () => {
   const people = [{ name: "Rizu Ahmed", crafts: ["Voice"] }];
   assert.deepEqual(searchPeople(people, "zzz"), []);
+});
+
+// ---------------------------------------------------------------------------
+// A kind of work the picker does not list
+// ---------------------------------------------------------------------------
+
+test("a typed-in task type is trimmed and collapsed onto one line", () => {
+  assert.equal(normaliseTaskType("  Cover redraw  "), "Cover redraw");
+  // It ends up in a reminder and on a payment row, both of which are one line.
+  assert.equal(normaliseTaskType("Cover\n  redraw"), "Cover redraw");
+});
+
+test("a box with nothing in it is not a task type", () => {
+  // This is what keeps the Assign button saying "Pick a task" instead of
+  // writing a task whose kind of work is a space.
+  assert.equal(normaliseTaskType(""), null);
+  assert.equal(normaliseTaskType("   \n "), null);
+});
+
+test("a typed type is capped rather than refused", () => {
+  const long = "x".repeat(MAX_TASK_TYPE_LENGTH + 20);
+  assert.equal(normaliseTaskType(long)?.length, MAX_TASK_TYPE_LENGTH);
 });

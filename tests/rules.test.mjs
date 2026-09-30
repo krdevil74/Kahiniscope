@@ -135,6 +135,29 @@ beforeEach(async () => {
     });
     await setDoc(doc(db, "payments", "pay-theirs"), payment({ uid: OTHER_MEMBER }));
 
+    // The screenshot of a transfer. `uid` is on the document so the rule does
+    // not have to get() the payment to answer "is this yours".
+    await setDoc(doc(db, "paymentProofs", "pay-mine"), {
+      paymentId: "pay-mine",
+      uid: MEMBER,
+      data: "AAAA",
+      contentType: "image/jpeg",
+      byteSize: 3,
+      uploadedAt: Timestamp.now(),
+      uploadedBy: ADMIN,
+      expiresAt: Timestamp.now(),
+    });
+    await setDoc(doc(db, "paymentProofs", "pay-theirs"), {
+      paymentId: "pay-theirs",
+      uid: OTHER_MEMBER,
+      data: "AAAA",
+      contentType: "image/jpeg",
+      byteSize: 3,
+      uploadedAt: Timestamp.now(),
+      uploadedBy: ADMIN,
+      expiresAt: Timestamp.now(),
+    });
+
     await setDoc(doc(db, "reminderLog", "log1"), {
       taskId: doc(db, "tasks", "t-mine"),
       uid: MEMBER,
@@ -604,6 +627,29 @@ test("payments: an admin reads everybody's, and still writes none", async () => 
   const db = asAdmin();
   await assertSucceeds(getDoc(doc(db, "payments", "pay-mine")));
   await assertFails(updateDoc(doc(db, "payments", "pay-mine"), { status: "paid" }));
+});
+
+test("payment screenshots: a member reads their own and writes none", async () => {
+  const db = asMember();
+  await assertSucceeds(getDoc(doc(db, "paymentProofs", "pay-mine")));
+  // Somebody else's payment screenshot is somebody else's bank confirmation.
+  await assertFails(getDoc(doc(db, "paymentProofs", "pay-theirs")));
+
+  // Attaching is a callable: the expiry is the server's clock, and evidence a
+  // member could write is not evidence.
+  await assertFails(
+    setDoc(doc(db, "paymentProofs", "pay-mine"), { uid: MEMBER, data: "BBBB" })
+  );
+  await assertFails(updateDoc(doc(db, "paymentProofs", "pay-mine"), { data: "BBBB" }));
+  await assertFails(deleteDoc(doc(db, "paymentProofs", "pay-mine")));
+});
+
+test("payment screenshots: an admin reads everybody's, and still writes none", async () => {
+  const db = asAdmin();
+  await assertSucceeds(getDoc(doc(db, "paymentProofs", "pay-theirs")));
+  // Not even the person who attached it, for the same reason as the payment.
+  await assertFails(updateDoc(doc(db, "paymentProofs", "pay-mine"), { data: "BBBB" }));
+  await assertFails(deleteDoc(doc(db, "paymentProofs", "pay-mine")));
 });
 
 test("admin: sets a rate card, but only a rate card", async () => {

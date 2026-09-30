@@ -27,8 +27,10 @@ import {
   ladderBars,
   COLLAPSED_PEOPLE,
   ladderNote,
+  MAX_TASK_TYPE_LENGTH,
   missingFrom,
   nextEpisodeCode,
+  normaliseTaskType,
   searchPeople,
   stepDueDays,
   submitLabel,
@@ -93,6 +95,13 @@ export default function Assign() {
 
   const [personQuery, setPersonQuery] = useState("");
   const [peopleExpanded, setPeopleExpanded] = useState(false);
+  /**
+   * The catch-all. `own` is the box being open — a separate flag rather than
+   * "the type is not in the list", because an empty box has to be able to sit
+   * there open and unfilled while the Assign button says "Pick a task".
+   */
+  const [own, setOwn] = useState(false);
+  const [ownType, setOwnType] = useState("");
 
   const matchingPeople = useMemo(
     () => searchPeople(approved, personQuery),
@@ -413,11 +422,17 @@ export default function Assign() {
           <SectionCaption style={{ marginBottom: 9 }}>Task</SectionCaption>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.chipsTight }}>
             {TASK_TYPES.map((taskType) => {
-              const on = taskType === draft.type;
+              // Not `=== draft.type` alone: somebody who types "Editing" into
+              // the box should not see the Editing chip light up as though the
+              // box were closed.
+              const on = !own && taskType === draft.type;
               return (
                 <Pressable
                   key={taskType}
-                  onPress={() => patch({ type: taskType })}
+                  onPress={() => {
+                    setOwn(false);
+                    patch({ type: taskType });
+                  }}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: on }}
                   style={{
@@ -448,7 +463,74 @@ export default function Assign() {
                 </Pressable>
               );
             })}
+
+            {/* The catch-all. Full width under the two columns, because it is
+                not a twelfth option of the same kind — it is the admission
+                that this list will be out of date one day. */}
+            <Pressable
+              onPress={() => {
+                setOwn(true);
+                patch({ type: normaliseTaskType(ownType) });
+              }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: own }}
+              style={{
+                width: "100%",
+                paddingVertical: 11,
+                paddingHorizontal: 10,
+                borderRadius: radii.cardSmall,
+                borderWidth: 1,
+                borderStyle: own ? "solid" : "dashed",
+                borderColor: own ? colors.ink : colors.hairlineStrong,
+                backgroundColor: own ? colors.ink : colors.surface,
+                minHeight: MIN_TAP_TARGET,
+                justifyContent: "center",
+              }}
+            >
+              <AppText
+                style={{
+                  fontFamily: fontFamily.medium,
+                  fontSize: 11.5,
+                  lineHeight: 14.4,
+                  textAlign: "center",
+                  color: own ? colors.white : colors.muted,
+                }}
+              >
+                Something else
+              </AppText>
+            </Pressable>
           </View>
+
+          {own ? (
+            <View style={{ marginTop: spacing.chipsTight, gap: 5 }}>
+              <TextInput
+                value={ownType}
+                onChangeText={(text) => {
+                  setOwnType(text);
+                  patch({ type: normaliseTaskType(text) });
+                }}
+                placeholder="Name the work — e.g. Cover redraw"
+                placeholderTextColor={colors.faint}
+                maxLength={MAX_TASK_TYPE_LENGTH}
+                autoCapitalize="sentences"
+                accessibilityLabel="Name this kind of work"
+                style={{
+                  minHeight: MIN_TAP_TARGET,
+                  paddingHorizontal: 12,
+                  borderRadius: radii.cardSmall,
+                  borderWidth: 1,
+                  borderColor: colors.hairlineStrong,
+                  backgroundColor: colors.surface,
+                  fontFamily: fontFamily.regular,
+                  fontSize: 13,
+                  color: colors.ink,
+                }}
+              />
+              <AppText style={[type.metaXSmall, { color: colors.faint }]}>
+                {`Whatever you type is what the reminder says and what the payment row reads. ${MAX_TASK_TYPE_LENGTH} characters, and it is paid as a figure you type.`}
+              </AppText>
+            </View>
+          ) : null}
         </View>
 
         {/* Due in */}
