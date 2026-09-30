@@ -10,11 +10,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
+  count,
   doc,
+  getAggregateFromServer,
+  getDocs,
   limit as fsLimit,
   onSnapshot,
   orderBy,
   query,
+  sum,
+  Timestamp,
   where,
   type DocumentData,
   type QueryConstraint,
@@ -26,6 +31,12 @@ import { toBool, toDate, toId, toNumber, toStringArray, toStringOrNull } from ".
 import { craftsFrom } from "./crafts";
 import { episodeStatusFrom } from "./episode-status.ts";
 import { ratesFrom, taskStatusFrom, toAdvance, toPayment } from "./payment-convert.ts";
+import {
+  monthRange,
+  monthKey,
+  type MonthSlot,
+  type MonthTotal,
+} from "./payment-history.ts";
 import {
   DEFAULT_SETTINGS,
   type ChannelId,
@@ -255,8 +266,11 @@ export function useTeam(enabled = true): Live<TeamMember[]> {
 }
 
 /**
- * Payments. An admin sees every one; a member may only ask for their own, and
- * the rules reject a query that does not say so.
+ * A member's own payments. Every one of them, because a member's own history
+ * is their earnings and the whole screen is about the total.
+ *
+ * The admin does **not** use this. Their side is three bounded queries below —
+ * the whole collection was the thing making that screen slower every month.
  */
 export function usePayments(
   options: { uid?: string; enabled?: boolean } = {}
@@ -264,6 +278,185 @@ export function usePayments(
   const { uid, enabled = true } = options;
   const constraints = useMemo(() => (uid ? [where("uid", "==", uid)] : []), [uid]);
   return useCollection("payments", toPayment, constraints, enabled);
+}
+
+/**
+ * What is owed right now.
+ *
+ * Still a live listener, because two admins working the same queue is the
+ * ordinary case and the one place staleness would cost money. It is bounded by
+ * the work in flight rather than by history: paying something removes it from
+ * this query forever.
+ */
+export function usePendingPayments(enabled = true): Live<Payment[]> {
+  const constraints = useMemo(() => [where("status", "==", "pending")], []);
+  return useCollection("payments", toPayment, constraints, enabled);
+}
+
+/**
+ * What went out each month — as a sum and a count, never as documents.
+ *
+ * One aggregation query per bar. Firestore does the adding in the index and
+ * sends back two numbers, so twelve months of history cost the same whether
+ * they hold four payments or four thousand. This is the whole reason the
+ * admin's Payments tab stopped getting slower.
+ *
+ * Not a listener: a month that has closed cannot change, and the current one
+ * only changes when this admin marks something paid — which is what `reload`
+ * is for.
+ */
+export function useMonthlyPaidTotals(
+  months: readonly MonthSlot[],
+  enabled = true
+): Live<MonthTotal[]> & { reload: () => void } {
+  const [data, setData] = useState<MonthTotal[]>([]);
+  const [loading, setLoading] = useState(enabled);
+  const [error, setError] = useState<Error | null>(null);
+  const [version, setVersion] = useState(0);
+
+  const key = months.map(monthKey).join(",");
+
+  useEffect(() => {
+    if (!enabled || months.length === 0) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+    let live = true;
+    setLoading(true);
+
+    Promise.all(
+      months.map(async (slot) => {
+        const { start, end } = monthRange(slot);
+        const snap = await getAggregateFromServer(
+          query(
+            collection(db, "payments"),
+            where("status", "==", "paid"),
+            where("paidAt", ">=", Timestamp.fromDate(start)),
+            where("paidAt", "<", Timestamp.fromDate(end))
+          ),
+          { total: sum("finalAmount"), count: count() }
+        );
+        return {
+          ...slot,
+          total: Number(snap.data().total ?? 0),
+          count: Number(snap.data().count ?? 0),
+        };
+      })
+    )
+      .then((totals) => {
+        if (!live) return;
+        setData(totals);
+        setLoading(false);
+        setError(null);
+      })
+      .catch((err: Error) => {
+        if (!live) return;
+        console.warn("payment totals", err);
+        setError(err);
+        setLoading(false);
+      });
+
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, enabled, version]);
+
+  return { data, loading, error, reload: () => setVersion((v) => v + 1) };
+}
+
+/**
+ * The payments that made up one month, fetched when somebody opens it.
+ *
+ * A one-shot read rather than a listener, and only for the month on screen —
+ * so what an admin loads is what they chose to look at.
+ */
+export function usePaidInMonth(
+  slot: MonthSlot | null,
+  enabled = true
+): Live<Payment[]> & { reload: () => void } {
+  const [data, setData] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [version, setVersion] = useState(0);
+
+  const key = slot ? monthKey(slot) : "";
+
+  useEffect(() => {
+    if (!enabled || !slot) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+    let live = true;
+    setLoading(true);
+    const { start, end } = monthRange(slot);
+
+    getDocs(
+      query(
+        collection(db, "payments"),
+        where("status", "==", "paid"),
+        where("paidAt", ">=", Timestamp.fromDate(start)),
+        where("paidAt", "<", Timestamp.fromDate(end)),
+        orderBy("paidAt", "desc")
+      )
+    )
+      .then((snap) => {
+        if (!live) return;
+        setData(snap.docs.map(toPayment));
+        setLoading(false);
+        setError(null);
+      })
+      .catch((err: Error) => {
+        if (!live) return;
+        console.warn("payments in month", err);
+        setError(err);
+        setLoading(false);
+      });
+
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, enabled, version]);
+
+  return { data, loading, error, reload: () => setVersion((v) => v + 1) };
+}
+
+/**
+ * The year of the first payment ever made, for the year filter.
+ *
+ * One document — the oldest paid payment — rather than the collection. The
+ * filter needs to know how far back to offer, and that is the cheapest
+ * possible way to ask.
+ */
+export function useEarliestPaidYear(enabled = true): number | null {
+  const [year, setYear] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    getDocs(
+      query(
+        collection(db, "payments"),
+        where("status", "==", "paid"),
+        orderBy("paidAt", "asc"),
+        fsLimit(1)
+      )
+    )
+      .then((snap) => {
+        if (!live || snap.empty) return;
+        const first = toPayment(snap.docs[0]).paidAt;
+        if (first) setYear(first.getFullYear());
+      })
+      .catch((err) => console.warn("earliest payment", err));
+    return () => {
+      live = false;
+    };
+  }, [enabled]);
+
+  return year;
 }
 
 /**

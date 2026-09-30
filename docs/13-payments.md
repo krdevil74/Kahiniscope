@@ -199,18 +199,54 @@ important part and the message is the courtesy.
 
 ## The Payments tab
 
-**An admin** sees a queue: everything approved and unpaid, oldest first, each
-with the working shown (`12 min × ₹50`) and an amount field pre-filled with the
-estimate — a field rather than a label, because the admin decides. Marking one
-paid closes it and moves the task to `paid`.
+**An admin** sees two panels, and the screen loads nothing it was not asked for.
 
-Under the queue, **Paid recently** is the same row a member reads on their own
-screen, with the name and avatar added — tap it for the episode, the minutes, the
-rate, and what was actually paid against the estimate. It used to be a name, a
-task type and an episode code, which answered "who" and left "for what, and how
-did we get to that figure" to be reconstructed from memory. It is paged rather
-than cut off at twenty, because the total in the caption is the total of
-everything paid and a list that silently stopped did not add up to it.
+**Payment pending** leads: the number of payments waiting, the estimated total,
+and nothing else until it is tapped. Open it and the queue unfolds one card at a
+time, oldest first — each with the working shown (`12 min × ₹50`) and an amount
+field pre-filled with the estimate, a field rather than a label because the admin
+decides. Marking one paid closes it, moves the task to `paid`, and takes it out
+of this panel for good.
+
+**Paid month by month** is under it: twelve bars, a year of payments at a glance,
+with a year filter above them. Tap a bar and that month's payments list
+underneath — the same row a member reads on their own screen with the name and
+avatar added, so the episode, the minutes, the rate and what was actually paid
+against the estimate are one tap further. Tap the bar again to close it.
+
+### Why it is built this way
+
+The old version subscribed to the whole `payments` collection and added it up on
+the phone. That is fine in the first month and worse every month after: opening
+the tab cost the entire payment history of the operation, for ever, to show a
+queue of four and a list of twenty. **Nothing on this screen scales with history
+any more.** Three bounded questions replaced it:
+
+| The panel asks | The query | What it costs |
+| --- | --- | --- |
+| what is owed now | `where status == pending`, live | the work in flight, not the archive |
+| what went out each month | one aggregation per bar: `sum(finalAmount)`, `count()` | two numbers a month, whatever the volume |
+| what made up this month | `where status == paid` + a `paidAt` range, on demand | only the month somebody opened |
+
+The bars are aggregation queries on purpose. Firestore adds up in the index and
+returns a sum and a count, so a bar costs the same whether the month holds four
+payments or four thousand — and no payment document is transferred to draw the
+chart at all. The month list is a one-shot read rather than a listener, because a
+month that has closed cannot change; only the pending queue stays live, since two
+admins working the same queue is the one place staleness would cost money.
+
+Both need a composite index on `payments` — `status` ascending, `paidAt`
+ascending — which is in `firestore.indexes.json`. One index serves the sums, the
+month listing and the `orderBy` in both directions.
+
+The year filter's range comes from a single document read: the oldest paid
+payment, ordered by date, limit one. A filter should not have to load a
+collection to know which years to offer.
+
+Months are the device's own months, not UTC. Whoever reads this is looking at a
+calendar on a wall in Dhaka, and a boundary drawn in UTC would put the evening of
+the 31st in the wrong bar. Ranges are half-open (`>= start`, `< end`), so no
+payment lands in two months and none lands in neither.
 
 **A member** sees their **available balance** first, if they have one — it is
 the question somebody opens this screen to answer — then two figures kept
@@ -373,6 +409,17 @@ reopenable.
 - **4 unit tests** on which of the three things the tick does, including that
   an unread session is nobody's own work — `"" === ""` is the one comparison
   that would hand somebody else's task an approval.
+- **15 unit tests** on the month arithmetic behind the chart: the rolling window
+  crossing a new year, a calendar year that never runs into the future, half-open
+  month ranges, bars scaled against the tallest month, a ₹50 month staying
+  visible beside a ₹50,000 one, and an empty month drawing a stub rather than
+  nothing.
+- **5 emulator tests** on what the screen actually asks Firestore for: that a
+  bar is a sum and a count rather than a download, that the month before does not
+  pick up this month's work, that opening one month returns only that month, that
+  paying something takes it out of the pending query for good, and that a member
+  cannot run the admin's totals across everybody — the aggregation obeys the same
+  rules as the documents.
 - **9 unit tests and 6 more on the server** on the screenshot: what the row says
   in each of its three states, that expiry is judged by the date rather than by
   the sweep having run, the payload cap, the file name a download lands in, the

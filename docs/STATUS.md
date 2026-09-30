@@ -34,7 +34,7 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 248 backend, 252 app.** All green. `npm test` at the root runs the
+**Tests: 253 backend, 267 app.** All green. `npm test` at the root runs the
 backend suites (unit + rules + six emulator suites); `npm run verify` in
 `mobile/` runs typecheck, unit tests and a render of all 17 routes.
 
@@ -244,6 +244,16 @@ Detail and the state table: `docs/13-payments.md`.
   every total in the app loads payment documents, and nobody should pay to fetch
   a JPEG to add up a column. The payment keeps two dates so no screen has to load
   an image to know whether to offer the download.
+
+**The admin's Payments tab was rebuilt on 30 September so it stops getting
+slower.** It used to subscribe to the whole `payments` collection and add it up
+on the phone — the cost of opening it grew with every payment the operation had
+ever made. It is now two panels over three bounded queries: a **Payment pending**
+count that unfolds the queue when tapped, and a **twelve-bar month chart** whose
+bars are Firestore aggregation queries (a sum and a count, no documents), with a
+year filter and a tap that loads one month's payments on demand. Needs the new
+composite index on `payments` (`status`, `paidAt`) — deploy the indexes with the
+functions.
 
 **Bug found on the device, 30 September:** every payment row on a member's
 screen read "No episode". A task's `episodeId` is a DocumentReference and
