@@ -81,13 +81,14 @@ async function waitForClaims(user, predicate, label, timeoutMs = 20000) {
 const call = (ctx, name, data) => httpsCallable(ctx.functions, name)(data);
 
 let owner;
+let ownerUid;
 let artist;
 let artistUser;
 
-async function newTask(type = "Voice recording") {
+async function newTask(type = "Voice recording", assigneeUid = null) {
   const created = await addDoc(collection(owner.db, "tasks"), {
     episodeId: doc(owner.db, "episodes", "ep61"),
-    assigneeUid: artistUser.uid,
+    assigneeUid: assigneeUid ?? artistUser.uid,
     type,
     dueDate: Timestamp.now(),
     status: "open",
@@ -111,6 +112,7 @@ before(async () => {
   owner = client("pay-owner");
   const ownerUser = await signIn(owner, { sub: "owner", email: OWNER_EMAIL, name: "Kahiniscope" });
   await waitForClaims(ownerUser, (c) => c.role === "owner", "owner claims");
+  ownerUid = ownerUser.uid;
 
   await setDoc(doc(owner.db, "episodes", "ep61"), {
     code: "EP-61",
@@ -323,6 +325,111 @@ test("only work that is waiting can be reviewed", async () => {
 // ---------------------------------------------------------------------------
 
 const balanceOf = async (uid) => Number((await read("users", uid)).balance ?? 0);
+
+// ---------------------------------------------------------------------------
+// An admin's own work
+//
+// The admin has no Submit button — /my-tasks sends them to the board — so a
+// task of their own is accepted straight from `open`. It was closing with no
+// payment behind it, which is money quietly not owed to anybody.
+// ---------------------------------------------------------------------------
+
+test("an admin's own work is accepted without being handed in, and still opens a payment", async () => {
+  // A rate card for the admin, the same as anybody else's.
+  await updateDoc(doc(owner.db, "users", ownerUid), {
+    rates: { voiceCharacter: null, voiceNarration: null, soundDesign: null, cover: 500 },
+  });
+  const taskId = await newTask("Thumbnail / graphics", ownerUid);
+  assert.equal((await read("tasks", taskId)).status, "open", "never handed in");
+
+  const { data } = await call(owner, "reviewTask", { taskId, decision: "approve", unit: "cover" });
+
+  assert.equal(data.estimatedAmount, 500, "one cover at the admin's own rate");
+
+  const task = await read("tasks", taskId);
+  assert.equal(task.status, "approved");
+  assert.equal(task.done, true);
+
+  const payment = await read("payments", data.paymentId);
+  assert.equal(payment.uid, ownerUid);
+  assert.equal(payment.status, "pending");
+  assert.equal(payment.rate, 500);
+  assert.equal(payment.estimatedAmount, 500);
+  assert.equal(payment.approvedBy, ownerUid, "they accepted their own work, and it says so");
+});
+
+test("their own recording opens a payment with no estimate, not no payment", async () => {
+  // The tick on the episode screen has nowhere to ask for the minutes, so
+  // there is nothing to multiply. The entry still has to exist: the figure is
+  // typed on the Payments queue, which is where every figure is typed.
+  await updateDoc(doc(owner.db, "users", ownerUid), {
+    rates: { voiceCharacter: 60, voiceNarration: null, soundDesign: null, cover: 500 },
+  });
+  const taskId = await newTask("Voice recording", ownerUid);
+
+  const { data } = await call(owner, "reviewTask", {
+    taskId,
+    decision: "approve",
+    unit: "voice-character",
+  });
+
+  assert.equal(data.estimatedAmount, null, "no minutes, no arithmetic");
+  const payment = await read("payments", data.paymentId);
+  assert.equal(payment.status, "pending", "it is in the queue, waiting for a figure");
+  assert.equal(payment.quantity, null);
+  assert.equal(payment.rate, 60, "the rate is still snapshotted");
+  assert.equal(payment.estimatedAmount, null);
+  assert.equal(payment.finalAmount, null);
+});
+
+test("their own work cannot be accepted twice", async () => {
+  const taskId = await newTask("Thumbnail / graphics", ownerUid);
+  await call(owner, "reviewTask", { taskId, decision: "approve", unit: "cover" });
+
+  // Two payments for one cover is the failure this guard exists for.
+  await assert.rejects(
+    () => call(owner, "reviewTask", { taskId, decision: "approve", unit: "cover" }),
+    /not waiting for review/
+  );
+  const paid = await getDocs(
+    query(collection(owner.db, "payments"), where("taskId", "==", taskId))
+  );
+  assert.equal(paid.size, 1);
+});
+
+test("a task closed by an older build is not a task waiting to be paid for", async () => {
+  // `done` and nothing else: the shape every task had before any of this, and
+  // the shape the old tick left behind. Approving it would pay a second time
+  // for work somebody already signed off.
+  const created = await addDoc(collection(owner.db, "tasks"), {
+    episodeId: doc(owner.db, "episodes", "ep61"),
+    assigneeUid: ownerUid,
+    type: "Thumbnail / graphics",
+    dueDate: Timestamp.now(),
+    done: true,
+    doneAt: Timestamp.now(),
+    remindersSent: 0,
+    lastReminderAt: null,
+    assignedAt: serverTimestamp(),
+    preferredChannel: null,
+  });
+
+  await assert.rejects(
+    () => call(owner, "reviewTask", { taskId: created.id, decision: "approve", unit: "cover" }),
+    /not waiting for review/
+  );
+});
+
+test("sending your own work back to yourself is not a thing", async () => {
+  // Rejecting still needs a submission. There is nothing to send back about
+  // work nobody has offered, and the reminder clock it restarts is the
+  // member's — an admin chasing themselves is noise.
+  const taskId = await newTask("Thumbnail / graphics", ownerUid);
+  await assert.rejects(
+    () => call(owner, "reviewTask", { taskId, decision: "reject", note: "Not happy with it." }),
+    /not waiting for review/
+  );
+});
 
 test("an advance is money now, against work that does not exist yet", async () => {
   const before = await balanceOf(artistUser.uid);

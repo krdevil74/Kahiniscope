@@ -14,6 +14,7 @@
  */
 
 import type { Task } from "./model";
+import { isAwaitingReview } from "./review.ts";
 
 /** Whole calendar days between two dates, ignoring the time of day. */
 export function daysBetween(from: Date, to: Date): number {
@@ -120,6 +121,9 @@ export function cadenceLabel(remindersSent: number, plan: readonly number[]): st
 /** "Reminder #4 today · daily" — the countdown chip. */
 export function countdownLabel(task: Task, plan: readonly number[], now: Date): string {
   if (task.done) return "Complete — no further reminders";
+  // Handed in and waiting on an admin: nobody is chased, so a countdown here
+  // would be promising a reminder the scheduled job will not send.
+  if (isAwaitingReview(task)) return "In review — no further reminders";
   const next = daysUntilNextReminder(task, plan, now);
   const when = next === 0 ? "today" : next === 1 ? "tomorrow" : `in ${next} days`;
   return `Reminder #${task.remindersSent + 1} ${when} · ${cadenceLabel(task.remindersSent, plan)}`;
@@ -128,6 +132,7 @@ export function countdownLabel(task: Task, plan: readonly number[], now: Date): 
 /** "4d overdue · reminder #4 in 0d" — the row note in episode detail. */
 export function rowNote(task: Task, plan: readonly number[], now: Date): string {
   if (task.done) return "closed";
+  if (isAwaitingReview(task)) return "in review";
   const next = daysUntilNextReminder(task, plan, now);
   return `${dueLabel(task, now)} · reminder #${task.remindersSent + 1} in ${next}d`;
 }
@@ -138,6 +143,7 @@ export function rowNote(task: Task, plan: readonly number[], now: Date): string 
  */
 export function memberNote(task: Task, plan: readonly number[], now: Date): string {
   if (task.done) return "Closed — thanks";
+  if (isAwaitingReview(task)) return "In review — nothing more to do";
   const next = daysUntilNextReminder(task, plan, now);
   return `${deadlineLabel(task, now)} · next reminder ${next === 0 ? "today" : `in ${next}d`}`;
 }

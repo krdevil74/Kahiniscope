@@ -69,6 +69,40 @@ export function isChased(task: Pick<Task, "status">): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// The tick on the episode screen
+// ---------------------------------------------------------------------------
+
+/**
+ * What ticking the box next to a task does, which depends on whose work it is.
+ *
+ * The box used to write `done` straight onto the task. That was the whole
+ * model once — one bit, set by whoever was looking at it — but it now closes
+ * work without opening the payment that accepting work is supposed to open,
+ * which is money quietly not owed to anybody. So the box no longer writes
+ * anything itself; it picks one of three doors.
+ *
+ *   approve  the admin's own task: accepted on the spot, payment opened. They
+ *            have no Submit button — /my-tasks sends an admin to the board —
+ *            so this is the only door their own work has.
+ *   submit   somebody else's: it goes to the review queue, where the form that
+ *            prices it lives. Reminders stop either way, which is what the
+ *            tick was for.
+ *   locked   already in, and reversing it is not a thing this app does: there
+ *            is no way to un-open a payment.
+ */
+export type TickAction = "approve" | "submit" | "locked";
+
+export function tickActionFor(
+  task: Pick<Task, "status" | "done" | "assigneeUid">,
+  adminUid: string
+): TickAction {
+  // `done` as well as the status, because a task closed by an older build
+  // carries only `done` and must not be closeable a second time.
+  if (task.done || task.status !== "open") return "locked";
+  return adminUid !== "" && task.assigneeUid === adminUid ? "approve" : "submit";
+}
+
+// ---------------------------------------------------------------------------
 // Groupings
 // ---------------------------------------------------------------------------
 
@@ -119,6 +153,13 @@ export function statusLabel(task: Pick<Task, "status" | "rejectedAt">): string {
     case "open":
       return isRejected(task) ? "Sent back" : "Open";
   }
+}
+
+/** The box itself, read out. */
+export function tickLabel(task: Pick<Task, "status" | "done" | "rejectedAt">, type: string): string {
+  if (task.done) return `${type}, done`;
+  if (task.status === "submitted") return `${type}, in review`;
+  return `${type}, not done`;
 }
 
 export function reviewQueueLabel(count: number): string {

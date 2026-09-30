@@ -13,6 +13,13 @@
  *   markPaymentPaid  the money has gone out; this figure is the real one
  *   (rates)          edited directly on the user document, see firestore.rules
  *
+ * An admin's own work is the one case where approving does not follow a
+ * submission. There is nobody to hand it to and the app gives them no Submit
+ * button — the board is their screen, not the member dashboard — so closing a
+ * task of their own accepts it outright. It still opens a payment: work that
+ * was worth paying for does not stop being worth paying for because the
+ * person who did it is the person who accepted it.
+ *
  * Rejecting resets the reminder clock rather than the reminder count: the
  * task goes back to open with `rejectedAt` set, which the escalation engine
  * reads as "chase this every other day" instead of climbing the ladder.
@@ -84,6 +91,24 @@ function text(value: unknown, max: number): string | null {
   return trimmed ? trimmed.slice(0, max) : null;
 }
 
+/**
+ * Is this task in a state this admin may accept?
+ *
+ * Normally: it has been handed in. The exception is their own work, which
+ * they can accept straight from `open` — see the note at the top of the file.
+ *
+ * The guard on that path is `done`, not `status`, and for the same reason the
+ * rules use `done`: a task closed by a build that predates any of this
+ * carries `done` and nothing else, and paying for the same work twice is the
+ * one outcome worse than not paying for it at all.
+ */
+function approvable(data: Record<string, unknown>, uid: string): boolean {
+  if (data.status === "submitted") return true;
+  const mine = uid !== "" && data.assigneeUid === uid;
+  const untouched = (data.status ?? "open") === "open" && data.done !== true;
+  return mine && untouched;
+}
+
 export const reviewTask = onCall<ReviewRequest>(
   { region: REGION, secrets: SECRETS },
   async (request) => {
@@ -104,9 +129,13 @@ export const reviewTask = onCall<ReviewRequest>(
     if (!task.exists) throw new HttpsError("not-found", "That task is gone.");
 
     const data = task.data() ?? {};
-    if (data.status !== "submitted") {
-      // Two admins looking at the same queue is the ordinary case, so this is a
-      // race worth naming rather than a state worth panicking about.
+    const uid = request.auth?.uid ?? "";
+    // Two admins looking at the same queue is the ordinary case, so a task
+    // that has moved on is a race worth naming rather than a state worth
+    // panicking about. Sending work back still requires a submission: there
+    // is nothing to reject about work nobody has offered yet.
+    const ready = decision === "approve" ? approvable(data, uid) : data.status === "submitted";
+    if (!ready) {
       throw new HttpsError(
         "failed-precondition",
         "That task is not waiting for review — somebody may have got to it first."
@@ -174,7 +203,7 @@ export const reviewTask = onCall<ReviewRequest>(
      */
     const outcome = await db.runTransaction(async (tx) => {
       const fresh = await tx.get(taskRef);
-      if (fresh.data()?.status !== "submitted") {
+      if (!approvable(fresh.data() ?? {}, uid)) {
         throw new HttpsError(
           "failed-precondition",
           "That task is not waiting for review — somebody may have got to it first."
@@ -239,17 +268,23 @@ export const reviewTask = onCall<ReviewRequest>(
       unit,
       estimatedAmount: outcome.estimatedAmount,
       settledFromAdvance: outcome.settlement.settled,
-      by: request.auth?.uid,
+      ownWork: assigneeUid === uid,
+      by: uid,
     });
 
-    await notifyMember(assigneeUid, {
-      short: approvedShort(String(data.type ?? "Your task")),
-      body: approvedBody(outcome.name, String(data.type ?? "task"), {
-        settledFromAdvance: outcome.settlement.settled,
-        amount: outcome.estimatedAmount,
-        balanceAfter: outcome.settlement.balanceAfter,
-      }),
-    });
+    // Not to themselves. An admin who has just closed their own task does not
+    // need a push telling them they did it, and the balance line in it would
+    // be addressed to the person reading it in the second person.
+    if (assigneeUid !== uid) {
+      await notifyMember(assigneeUid, {
+        short: approvedShort(String(data.type ?? "Your task")),
+        body: approvedBody(outcome.name, String(data.type ?? "task"), {
+          settledFromAdvance: outcome.settlement.settled,
+          amount: outcome.estimatedAmount,
+          balanceAfter: outcome.settlement.balanceAfter,
+        }),
+      });
+    }
 
     return {
       status: outcome.settlement.settled ? "paid" : "approved",

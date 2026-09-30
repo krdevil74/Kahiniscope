@@ -58,17 +58,11 @@ export async function nudgeAllOpen(
   return data;
 }
 
-/**
- * Ticking a box. Marking done stops reminders immediately — there is no
- * separate cancel step, because the scheduled job only looks at tasks where
- * done is false.
- */
-export async function setTaskDone(task: Task, done: boolean): Promise<void> {
-  await updateDoc(doc(db, "tasks", task.id), {
-    done,
-    doneAt: done ? serverTimestamp() : null,
-  });
-}
+// Ticking a box used to live here, as a straight write of `done`. It is gone,
+// not moved: closing work is now either accepting it or handing it in, both of
+// which open or lead to a payment, and neither of which a client may decide on
+// its own. lib/review.ts (`tickActionFor`) says which of the two a tick means;
+// lib/review-actions.ts holds the writes.
 
 // ---------------------------------------------------------------------------
 // The copy that goes with each of them
@@ -104,12 +98,6 @@ export function nudgeAllToast(count: number, name: string, channel: string): str
 
 export function nothingOpenToast(name: string): string {
   return `${firstName(name)} has nothing open`;
-}
-
-export function doneToast(taskType: string, done: boolean): string {
-  return done
-    ? `${taskType} marked done — reminders stopped`
-    : `${taskType} reopened — reminders resume`;
 }
 
 // ---------------------------------------------------------------------------

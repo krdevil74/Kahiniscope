@@ -12,8 +12,9 @@ import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
 import { db } from "./firebase";
-import type { Rates } from "./model.ts";
-import type { PayUnit } from "./payments.ts";
+import { firstName } from "./format.ts";
+import type { Rates, Task } from "./model.ts";
+import { money, unitsForTaskType, type PayUnit } from "./payments.ts";
 import { appFunctions } from "./region.ts";
 
 /**
@@ -57,6 +58,27 @@ export async function approveTask(
   >(appFunctions(), "reviewTask");
   const { data } = await call({ taskId, decision: "approve", ...details });
   return data;
+}
+
+/**
+ * The tick on the episode screen, on a task of the admin's own.
+ *
+ * Accepted outright — there is nobody to hand it to, and an admin has no
+ * Submit button — and priced with the unit the kind of work implies and
+ * nothing else. The episode screen is not the pricing form and there is no
+ * honest place on it to ask for the minutes, so a cover comes out priced off
+ * the rate card and a recording comes out with no estimate. That is not a gap:
+ * the figure that gets paid is the one the admin types on the Payments queue,
+ * which is true of every payment in the app.
+ */
+export async function approveOwnTask(task: Pick<Task, "id" | "type">): Promise<ApprovalOutcome> {
+  return approveTask(task.id, {
+    unit: unitsForTaskType(task.type)[0],
+    recordingMinutes: null,
+    wordCount: null,
+    comment: null,
+    amount: null,
+  });
 }
 
 /** Sending work back. The reason is required: a bare refusal is not feedback. */
@@ -112,6 +134,26 @@ export function submittedToast(type: string): string {
 
 export function approvedToast(name: string, estimate: string): string {
   return `Approved — ${estimate} pending for ${name}`;
+}
+
+/**
+ * Accepting your own work. Three outcomes, because an approval with no minutes
+ * behind it has no estimate to quote — and saying "₹— pending" would be worse
+ * than saying where the figure gets set.
+ */
+export function ownApprovalToast(type: string, outcome: ApprovalOutcome): string {
+  if (outcome.settledFromAdvance) {
+    return `${type} approved — ${money(outcome.estimatedAmount)} taken off your advance`;
+  }
+  if (outcome.estimatedAmount !== null) {
+    return `${type} approved — ${money(outcome.estimatedAmount)} pending for you`;
+  }
+  return `${type} approved — payment opened, put the amount in on Payments`;
+}
+
+/** Ticking somebody else's box: it is in, and it is waiting to be priced. */
+export function sentToReviewToast(type: string, name: string): string {
+  return `${type} marked in for ${firstName(name)} — price it in Review`;
 }
 
 export function rejectedToast(name: string): string {

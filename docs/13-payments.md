@@ -9,9 +9,11 @@ while nobody was being paid for it. This is what replaced it, and why.
 
 ```
 open ──── member: Submit for review ────► submitted
- ▲                                            │
+ ▲   └──── admin: tick, somebody else's ───┘  │
  │                                            ├─ admin: Approve ──► approved ──► paid
  └──────── admin: Send back + reason ─────────┘         (payment opens)   (money out)
+ │                                                           ▲
+ └──────── admin: tick, their own work ──────────────────────┘
 ```
 
 Four states, one of which does double duty:
@@ -19,7 +21,7 @@ Four states, one of which does double duty:
 | | What it means | Who moves it | Reminders |
 | --- | --- | --- | --- |
 | `open` | Nobody has handed anything in | — | Climb the ladder: 7, 4, 3, 2, 1 days |
-| `submitted` | Handed in, waiting on an admin | member | **Stop** |
+| `submitted` | Handed in, waiting on an admin | member, or an admin ticking it in | **Stop** |
 | `approved` | Accepted; a payment is open | admin | none |
 | `paid` | The money has gone out | admin | none |
 
@@ -38,6 +40,40 @@ Two details that are easy to get wrong:
   what it always meant: accepted. Every percentage on every screen, and the
   escalation job's own query, were built on it. A task written before any of
   this existed has only `done`, and reads correctly as `approved`.
+
+### The admin's own work, and the tick on the episode screen
+
+An admin can be assigned work like anybody else — and they have no **Submit for
+review** button, because `/my-tasks` sends an admin to the board. The only
+affordance their own task has is the box beside it on the episode screen.
+
+That box used to write `done` straight onto the task. It predates payments and
+never learned about them, so closing a task that way accepted work and opened
+**no payment** — money quietly not owed to anybody, on a task that could not
+then be rescued either: the member-submit rule requires `done == false`, and
+`reviewTask` only ever accepted `submitted`. It is now the one thing it can
+honestly be — a decision — and which decision depends on whose work it is:
+
+| Whose task | What the tick does | Why |
+| --- | --- | --- |
+| The admin's own | **Approved on the spot**, payment opened | Nobody to hand it to, and no Submit button to hand it in with |
+| Anybody else's | **Sent to review** (`submitted`) | The form that prices work lives in Review; reminders stop either way, which is what the tick was for |
+| Already in | Nothing — the box is locked | There is no un-opening a payment |
+
+So `submitted` is no longer only a member's doing, and `approved` is no longer
+only reached from `submitted`: an admin's own task goes `open → approved` in one
+step. `reviewTask` allows that single exception, guarded on `done` rather than
+`status` so a task closed by an older build can never be paid for twice. Nothing
+else changed — the same transaction, the same rate snapshot, the same advance
+settlement. **Sending work back still needs a submission**: there is nothing to
+reject about work nobody has offered, and an admin does not chase themselves.
+
+One honest gap: the episode screen has nowhere to ask for the minutes, so a
+recording of the admin's own is approved with the rate snapshotted but **no
+estimate**. It lands in the Payments queue with an empty amount field, which is
+where the real figure is typed for every payment anyway. A cover, which is one
+unit by definition, comes out priced. The admin is not notified — they are the
+person who just pressed the button.
 
 ### Why alternate days for a rejection
 
@@ -184,7 +220,7 @@ If a pending entry has no rate behind it, the member's pending total shows
 
 | | Member | Admin |
 | --- | --- | --- |
-| Submit their own task | ✅ | ✅ |
+| Submit their own task | ✅ | ✅ — and it is accepted in the same step |
 | Accept, reject, price work | ❌ | ✅ |
 | Read their own payments | ✅ | ✅ (everyone's) |
 | Write a payment | ❌ | ❌ — Cloud Functions only |
@@ -220,9 +256,17 @@ reopenable.
   differently from character; a typed figure where there is no rate; paying an
   amount that differs from the estimate; and a member reading their own
   payments and nobody else's.
-- **15 emulator tests** in all, including the advance path: money advanced
+- **20 emulator tests** in all, including the advance path: money advanced
   and recorded, an approval coming straight off the balance and being paid on
   the spot, a balance too small being left alone rather than part-spent, and
   work with no figure behind it spending nothing.
+- **5 of those 20** on the admin's own work: accepted without being handed in
+  and still opening a payment at their own rate; a recording of theirs opening
+  a payment with no estimate rather than no payment; the same task refusing a
+  second approval, so one job cannot become two payments; a task closed by an
+  older build refusing it too; and a rejection still requiring a submission.
+- **4 unit tests** on which of the three things the tick does, including that
+  an unread session is nobody's own work — `"" === ""` is the one comparison
+  that would hand somebody else's task an approval.
 - **11 rules tests** on who may write what, including that the balance is
   beyond an admin's reach as well as a member's.
