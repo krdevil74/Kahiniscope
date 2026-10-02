@@ -3,7 +3,7 @@
  * members working on it, then their tasks, with a percentage at every level.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -21,11 +21,21 @@ import { craftLabel } from "../../src/lib/crafts";
 import { useSession } from "../../src/lib/auth";
 import {
   channelWord,
+  deleteEpisode,
+  deleteTask,
   nudgeFailedToast,
   nudgeTask,
   nudgeToast,
   setEpisodeStatus,
 } from "../../src/lib/actions";
+import { DangerButton } from "../../src/components/DangerButton";
+import {
+  deleteEpisodeLabel,
+  episodeDeletable,
+  episodeDeletedToast,
+  taskDeletable,
+  taskDeletedToast,
+} from "../../src/lib/removal.ts";
 import {
   approveOwnTask,
   ownApprovalToast,
@@ -92,6 +102,43 @@ export default function EpisodeDetail() {
       }
     } catch (err) {
       toast(err instanceof Error ? err.message : "That did not go through.");
+    }
+  }
+
+  /**
+   * Deleting one task. Armed by the × and confirmed by the pill that replaces
+   * the Nudge button, so a destructive tap is never one tap.
+   */
+  const [armed, setArmed] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const removableEpisode = episodeDeletable(episodeTasks);
+
+  async function removeTask(task: Task) {
+    if (removing) return;
+    setRemoving(true);
+    try {
+      const { type } = await deleteTask(task.id);
+      setArmed(null);
+      toast(taskDeletedToast(type));
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "That did not delete.");
+    } finally {
+      setRemoving(false);
+    }
+  }
+
+  async function removeEpisode() {
+    if (!episode || removing) return;
+    setRemoving(true);
+    try {
+      const gone = await deleteEpisode(episode.id);
+      toast(episodeDeletedToast(gone.code, gone.tasks));
+      // Nothing to come back to: this screen is about a document that is now
+      // deleted, so it goes rather than redrawing itself empty.
+      router.replace("/episodes");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "That did not delete.");
+      setRemoving(false);
     }
   }
 
@@ -299,6 +346,8 @@ export default function EpisodeDetail() {
               // there is no untick.
               const locked = tickActionFor(task, user?.uid ?? "") === "locked";
               const waiting = task.status === "submitted";
+              const removable = taskDeletable(task);
+              const armedHere = armed === task.id;
               return (
                 <View
                   key={task.id}
@@ -375,24 +424,120 @@ export default function EpisodeDetail() {
                     </AppText>
                   </View>
 
-                  <Button
-                    label={task.done ? "Done" : waiting ? "In review" : "Nudge"}
-                    size="compact"
-                    variant={task.done || waiting ? "quiet" : "yellow"}
-                    radius={7}
-                    // Nobody is chased about work that is in. Nudging somebody
-                    // who is waiting on this admin would be the app blaming them
-                    // for the admin's own queue.
-                    disabled={task.done || waiting}
-                    onPress={() => void nudge(task)}
-                    style={{ paddingVertical: 7, paddingHorizontal: 9 }}
-                    accessibilityLabel={`Nudge ${member.name} about ${task.type}`}
-                  />
+                  {/* Armed by the ×, which puts the confirmation where the
+                      Nudge button was — same slot, so nothing reflows under a
+                      thumb that is already moving. */}
+                  {armedHere ? (
+                    <Pressable
+                      onPress={() => void removeTask(task)}
+                      disabled={removing}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Confirm deleting ${task.type} from ${member.name}`}
+                      style={{
+                        paddingVertical: 7,
+                        paddingHorizontal: 10,
+                        borderRadius: 7,
+                        backgroundColor: colors.attention,
+                        minHeight: 30,
+                        justifyContent: "center",
+                      }}
+                    >
+                      <AppText
+                        weight="medium"
+                        style={{
+                          fontFamily: fontFamily.medium,
+                          fontSize: 11,
+                          lineHeight: 14,
+                          color: colors.white,
+                        }}
+                      >
+                        {removing ? "…" : "Delete?"}
+                      </AppText>
+                    </Pressable>
+                  ) : (
+                    <Button
+                      label={task.done ? "Done" : waiting ? "In review" : "Nudge"}
+                      size="compact"
+                      variant={task.done || waiting ? "quiet" : "yellow"}
+                      radius={7}
+                      // Nobody is chased about work that is in. Nudging somebody
+                      // who is waiting on this admin would be the app blaming them
+                      // for the admin's own queue.
+                      disabled={task.done || waiting}
+                      onPress={() => void nudge(task)}
+                      style={{ paddingVertical: 7, paddingHorizontal: 9 }}
+                      accessibilityLabel={`Nudge ${member.name} about ${task.type}`}
+                    />
+                  )}
+
+                  {/* Drawn even when it cannot be used: a control that vanishes
+                      leaves somebody hunting for it, and the label says why. */}
+                  <Pressable
+                    onPress={() => setArmed(armedHere ? null : task.id)}
+                    disabled={!removable.ok}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      removable.ok
+                        ? armedHere
+                          ? `Cancel deleting ${task.type}`
+                          : `Delete ${task.type} from ${member.name}`
+                        : `${task.type} cannot be deleted. ${removable.reason}`
+                    }
+                    accessibilityState={{ disabled: !removable.ok }}
+                    hitSlop={8}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: radii.pill,
+                      borderWidth: 1,
+                      borderColor: removable.ok ? colors.hairlineStronger : colors.hairline,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <AppText
+                      style={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: 13,
+                        lineHeight: 14,
+                        color: removable.ok ? colors.muted : colors.hairlineStronger,
+                      }}
+                    >
+                      ×
+                    </AppText>
+                  </Pressable>
                 </View>
               );
             })}
           </View>
         ))}
+
+        {/* The way back from a slate typed in by mistake. At the foot of the
+            screen rather than beside the status control: it is the last thing
+            anybody should reach, and reaching it should take a scroll. */}
+        <View
+          style={{
+            marginTop: 18,
+            paddingTop: 16,
+            borderTopWidth: 1,
+            borderTopColor: colors.hairline,
+            gap: 7,
+          }}
+        >
+          <SectionCaption>Delete</SectionCaption>
+          <AppText style={[type.metaXSmall, { color: colors.faint, lineHeight: 15 }]}>
+            {`Takes the episode, its ${episodeTasks.length === 1 ? "task" : "tasks"} and its script link with it. There is no undo.`}
+          </AppText>
+          <DangerButton
+            label={deleteEpisodeLabel(episodeTasks.length, false)}
+            armedLabel={deleteEpisodeLabel(episodeTasks.length, true)}
+            disabled={!removableEpisode.ok}
+            reason={removableEpisode.reason}
+            busy={removing}
+            onConfirm={() => void removeEpisode()}
+            accessibilityLabel={`Delete ${episode?.code ?? "this episode"}`}
+          />
+        </View>
       </View>
     </AppShell>
   );

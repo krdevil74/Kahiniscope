@@ -83,6 +83,45 @@ This is an addition, not something drawn in the prototype. It is built from the
 same tokens and reads as part of the form, but flagging it: **if you would
 rather episodes were created somewhere else, this is the piece to move.**
 
+## Deleting work
+
+Added 3 October, because the only way back from a mistyped episode or a task
+assigned to the wrong person was the Firebase console.
+
+Both are Cloud Functions (`functions/src/removal.ts`), and `firestore.rules` now
+refuses the direct delete for **both** — including for an admin, who could delete
+a task directly until this.
+
+| | Where | Guard |
+| --- | --- | --- |
+| A task | the × on its row, in episode detail | refused once the work has been accepted |
+| An episode | the foot of the episode screen | refused if any task on it has been accepted |
+
+**The line is money, and it is not a warning to click through.** Accepting work
+opens a payment record that names the task, so deleting an accepted task leaves a
+payment pointing at nothing — an amount owed to somebody for a job that is no
+longer in the database. The way to get finished work off the board is to mark the
+episode **broadcast**, which keeps every record and stops it being offered for new
+tasks.
+
+Neither check could live in a rule. For a task, a rule cannot ask "does a payment
+name this task" — payment ids are generated, so there is no path to construct.
+For an episode, Firestore does not cascade at all: `episodes/EP-12` would go and
+`episodes/EP-12/private/script` would stay, reachable and belonging to nothing,
+with the tasks pointing at an episode that is not there. So `deleteEpisode`
+removes the tasks, then everything under `private/` — listed rather than named,
+so a document added later is not left behind — then the episode. It looks for
+tasks under **both** shapes of `episodeId`, because a query on a string does not
+match a reference, and asking once would delete half an episode.
+
+Confirmation is two taps rather than a dialog, the same pattern as the sign-out
+pill, because this app has no modals anywhere. The episode's button names what
+goes with it ("Delete it and 9 tasks — tap again") since that is the part nobody
+expects, and it disarms itself after a few seconds rather than lying in wait for
+the next thumb.
+
+---
+
 ## Verified
 
 - **14 new unit tests** (64 in `mobile/` now) over the stepper's floor, the
@@ -96,6 +135,12 @@ rather episodes were created somewhere else, this is the piece to move.**
 - The whole form static-renders: every task type, the stepper, the ladder
   at `7d 4d 3d 2d 1d` with its sentence, the three channel tiles, and the
   button in its "Pick a person" state.
+
+Deleting is covered by **7 unit tests** on what may go and what the button says,
+**10 emulator tests** on both doors — the cascade reaching the script and the
+roster, both shapes of `episodeId` being found, accepted work refused with nothing
+on the episode touched, and a member getting nowhere by either route — and a
+**rules test** that the direct delete is now shut for an admin too.
 
 Also refactored: the Firestore value conversion moved to `src/lib/convert.ts`
 and is now duck-typed rather than using `instanceof`, which survives two copies

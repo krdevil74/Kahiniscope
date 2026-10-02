@@ -419,7 +419,29 @@ test("admin: runs the board — episodes and tasks", async () => {
   await assertSucceeds(setDoc(doc(db, "tasks", "t-new"), task({ assigneeUid: OTHER_MEMBER })));
   await assertSucceeds(getDocs(collection(db, "tasks")));
   await assertSucceeds(updateDoc(doc(db, "tasks", "t-theirs"), { done: true, doneAt: Timestamp.now() }));
-  await assertSucceeds(deleteDoc(doc(db, "tasks", "t-theirs")));
+});
+
+test("deleting is a callable, for both of them, including for an admin", async () => {
+  const db = asAdmin();
+
+  // A task delete used to be allowed here. It is not any more: accepting work
+  // opens a payment record naming the task, and a rule cannot ask "does a
+  // payment name this task" — payment ids are generated, so there is no path
+  // to construct. The check only exists in functions/src/removal.ts, so this
+  // is the door that has to be shut for it to mean anything.
+  await assertFails(deleteDoc(doc(db, "tasks", "t-mine")));
+
+  // An episode delete never worked, and now says so deliberately: Firestore
+  // does not cascade, so this would leave the tasks pointing at nothing and
+  // episodes/ep41/private/script reachable and belonging to nobody.
+  await assertFails(deleteDoc(doc(db, "episodes", "ep41")));
+
+  // Editing both still works — it is only removal that moved.
+  await assertSucceeds(updateDoc(doc(db, "episodes", "ep41"), { title: "Renamed" }));
+  await assertSucceeds(updateDoc(doc(db, "tasks", "t-mine"), { dueDate: Timestamp.now() }));
+
+  // And the subcollection under an episode is still the admin's to clear.
+  await assertSucceeds(deleteDoc(doc(db, "episodes", "ep41", "private", "script")));
 });
 
 test("admin: assigns a task exactly the way the Assign form writes one", async () => {
