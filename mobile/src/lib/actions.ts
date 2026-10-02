@@ -144,6 +144,37 @@ export async function createTask(task: NewTask): Promise<string> {
 }
 
 /**
+ * Delete a task.
+ *
+ * A callable, not a direct write — the rules refuse the delete now. The server
+ * will not remove a task that has been accepted, because a payment names it;
+ * lib/removal.ts makes the same check so the button can say so first.
+ */
+export async function deleteTask(taskId: string): Promise<{ type: string }> {
+  const call = httpsCallable<{ taskId: string }, { type: string }>(appFunctions(), "deleteTask");
+  const { data } = await call({ taskId });
+  return data;
+}
+
+/**
+ * Delete an episode, its tasks, and the script and roster under it.
+ *
+ * All of it or none of it: Firestore does not cascade, so an episode deleted
+ * any other way leaves tasks pointing at nothing and a `private/` subcollection
+ * no query will ever surface again.
+ */
+export async function deleteEpisode(
+  episodeId: string
+): Promise<{ code: string; title: string; tasks: number }> {
+  const call = httpsCallable<
+    { episodeId: string },
+    { code: string; title: string; tasks: number }
+  >(appFunctions(), "deleteEpisode");
+  const { data } = await call({ episodeId });
+  return data;
+}
+
+/**
  * Create an episode.
  *
  * The handoff has no screen for this — the nine it describes all assume the

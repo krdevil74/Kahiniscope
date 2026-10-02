@@ -181,7 +181,7 @@ service cloud.firestore {
       // a title against each row, and they cannot do that without the slate.
       allow read: if isApproved();
 
-      allow write: if isAdmin()
+      allow create, update: if isAdmin()
         && (!('status' in request.resource.data)
             // "production" and "released" are the two spellings written
             // before the life cycle existed. They are still accepted so an
@@ -189,6 +189,12 @@ service cloud.firestore {
             // did not touch; the app only ever writes the new pair.
             || request.resource.data.status in
                  ['in_progress', 'broadcast', 'production', 'released']);
+
+      // Deleting is a callable (functions/src/removal.ts), because Firestore
+      // does not cascade. An episode deleted from here would leave its tasks
+      // pointing at nothing and `private/script` reachable and belonging to
+      // nobody — a subcollection no query will ever surface again.
+      allow delete: if false;
 
       // ---- the script -----------------------------------------------------
       //
@@ -244,7 +250,14 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (isApproved() && resource.data.assigneeUid == uid());
 
-      allow create, delete: if isAdmin();
+      allow create: if isAdmin();
+
+      // Deleting is a callable too, for a different reason: accepting work
+      // opens a payment record that names the task, and a rule cannot ask
+      // "does a payment name this task" — payment ids are generated, so there
+      // is no path to construct. A task deleted out from under its payment is
+      // money owed for a job that is no longer in the database.
+      allow delete: if false;
 
       allow update: if isAdmin()
         // A member hands their own work in, and touches nothing else. They

@@ -25,10 +25,10 @@ import {
   GoogleAuthProvider,
   signInWithCredential,
 } from "firebase/auth";
+import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/functions";
 import {
   collection,
   connectFirestoreEmulator,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -57,7 +57,11 @@ function client(name) {
   connectAuthEmulator(auth, `http://${authHost}`, { disableWarnings: true });
   const db = getFirestore(app);
   connectFirestoreEmulator(db, fsHost, Number(fsPort));
-  return { app, auth, db };
+  // Clearing tasks between runs goes through the deleteTask callable now; the
+  // rules no longer let any client delete one directly.
+  const functions = getFunctions(app, "asia-south2");
+  connectFunctionsEmulator(functions, fsHost, 5001);
+  return { app, auth, db, functions };
 }
 
 async function signIn(ctx, { sub, email, name }) {
@@ -111,7 +115,17 @@ async function plantTask(id, { daysSinceAssigned, remindersSent = 0, daysSinceRe
 
 async function clearTasks() {
   const tasks = await getDocs(collection(owner.db, "tasks"));
-  await Promise.all(tasks.docs.map((d) => deleteDoc(d.ref)));
+  // Deleting a task is a callable now and the rules refuse the direct write,
+  // because accepting work opens a payment that names the task. This suite
+  // plants one task that is `done`, which that callable rightly refuses — so
+  // the scaffolding reopens it first. Nothing here is ever accepted, so there
+  // is never a payment to orphan.
+  for (const d of tasks.docs) {
+    if (d.data().done === true || d.data().status === "approved" || d.data().status === "paid") {
+      await updateDoc(d.ref, { done: false, doneAt: null, status: "open" });
+    }
+    await httpsCallable(owner.functions, "deleteTask")({ taskId: d.id });
+  }
   const log = await getDocs(collection(owner.db, "reminderLog"));
   // reminderLog is closed to clients, so it is left to accumulate; tests
   // filter by task instead of assuming an empty collection.

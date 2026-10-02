@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: **30 September 2026** (payment screenshots)
+Last updated: **3 October 2026** (deleting work)
 
 A running record of where this stands and what is left. Written to be read
 cold, after a gap, by someone who has forgotten the details.
@@ -34,7 +34,7 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 253 backend, 267 app.** All green. `npm test` at the root runs the
+**Tests: 264 backend, 274 app.** All green. `npm test` at the root runs the
 backend suites (unit + rules + six emulator suites); `npm run verify` in
 `mobile/` runs typecheck, unit tests and a render of all 17 routes.
 
@@ -244,6 +244,18 @@ Detail and the state table: `docs/13-payments.md`.
   every total in the app loads payment documents, and nobody should pay to fetch
   a JPEG to add up a column. The payment keeps two dates so no screen has to load
   an image to know whether to offer the download.
+
+**Deleting work, 3 October.** A mistyped episode or a task on the wrong person
+could only be undone from the Firebase console. Now: a × on each task row in
+episode detail, and a delete at the foot of the episode screen that takes the
+episode, its tasks, its script link and its roster together — Firestore does not
+cascade, so that has to be a function. Both refuse anything that has been
+accepted, because a payment record names the task and deleting it would leave
+money owed for a job not in the database; the answer for finished work is to mark
+the episode broadcast. `firestore.rules` now refuses the direct delete of a task
+for everybody, admins included — the guard only means something if that door is
+shut. Two new callables: `deleteTask`, `deleteEpisode`, and a new emulator suite
+(`npm run test:removal`).
 
 **The admin's Payments tab was rebuilt on 30 September so it stops getting
 slower.** It used to subscribe to the whole `payments` collection and add it up

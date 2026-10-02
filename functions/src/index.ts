@@ -33,5 +33,6 @@ export {
   removeContact,
   updateContact,
 } from "./contacts";
+export { deleteEpisode, deleteTask } from "./removal";
 export { purgeOldData } from "./retention";
 export { syncEpisodeRosterOnTaskWrite } from "./episode-roster";
