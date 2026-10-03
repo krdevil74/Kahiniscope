@@ -20,6 +20,7 @@ function episode(overrides: Partial<Episode> = {}): Episode {
     code: "EP-41",
     title: "রক্তমুখী নীলা",
     airDate: null,
+    broadcastAt: null,
     status: "in_progress",
     ...overrides,
   };

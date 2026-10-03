@@ -1,8 +1,18 @@
 /**
- * Episodes — the slate. One percentage for everything, then one per episode.
+ * Episodes — the slate, in two halves.
+ *
+ * It used to load every episode ever made and every task ever assigned, to put
+ * two numbers in a subtitle and draw one percentage. That is a page which gets
+ * slower every month a channel runs, and the numbers it was adding up are the
+ * two on the tiles below.
+ *
+ * Now nothing is loaded until it is asked for. Two counts come back as
+ * aggregations; opening **In progress** subscribes to the slate, which is
+ * bounded by what is in production; opening **Broadcast** asks for one month at
+ * a time. Tasks are fetched only for the episodes actually on screen.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
@@ -10,33 +20,75 @@ import { AppShell } from "../src/components/AppShell";
 import { AppText } from "../src/components/AppText";
 import { Card } from "../src/components/Card";
 import { EmptyState } from "../src/components/EmptyState";
+import { MonthFilter, YearFilter } from "../src/components/MonthFilter";
 import { ProgressBar } from "../src/components/ProgressBar";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { StatusPill } from "../src/components/StatusPill";
 import { useSession } from "../src/lib/auth";
 import { byAirDate, completionOf, overdueCount, tasksForEpisode } from "../src/lib/completion.ts";
-import { countByStatus, isBroadcast, isInProgress } from "../src/lib/episode-status.ts";
-import { useEpisodes, useNow, useTasks } from "../src/lib/data";
+import {
+  useBroadcastInMonth,
+  useEarliestBroadcastYear,
+  useEpisodeCounts,
+  useEpisodesInProgress,
+  useNow,
+  useTasksForEpisodes,
+} from "../src/lib/data";
+import {
+  broadcastGapNote,
+  listedSummary,
+  monthEmptyNote,
+  tileLabel,
+  type SlateHalf,
+} from "../src/lib/slate.ts";
+import { lastMonths, monthLong, monthsOfYear, yearsFrom, type MonthSlot } from "../src/lib/months.ts";
 import type { Episode, Task } from "../src/lib/model";
-import { airLabel, pluralise } from "../src/lib/format.ts";
-import { colors, fontFamily, layout, radii, spacing } from "../src/theme/tokens";
+import { airLabel } from "../src/lib/format.ts";
+import { colors, fontFamily, layout, radii, spacing, MIN_TAP_TARGET } from "../src/theme/tokens";
 import { type } from "../src/theme/typography";
 
 export default function Episodes() {
   const now = useNow();
   const { isAdmin } = useSession();
 
-  const { data: episodes, loading } = useEpisodes(isAdmin);
-  const { data: tasks } = useTasks({ enabled: isAdmin });
+  /** Neither half is open until one is tapped — that is the whole point. */
+  const [half, setHalf] = useState<SlateHalf | null>(null);
+  const [year, setYear] = useState<number | null>(null);
+  const [month, setMonth] = useState<MonthSlot | null>(null);
 
-  // In progress first, then what has gone out. Both keep their air-date
-  // order inside the group: the slate is a schedule, and a broadcast episode
-  // is still worth opening — its work and its payments do not stop existing.
-  const ordered = useMemo(() => byAirDate(episodes), [episodes]);
-  const live = useMemo(() => ordered.filter(isInProgress), [ordered]);
-  const aired = useMemo(() => ordered.filter(isBroadcast), [ordered]);
-  const counts = useMemo(() => countByStatus(episodes), [episodes]);
-  const slate = useMemo(() => completionOf(tasks), [tasks]);
+  const { data: counts, loading: countsLoading } = useEpisodeCounts(isAdmin);
+
+  const { data: inProgress, loading: slateLoading } = useEpisodesInProgress(
+    isAdmin && half === "in-progress"
+  );
+  const { data: broadcast, loading: monthLoading } = useBroadcastInMonth(
+    half === "broadcast" ? month : null,
+    isAdmin
+  );
+  const earliestYear = useEarliestBroadcastYear(isAdmin && half === "broadcast");
+
+  const listed = useMemo<Episode[]>(
+    () => (half === "in-progress" ? byAirDate(inProgress) : broadcast),
+    [half, inProgress, broadcast]
+  );
+
+  // Only the episodes on screen, and only once there are some.
+  const listedIds = useMemo(() => listed.map((e) => e.id), [listed]);
+  const { data: tasks } = useTasksForEpisodes(listedIds, isAdmin);
+  const completion = useMemo(() => completionOf(tasks), [tasks]);
+
+  const years = useMemo(() => yearsFrom(earliestYear, now), [earliestYear, now]);
+  const months = useMemo(
+    () => (year === null ? lastMonths(now) : monthsOfYear(year, now)),
+    [year, now]
+  );
+
+  function openHalf(next: SlateHalf) {
+    setHalf((current) => (current === next ? null : next));
+    // Opening Broadcast with no month chosen would be an empty list and no
+    // reason for it, so it starts on the month somebody is most likely to want.
+    if (next === "broadcast" && !month) setMonth(months[months.length - 1] ?? null);
+  }
 
   return (
     <AppShell
@@ -46,75 +98,78 @@ export default function Episodes() {
       showFab
     >
       <View style={{ padding: spacing.screen, gap: spacing.cards }}>
-        {/* Slate completion. A violet fill rather than the near-black the
-            header already is: two near-black blocks stacked read as one, and
-            the percentage on it was the brand violet — which is pitched for
-            white and disappeared against it. */}
-        <View
-          style={{
-            backgroundColor: colors.brandFill,
-            borderRadius: radii.cardHero,
-            paddingVertical: 16,
-            paddingHorizontal: 17,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-end",
-              justifyContent: "space-between",
-              gap: spacing.card,
-            }}
-          >
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <SectionCaption onInk>Slate completion</SectionCaption>
-              <AppText
-                style={{
-                  fontFamily: fontFamily.regular,
-                  fontSize: 11,
-                  lineHeight: 15.4,
-                  color: "rgba(255,255,255,.82)",
-                  marginTop: 7,
-                }}
-              >
-                {`${slate.done} of ${slate.total} tasks closed across ${pluralise(episodes.length, "episode")}`}
-              </AppText>
-            </View>
-            <AppText
-              style={[
-                type.slatePercent,
-                { fontFamily: fontFamily.monoSemibold, lineHeight: 42, color: colors.white },
-              ]}
-            >
-              {`${slate.percent}%`}
-            </AppText>
-          </View>
-
-          <ProgressBar
-            value={slate.percent / 100}
-            height={layout.progressBarLarge}
-            fill={colors.white}
-            track="rgba(255,255,255,.26)"
-            style={{ marginTop: spacing.card }}
+        {/* The two halves. Counts come from two aggregations, so this pair
+            costs the same whether the channel has made ten episodes or ten
+            thousand. */}
+        <View style={{ flexDirection: "row", gap: spacing.cardsTight }}>
+          <SlateTile
+            label={tileLabel("in-progress")}
+            count={counts.inProgress}
+            loading={countsLoading}
+            open={half === "in-progress"}
+            onPress={() => openHalf("in-progress")}
+          />
+          <SlateTile
+            label={tileLabel("broadcast")}
+            count={counts.broadcast}
+            loading={countsLoading}
+            open={half === "broadcast"}
+            onPress={() => openHalf("broadcast")}
           />
         </View>
 
-        {ordered.length === 0 && !loading ? (
+        {half === null ? (
+          <AppText style={[type.metaXSmall, { color: colors.faint, paddingHorizontal: 2 }]}>
+            Tap either half to list it. Nothing is loaded until you do.
+          </AppText>
+        ) : null}
+
+        {/* Broadcast is filtered by when it went out, so it needs a month. */}
+        {half === "broadcast" ? (
+          <View style={{ gap: 8 }}>
+            <YearFilter
+              years={years}
+              selected={year}
+              onSelect={(next) => {
+                setYear(next);
+                setMonth(null);
+              }}
+            />
+            <MonthFilter months={months} selected={month} onSelect={setMonth} />
+            {broadcastGapNote(counts.broadcast, counts.dated) ? (
+              <AppText style={[type.metaXSmall, { color: colors.faint, lineHeight: 15 }]}>
+                {broadcastGapNote(counts.broadcast, counts.dated)}
+              </AppText>
+            ) : null}
+          </View>
+        ) : null}
+
+        {half !== null ? (
+          <SectionCaption>
+            {half === "broadcast" && month
+              ? monthLong(month)
+              : listedSummary(half, listed.length, completion)}
+          </SectionCaption>
+        ) : null}
+
+        {half === "broadcast" && month && listed.length > 0 ? (
+          <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: -6 }]}>
+            {listedSummary(half, listed.length, completion)}
+          </AppText>
+        ) : null}
+
+        {half !== null && listed.length === 0 && !slateLoading && !monthLoading ? (
           <EmptyState
-            title="No episodes yet"
-            detail="Episodes appear here as soon as the first task is assigned to one."
+            title={half === "in-progress" ? "Nothing in progress" : "Nothing that month"}
+            detail={
+              half === "in-progress"
+                ? "Episodes appear here as soon as the first task is assigned to one."
+                : monthEmptyNote(month, counts.broadcast, counts.dated)
+            }
           />
         ) : null}
 
-        {live.map((episode) => (
-          <EpisodeCard key={episode.id} episode={episode} tasks={tasks} now={now} />
-        ))}
-
-        {aired.length ? (
-          <SectionCaption style={{ marginTop: spacing.cards }}>Broadcast</SectionCaption>
-        ) : null}
-
-        {aired.map((episode) => (
+        {listed.map((episode) => (
           <EpisodeCard key={episode.id} episode={episode} tasks={tasks} now={now} />
         ))}
       </View>
@@ -122,6 +177,67 @@ export default function Episodes() {
   );
 }
 
+/**
+ * Half the row, and a count.
+ *
+ * The open one fills, so which list is on screen is answered by the tile rather
+ * than by reading the caption under it.
+ */
+function SlateTile({
+  label,
+  count,
+  loading,
+  open,
+  onPress,
+}: {
+  label: string;
+  count: number;
+  loading: boolean;
+  open: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Card
+      onPress={onPress}
+      accessibilityLabel={`${count} ${label}. ${open ? "Hide" : "Show"} them`}
+      style={{
+        flex: 1,
+        minWidth: 0,
+        padding: spacing.card,
+        minHeight: MIN_TAP_TARGET + 28,
+        justifyContent: "center",
+        backgroundColor: open ? colors.bar : colors.surface,
+        borderRadius: radii.card,
+      }}
+    >
+      <AppText
+        style={{
+          fontFamily: fontFamily.monoMedium,
+          fontSize: 9,
+          lineHeight: 11,
+          letterSpacing: 1.1,
+          textTransform: "uppercase",
+          color: open ? colors.onInkMuted : colors.faint,
+        }}
+      >
+        {label}
+      </AppText>
+      <AppText
+        weight="semibold"
+        style={{
+          fontFamily: fontFamily.extrabold,
+          fontSize: 32,
+          lineHeight: 36,
+          letterSpacing: -1.4,
+          marginTop: 4,
+          color: open ? colors.white : colors.ink,
+        }}
+      >
+        {loading ? "—" : count}
+      </AppText>
+    </Card>
+  );
+}
 
 /**
  * One episode. The same card in both groups — a broadcast episode is not a

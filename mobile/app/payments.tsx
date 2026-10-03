@@ -40,7 +40,8 @@ import {
   usePendingPayments,
   useTeam,
 } from "../src/lib/data";
-import { MonthlyPaidChart, YearFilter } from "../src/components/MonthlyPaidChart";
+import { MonthlyPaidChart } from "../src/components/MonthlyPaidChart";
+import { YearFilter } from "../src/components/MonthFilter";
 import {
   countOf,
   lastMonths,

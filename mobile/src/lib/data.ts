@@ -29,14 +29,10 @@ import {
 import { db } from "./firebase";
 import { toBool, toDate, toId, toNumber, toStringArray, toStringOrNull } from "./convert.ts";
 import { craftsFrom } from "./crafts";
-import { episodeStatusFrom } from "./episode-status.ts";
+import { episodeStatusFrom, storedValuesFor } from "./episode-status.ts";
 import { ratesFrom, taskStatusFrom, toAdvance, toPayment } from "./payment-convert.ts";
-import {
-  monthRange,
-  monthKey,
-  type MonthSlot,
-  type MonthTotal,
-} from "./payment-history.ts";
+import { monthKey, monthRange, type MonthSlot } from "./months.ts";
+import type { MonthTotal } from "./payment-history.ts";
 import {
   DEFAULT_SETTINGS,
   type ChannelId,
@@ -61,6 +57,7 @@ function toEpisode(snap: QueryDocumentSnapshot<DocumentData>): Episode {
     title: d.title ?? "",
     airDate: toDate(d.airDate),
     status: episodeStatusFrom(d.status),
+    broadcastAt: toDate(d.broadcastAt),
   };
 }
 
@@ -258,6 +255,247 @@ export function useTasks(options: { assigneeUid?: string; enabled?: boolean } = 
     [assigneeUid]
   );
   return useCollection("tasks", toTask, constraints, enabled);
+}
+
+/**
+ * How many episodes are on the slate, and how many have gone out.
+ *
+ * Two `count()` aggregations rather than the collection. The Episodes screen
+ * used to load every episode ever made to put two numbers in its subtitle,
+ * which is a page that gets slower every month a channel runs.
+ *
+ * `dated` is the third number and the quiet one: how many broadcast episodes
+ * carry a `broadcastAt`. An episode marked broadcast before that field existed
+ * has none, and an aggregation ordered by a field skips the documents that lack
+ * it — so the gap between `broadcast` and `dated` is exactly how many episodes
+ * the month filter cannot see, and the screen says so rather than hiding them.
+ */
+export function useEpisodeCounts(
+  enabled = true
+): Live<{ inProgress: number; broadcast: number; dated: number }> & { reload: () => void } {
+  const [data, setData] = useState({ inProgress: 0, broadcast: 0, dated: 0 });
+  const [loading, setLoading] = useState(enabled);
+  const [error, setError] = useState<Error | null>(null);
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    let live = true;
+    setLoading(true);
+
+    const episodes = collection(db, "episodes");
+    const counted = (...constraints: QueryConstraint[]) =>
+      getAggregateFromServer(query(episodes, ...constraints), { n: count() });
+
+    Promise.all([
+      counted(where("status", "in", storedValuesFor("in_progress"))),
+      counted(where("status", "in", storedValuesFor("broadcast"))),
+      counted(where("status", "in", storedValuesFor("broadcast")), orderBy("broadcastAt")),
+    ])
+      .then(([inProgress, broadcast, dated]) => {
+        if (!live) return;
+        setData({
+          inProgress: Number(inProgress.data().n ?? 0),
+          broadcast: Number(broadcast.data().n ?? 0),
+          dated: Number(dated.data().n ?? 0),
+        });
+        setLoading(false);
+        setError(null);
+      })
+      .catch((err: Error) => {
+        if (!live) return;
+        console.warn("episode counts", err);
+        setError(err);
+        setLoading(false);
+      });
+
+    return () => {
+      live = false;
+    };
+  }, [enabled, version]);
+
+  return { data, loading, error, reload: () => setVersion((v) => v + 1) };
+}
+
+/**
+ * The slate: episodes still being worked on.
+ *
+ * A live listener, because this is the working set — an episode marked
+ * broadcast on another admin's phone should leave this list — and it is bounded
+ * by what is in production rather than by everything ever made.
+ */
+export function useEpisodesInProgress(enabled = true): Live<Episode[]> {
+  const constraints = useMemo(
+    () => [where("status", "in", storedValuesFor("in_progress"))],
+    []
+  );
+  return useCollection("episodes", toEpisode, constraints, enabled);
+}
+
+/**
+ * The episodes that went out in one month, fetched when somebody opens it.
+ *
+ * On `broadcastAt` rather than `airDate`: the question is which episodes went
+ * out in October, and an episode due in September but marked broadcast in
+ * October went out in October. An episode with no `broadcastAt` is invisible
+ * here, which is what the counts above exist to say out loud.
+ */
+export function useBroadcastInMonth(slot: MonthSlot | null, enabled = true): Live<Episode[]> {
+  const [data, setData] = useState<Episode[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const key = slot ? monthKey(slot) : "";
+
+  useEffect(() => {
+    if (!enabled || !slot) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+    let live = true;
+    setLoading(true);
+    const { start, end } = monthRange(slot);
+
+    getDocs(
+      query(
+        collection(db, "episodes"),
+        where("status", "in", storedValuesFor("broadcast")),
+        where("broadcastAt", ">=", Timestamp.fromDate(start)),
+        where("broadcastAt", "<", Timestamp.fromDate(end)),
+        orderBy("broadcastAt", "desc")
+      )
+    )
+      .then((snap) => {
+        if (!live) return;
+        setData(snap.docs.map(toEpisode));
+        setLoading(false);
+        setError(null);
+      })
+      .catch((err: Error) => {
+        if (!live) return;
+        console.warn("broadcast episodes", err);
+        setError(err);
+        setLoading(false);
+      });
+
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, enabled]);
+
+  return { data, loading, error };
+}
+
+/** The month of the first episode to go out, for the year filter. */
+export function useEarliestBroadcastYear(enabled = true): number | null {
+  const [year, setYear] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    getDocs(
+      query(
+        collection(db, "episodes"),
+        where("status", "in", storedValuesFor("broadcast")),
+        orderBy("broadcastAt", "asc"),
+        fsLimit(1)
+      )
+    )
+      .then((snap) => {
+        if (!live || snap.empty) return;
+        const first = toEpisode(snap.docs[0]).broadcastAt;
+        if (first) setYear(first.getFullYear());
+      })
+      .catch((err) => console.warn("earliest broadcast", err));
+    return () => {
+      live = false;
+    };
+  }, [enabled]);
+
+  return year;
+}
+
+/**
+ * The tasks belonging to a handful of episodes, for the cards on screen.
+ *
+ * Two queries because `episodeId` is a DocumentReference on everything the
+ * Assign form wrote and a string on everything the seed wrote, and a query on
+ * one shape does not match the other. Chunked at 30 because that is the limit
+ * on `in`, and only ever asked for the episodes actually listed — which is what
+ * keeps a page of ten episodes costing the tasks of ten episodes.
+ */
+export function useTasksForEpisodes(
+  episodeIds: readonly string[],
+  enabled = true
+): Live<Task[]> {
+  const [data, setData] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const key = [...episodeIds].sort().join(",");
+
+  useEffect(() => {
+    if (!enabled || episodeIds.length === 0) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+    let live = true;
+    setLoading(true);
+
+    const ids = [...episodeIds];
+    const chunks: string[][] = [];
+    for (let from = 0; from < ids.length; from += 30) chunks.push(ids.slice(from, from + 30));
+
+    Promise.all(
+      chunks.flatMap((chunk) => [
+        getDocs(query(collection(db, "tasks"), where("episodeId", "in", chunk))),
+        getDocs(
+          query(
+            collection(db, "tasks"),
+            where(
+              "episodeId",
+              "in",
+              chunk.map((id) => doc(db, "episodes", id))
+            )
+          )
+        ),
+      ])
+    )
+      .then((snaps) => {
+        if (!live) return;
+        const seen = new Set<string>();
+        const tasks: Task[] = [];
+        for (const snap of snaps) {
+          for (const task of snap.docs) {
+            if (seen.has(task.id)) continue;
+            seen.add(task.id);
+            tasks.push(toTask(task));
+          }
+        }
+        setData(tasks);
+        setLoading(false);
+        setError(null);
+      })
+      .catch((err: Error) => {
+        if (!live) return;
+        console.warn("tasks for episodes", err);
+        setError(err);
+        setLoading(false);
+      });
+
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, enabled]);
+
+  return { data, loading, error };
 }
 
 /** Everyone, pending included. The Team screen filters; Requests does not. */

@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: **3 October 2026** (deleting work)
+Last updated: **3 October 2026** (the Episodes slate)
 
 A running record of where this stands and what is left. Written to be read
 cold, after a gap, by someone who has forgotten the details.
@@ -34,7 +34,7 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 264 backend, 274 app.** All green. `npm test` at the root runs the
+**Tests: 271 backend, 280 app.** All green. `npm test` at the root runs the
 backend suites (unit + rules + six emulator suites); `npm run verify` in
 `mobile/` runs typecheck, unit tests and a render of all 17 routes.
 
@@ -244,6 +244,17 @@ Detail and the state table: `docs/13-payments.md`.
   every total in the app loads payment documents, and nobody should pay to fetch
   a JPEG to add up a column. The payment keeps two dates so no screen has to load
   an image to know whether to offer the download.
+
+**The Episodes screen was rebuilt on 3 October so it stops getting slower.** It
+loaded every episode and every task to draw two numbers; it is now two tiles over
+bounded queries — **In progress** opens the slate live, **Broadcast** asks for one
+month at a time, and the counts are aggregations. Broadcast episodes filter on a
+new `broadcastAt`, stamped by the status switch, because an episode due in August
+and marked broadcast in September went out in September. **Run the Backfill
+broadcast dates workflow after deploying**: every episode marked broadcast before
+this has no such date and is invisible under every month until it does. The
+screen says how many those are rather than hiding them. Needs the new composite
+index on `episodes` (`status`, `broadcastAt`).
 
 **Deleting work, 3 October.** A mistyped episode or a task on the wrong person
 could only be undone from the Firebase console. Now: a × on each task row in
