@@ -109,6 +109,16 @@ export interface Episode {
   title: string;
   airDate: Date | null;
   status: EpisodeStatus;
+  /**
+   * When it was marked broadcast, which is not the same as when it was due to
+   * air: an episode marked a week late went out a week late. Written by the
+   * status switch, and the field the month filter on the Episodes screen reads.
+   *
+   * Null on an episode that is still in progress, and on one marked broadcast
+   * before this field existed — `functions/scripts/backfill-broadcast-dates.mjs`
+   * fills those in from the air date.
+   */
+  broadcastAt: Date | null;
 }
 
 /**

@@ -34,7 +34,7 @@ import {
   type MonthTotal,
 } from "../lib/payment-history.ts";
 import { money } from "../lib/payments.ts";
-import { colors, fontFamily, radii, MIN_TAP_TARGET } from "../theme/tokens";
+import { colors, fontFamily } from "../theme/tokens";
 import { type } from "../theme/typography";
 
 /** Tall enough to show a shape, short enough to leave the list above the fold. */
@@ -164,66 +164,6 @@ export function MonthlyPaidChart({
           </AppText>
         ))}
       </View>
-    </View>
-  );
-}
-
-/**
- * The year chips above the chart, and the way back to the rolling window.
- *
- * One row, above the plot, as a filter should be. "Last 12 months" is first
- * because it is the default and the thing somebody wants back after wandering
- * into 2025.
- */
-export function YearFilter({
-  years,
-  selected,
-  onSelect,
-}: {
-  years: readonly number[];
-  /** `null` is the rolling twelve months rather than a calendar year. */
-  selected: number | null;
-  onSelect: (year: number | null) => void;
-}) {
-  const options: { label: string; value: number | null }[] = [
-    { label: "Last 12 months", value: null },
-    ...years.map((year) => ({ label: String(year), value: year })),
-  ];
-
-  return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-      {options.map((option) => {
-        const on = option.value === selected;
-        return (
-          <Pressable
-            key={option.label}
-            onPress={() => onSelect(option.value)}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: on }}
-            style={{
-              paddingVertical: 7,
-              paddingHorizontal: 11,
-              borderRadius: radii.pill,
-              borderWidth: 1,
-              borderColor: on ? colors.ink : colors.hairlineStrong,
-              backgroundColor: on ? colors.ink : colors.surface,
-              minHeight: Math.min(34, MIN_TAP_TARGET),
-              justifyContent: "center",
-            }}
-          >
-            <AppText
-              style={{
-                fontFamily: fontFamily.monoMedium,
-                fontSize: 10.5,
-                lineHeight: 13,
-                color: on ? colors.white : colors.muted,
-              }}
-            >
-              {option.label}
-            </AppText>
-          </Pressable>
-        );
-      })}
     </View>
   );
 }

@@ -28,6 +28,26 @@ export function episodeStatusFrom(raw: unknown): EpisodeStatus {
   return raw === "broadcast" || raw === "released" ? "broadcast" : "in_progress";
 }
 
+/**
+ * The values actually on the documents, for the queries that cannot filter in
+ * memory.
+ *
+ * Reading them one at a time, `episodeStatusFrom` folds the old spellings into
+ * the new pair. A Firestore query cannot: `where status == "in_progress"` does
+ * not match an episode stored as "production", and there are real ones in the
+ * live database. So anything asking the server for a slice of episodes asks for
+ * both spellings, and these are the lists it asks with.
+ *
+ * `in` takes up to 30 values, so there is room for a third spelling if one ever
+ * turns up.
+ */
+export const IN_PROGRESS_VALUES = ["in_progress", "production"] as const;
+export const BROADCAST_VALUES = ["broadcast", "released"] as const;
+
+export function storedValuesFor(status: EpisodeStatus): readonly string[] {
+  return status === "broadcast" ? BROADCAST_VALUES : IN_PROGRESS_VALUES;
+}
+
 export function isBroadcast(episode: Episode): boolean {
   return episode.status === "broadcast";
 }

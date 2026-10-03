@@ -208,7 +208,17 @@ export async function setEpisodeStatus(
   episodeId: string,
   status: EpisodeStatus
 ): Promise<void> {
-  await updateDoc(doc(db, "episodes", episodeId), { status });
+  await updateDoc(doc(db, "episodes", episodeId), {
+    status,
+    // When it went out, which is not the air date: an episode marked broadcast
+    // a week late went out a week late, and the month filter on the Episodes
+    // screen is asking about the second thing. The server's clock, because a
+    // phone with the wrong date would file it under the wrong month.
+    //
+    // Cleared on the way back, so an episode reopened and broadcast again
+    // carries the date it actually went out rather than the first attempt.
+    broadcastAt: status === "broadcast" ? serverTimestamp() : null,
+  });
 }
 
 /**

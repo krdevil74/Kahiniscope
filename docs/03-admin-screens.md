@@ -78,6 +78,64 @@ month and weekday names are spelled out in `format.ts`.
    so the scheduled job's idempotency guard — has a reminder already gone out
    today? — covers a manual nudge too and nobody is chased twice in one day.
 
+## The Episodes screen, rebuilt 3 October
+
+It loaded every episode ever made and every task ever assigned, to put two
+numbers in a subtitle and draw one percentage. That is a page which gets slower
+every month a channel runs, and the numbers it was adding up are the two now on
+the tiles.
+
+**Two halves, and nothing loads until one is tapped.**
+
+| | What it opens | The query |
+| --- | --- | --- |
+| **In progress** | the slate, air-date order | live, `status in [in_progress, production]` |
+| **Broadcast** | one month, newest first | `status in [broadcast, released]` + a `broadcastAt` range |
+
+The two counts on the tiles are `count()` aggregations, so the pair costs the
+same whether the channel has made ten episodes or ten thousand. Tasks are
+fetched only for the episodes actually listed — two queries, because `episodeId`
+is a DocumentReference on everything the Assign form wrote and a string on
+everything the seed wrote, and a query on one shape does not match the other.
+
+### `broadcastAt`, and why not `airDate`
+
+Broadcast episodes are filtered by **when they were marked broadcast**, not by
+when they were due to air. An episode due on the 20th of August and marked
+broadcast on the 3rd of September went out in September, and September is where
+somebody looking for it will look.
+
+That date is stamped by the status switch, from the server's clock, and cleared
+when an episode is reopened — so one reopened and broadcast again carries the
+date it actually went out rather than the first attempt.
+
+### The episodes that have no date
+
+Every episode marked broadcast **before** this shipped has no `broadcastAt`, and
+a Firestore query ordered by a field skips the documents that lack it. Those
+episodes would be invisible under every month, silently.
+
+So the screen counts them: a third aggregation counts broadcast episodes that do
+carry the field, and the difference is reported under the month chips — "4 of 11
+broadcast episodes have no broadcast date and will not appear in any month."
+
+`functions/scripts/backfill-broadcast-dates.mjs` closes the gap, dating them from
+their air date, and there is a **Backfill broadcast dates** workflow to run it
+against production. It leaves any episode that already has a date alone, and
+names rather than invents a date for an episode that has no air date either — a
+wrong date in a month filter is worse than an episode honestly undatable.
+
+### Both spellings, again
+
+`where status == "in_progress"` does not match an episode stored as
+`"production"`, and there are real ones in the live database. Every query here
+asks for both spellings, from the one place they are named —
+`IN_PROGRESS_VALUES` and `BROADCAST_VALUES` in `src/lib/episode-status.ts`.
+Reading a single document still goes through `episodeStatusFrom`, which folds the
+old pair into the new one.
+
+---
+
 ## Navigation
 
 The bottom bar is drawn over the content rather than beside it, because in the
