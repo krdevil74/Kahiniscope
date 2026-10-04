@@ -130,6 +130,25 @@ export interface Live<T> {
   error: Error | null;
 }
 
+/**
+ * Once more before giving up: most of what goes wrong out here is a moment
+ * long, and a screen that gives up on the first refusal tells somebody their
+ * work is gone when it is not.
+ */
+async function retrying<T>(attempt: () => Promise<T>, delayMs = 400): Promise<T> {
+  try {
+    return await attempt();
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return attempt();
+  }
+}
+
+/** A count that answered, or nothing — which is not the same number as zero. */
+function settled(result: PromiseSettledResult<number>): number | null {
+  return result.status === "fulfilled" ? result.value : null;
+}
+
 function useCollection<T>(
   path: string,
   convert: (snap: QueryDocumentSnapshot<DocumentData>) => T,
@@ -257,23 +276,50 @@ export function useTasks(options: { assigneeUid?: string; enabled?: boolean } = 
   return useCollection("tasks", toTask, constraints, enabled);
 }
 
+export interface SlateCounts {
+  /** `null` is "could not be counted", which is not the same number as zero. */
+  inProgress: number | null;
+  broadcast: number | null;
+  /** How many broadcast episodes carry a `broadcastAt`, and so can be filtered. */
+  dated: number | null;
+  /** Every episode, whatever is written on it — the check on the two halves. */
+  total: number | null;
+}
+
 /**
- * How many episodes are on the slate, and how many have gone out.
+ * How many episodes are on the slate, how many have gone out, and how many of
+ * those the month filter can actually see.
  *
- * Two `count()` aggregations rather than the collection. The Episodes screen
+ * Four `count()` aggregations rather than the collection. The Episodes screen
  * used to load every episode ever made to put two numbers in its subtitle,
  * which is a page that gets slower every month a channel runs.
  *
- * `dated` is the third number and the quiet one: how many broadcast episodes
- * carry a `broadcastAt`. An episode marked broadcast before that field existed
- * has none, and an aggregation ordered by a field skips the documents that lack
- * it — so the gap between `broadcast` and `dated` is exactly how many episodes
- * the month filter cannot see, and the screen says so rather than hiding them.
+ * `dated` is the quiet one: how many broadcast episodes carry a `broadcastAt`.
+ * An episode marked broadcast before that field existed has none, and an
+ * aggregation ordered by a field skips the documents that lack it — so the gap
+ * between `broadcast` and `dated` is exactly how many episodes the month filter
+ * cannot see, and the screen says so rather than hiding them.
+ *
+ * `total` is the same idea one level up. Both halves ask the server for named
+ * status spellings, so an episode stored as anything else is in neither query
+ * and appears nowhere at all — where before the split it was folded into "in
+ * progress" on the phone and at least visible. `total` is what lets the screen
+ * notice that and say it.
+ *
+ * Gathered with `allSettled` and each one retried, because these four were a
+ * `Promise.all`: one refusal zeroed all of them, and a tile reading 0 is a
+ * statement about the channel rather than about the connection. A count that
+ * did not answer comes back as `null` and is drawn as a dash.
  */
 export function useEpisodeCounts(
   enabled = true
-): Live<{ inProgress: number; broadcast: number; dated: number }> & { reload: () => void } {
-  const [data, setData] = useState({ inProgress: 0, broadcast: 0, dated: 0 });
+): Live<SlateCounts> & { reload: () => void } {
+  const [data, setData] = useState<SlateCounts>({
+    inProgress: null,
+    broadcast: null,
+    dated: null,
+    total: null,
+  });
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
   const [version, setVersion] = useState(0);
@@ -288,29 +334,36 @@ export function useEpisodeCounts(
 
     const episodes = collection(db, "episodes");
     const counted = (...constraints: QueryConstraint[]) =>
-      getAggregateFromServer(query(episodes, ...constraints), { n: count() });
+      retrying(async () => {
+        const snap = await getAggregateFromServer(query(episodes, ...constraints), {
+          n: count(),
+        });
+        return Number(snap.data().n ?? 0);
+      });
 
-    Promise.all([
+    void Promise.allSettled([
       counted(where("status", "in", storedValuesFor("in_progress"))),
       counted(where("status", "in", storedValuesFor("broadcast"))),
       counted(where("status", "in", storedValuesFor("broadcast")), orderBy("broadcastAt")),
-    ])
-      .then(([inProgress, broadcast, dated]) => {
-        if (!live) return;
-        setData({
-          inProgress: Number(inProgress.data().n ?? 0),
-          broadcast: Number(broadcast.data().n ?? 0),
-          dated: Number(dated.data().n ?? 0),
-        });
-        setLoading(false);
-        setError(null);
-      })
-      .catch((err: Error) => {
-        if (!live) return;
-        console.warn("episode counts", err);
-        setError(err);
-        setLoading(false);
+      counted(),
+    ]).then((results) => {
+      if (!live) return;
+      const [inProgress, broadcast, dated, total] = results;
+      setData({
+        inProgress: settled(inProgress),
+        broadcast: settled(broadcast),
+        dated: settled(dated),
+        total: settled(total),
       });
+      const refused = results.find((result) => result.status === "rejected");
+      if (refused && refused.status === "rejected") {
+        console.warn("episode counts", refused.reason);
+        setError(refused.reason as Error);
+      } else {
+        setError(null);
+      }
+      setLoading(false);
+    });
 
     return () => {
       live = false;
@@ -343,16 +396,21 @@ export function useEpisodesInProgress(enabled = true): Live<Episode[]> {
  * October went out in October. An episode with no `broadcastAt` is invisible
  * here, which is what the counts above exist to say out loud.
  */
-export function useBroadcastInMonth(slot: MonthSlot | null, enabled = true): Live<Episode[]> {
+export function useBroadcastInMonth(
+  slot: MonthSlot | null,
+  enabled = true
+): Live<Episode[]> & { reload: () => void } {
   const [data, setData] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [version, setVersion] = useState(0);
 
   const key = slot ? monthKey(slot) : "";
 
   useEffect(() => {
     if (!enabled || !slot) {
       setData([]);
+      setError(null);
       setLoading(false);
       return;
     }
@@ -360,13 +418,16 @@ export function useBroadcastInMonth(slot: MonthSlot | null, enabled = true): Liv
     setLoading(true);
     const { start, end } = monthRange(slot);
 
-    getDocs(
-      query(
-        collection(db, "episodes"),
-        where("status", "in", storedValuesFor("broadcast")),
-        where("broadcastAt", ">=", Timestamp.fromDate(start)),
-        where("broadcastAt", "<", Timestamp.fromDate(end)),
-        orderBy("broadcastAt", "desc")
+    // Retried, because the alternative reads as a month nothing went out in.
+    retrying(() =>
+      getDocs(
+        query(
+          collection(db, "episodes"),
+          where("status", "in", storedValuesFor("broadcast")),
+          where("broadcastAt", ">=", Timestamp.fromDate(start)),
+          where("broadcastAt", "<", Timestamp.fromDate(end)),
+          orderBy("broadcastAt", "desc")
+        )
       )
     )
       .then((snap) => {
@@ -386,9 +447,9 @@ export function useBroadcastInMonth(slot: MonthSlot | null, enabled = true): Liv
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, enabled]);
+  }, [key, enabled, version]);
 
-  return { data, loading, error };
+  return { data, loading, error, reload: () => setVersion((v) => v + 1) };
 }
 
 /** The month of the first episode to go out, for the year filter. */
@@ -398,12 +459,16 @@ export function useEarliestBroadcastYear(enabled = true): number | null {
   useEffect(() => {
     if (!enabled) return;
     let live = true;
-    getDocs(
-      query(
-        collection(db, "episodes"),
-        where("status", "in", storedValuesFor("broadcast")),
-        orderBy("broadcastAt", "asc"),
-        fsLimit(1)
+    // Retried: a year the filter never offers is a year of episodes nobody can
+    // reach, and the only sign of it is a chip that is not there.
+    retrying(() =>
+      getDocs(
+        query(
+          collection(db, "episodes"),
+          where("status", "in", storedValuesFor("broadcast")),
+          orderBy("broadcastAt", "asc"),
+          fsLimit(1)
+        )
       )
     )
       .then((snap) => {
@@ -575,16 +640,6 @@ async function aggregateMonth(slot: MonthSlot): Promise<MonthTotal> {
     total: Number(snap.data().total ?? 0),
     count: Number(snap.data().count ?? 0),
   };
-}
-
-/** Once more before giving up: most of what goes wrong out here is a moment long. */
-async function retrying<T>(attempt: () => Promise<T>, delayMs = 400): Promise<T> {
-  try {
-    return await attempt();
-  } catch {
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
-    return attempt();
-  }
 }
 
 /** Every bar, a few at a time. Rejects if any month still will not answer. */

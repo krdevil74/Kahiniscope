@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: **4 October 2026** (the Payments chart that said "No payments yet")
+Last updated: **4 October 2026** (the two screens that said nothing was there)
 
 A running record of where this stands and what is left. Written to be read
 cold, after a gap, by someone who has forgotten the details.
@@ -34,7 +34,7 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 272 backend, 286 app.** All green. `npm test` at the root runs the
+**Tests: 272 backend, 290 app.** All green. `npm test` at the root runs the
 backend suites (unit + rules + six emulator suites); `npm run verify` in
 `mobile/` runs typecheck, unit tests and a render of all 17 routes.
 
@@ -255,6 +255,38 @@ that is the next thing to look at — the chart works either way now, which is
 the point.
 
 Detail: `docs/13-payments.md`, "When the bars will not add up".
+
+## The same bug, on the Episodes screen
+
+Reported the same day: **the Broadcast half listed nothing**, under last month
+and under the year alike, while In progress listed fine.
+
+Checked in production first. The **Backfill broadcast dates** workflow was
+re-run and reported `Read 2 broadcast episodes. Dated 0 from the air date, left
+2 that already had one.` So: two episodes are marked broadcast, both already
+carry a `broadcastAt`, and nothing needed dating. **No data was missing** — and
+if more episodes are expected in that half, they have not had their status
+switched; the Broadcast half means *marked broadcast*, not *already aired*.
+
+What was broken was the screen:
+
+- **Picking a year cleared the chosen month**, and the month is what the half
+  actually queries. That left an empty list headed "Nothing that month" about a
+  month nobody had picked — which is exactly what a filter that has lost your
+  episodes looks like. A year now lands on the newest month of that year.
+- **The four counts were a `Promise.all`**, so one refusal zeroed all of them:
+  both tiles read 0 and the undated-episode note went quiet, because the gap it
+  reports was 0 − 0. Gathered with `allSettled` and retried now, and a count
+  that did not answer is a **—** rather than a zero.
+- **A month that would not load read as a month nothing went out in.** Retried,
+  and it says so now.
+- **A fourth count** — every episode, whatever its status — against the two
+  halves. An episode stored with a status neither half names is in neither
+  query and appears nowhere, where before the split it folded into "in
+  progress" and was at least visible. The screen now says how many and how to
+  put them back.
+
+Detail: `docs/03-admin-screens.md`.
 
 ## Asked for on 30 September, in the same branch
 
