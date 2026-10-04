@@ -9,12 +9,28 @@
  * Sizes and spacing are final and always were.
  */
 
-import { HEAT, PALETTE, type HeatStep, type Palette } from "./palettes.ts";
+import {
+  FLAVOURS,
+  HEAT,
+  PALETTE,
+  type Flavour,
+  type FlavourName,
+  type HeatStep,
+  type Palette,
+} from "./palettes.ts";
 
-export type { HeatStep, Palette };
+export type { Flavour, FlavourName, HeatStep, Palette };
 
 export const colors = PALETTE;
 export const heat = HEAT;
+
+/**
+ * The dashboard's three flavours — mint for money, blue for information, pink
+ * for attention — each in the four shades a block or a chip needs. See the
+ * note in palettes.ts for why a flavour is asked for by name rather than
+ * assembled from loose colours at the call site.
+ */
+export const flavours = FLAVOURS;
 
 /** The heat for a task, capped at the last step. */
 export function heatFor(remindersSent: number): HeatStep {

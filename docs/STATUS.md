@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: **4 October 2026** (the two screens that said nothing was there)
+Last updated: **4 October 2026** (the two screens that said nothing was there, then their chips)
 
 A running record of where this stands and what is left. Written to be read
 cold, after a gap, by someone who has forgotten the details.
@@ -287,6 +287,45 @@ What was broken was the screen:
   put them back.
 
 Detail: `docs/03-admin-screens.md`.
+
+## The chips that belonged to another product
+
+Asked for on 4 October, after the two fixes above: the Episodes and Payments
+filter chips did not look like the rest of the app.
+
+They were right. Those two rows, and the pair of slate tiles above them, were
+the last controls still drawn in the monochrome they were prototyped in —
+black-filled pills with grey labels, a white tile and a near-black one — while
+every other block in the app is one of the five brand colours used as a flat
+fill. The chips also set their own font sizes by hand instead of taking the
+type scale, which is the other half of why they read as foreign.
+
+**A flavour** is the fix: `FLAVOURS` in `theme/palettes.ts` groups each colour
+into the four shades a block needs — `soft`, `text`, `fill`, `onFill` — which
+is the device the dashboard tiles are already built from. A chip or a tile asks
+for `money`, `info` or `attention` by name and cannot end up with an
+unreadable pairing, because the pairing is decided once, with the contrast
+measured.
+
+Where each one goes is the palette's existing law, not decoration: **mint on
+Payments** because that panel is money, **blue on Episodes** because the slate
+is information and because mint is what is done (so the Broadcast tile is
+mint), **pink for the notes** under both filters because pink is what wants
+attention. Those notes also moved out of 9.5px grey into a tinted block — a
+sentence that says "4 of 11 broadcast episodes will not appear in any month"
+is not a footnote.
+
+Three shades were added to make the pairings honest: `infoDeep`, because blue
+is the one tone that fails on its own tint (3.2:1, against money's 4.4 and
+attention's 4.6), and `onInfoFill` / `onAttentionFill` beside the `onMoneyFill`
+that was already there. White is never text on a raw fill — 1.4:1 on mint, 2.2
+on blue, 3.0 on pink — which is why each fill carries its own darkened hue
+instead.
+
+**Not changed:** the dashboard itself, which is the reference. Its blue tile
+still uses `info` rather than the new `infoDeep`, so its label sits at 3.2:1 —
+worth raising one day, but not while it is the thing everything else is being
+matched to.
 
 ## Asked for on 30 September, in the same branch
 

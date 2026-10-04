@@ -5,23 +5,51 @@
  * One row each, above what they filter, which is where a filter belongs. The
  * months stop at the current one when the year is this year — eight chips for
  * months that have not happened are eight ways to get an empty list.
+ *
+ * **Flavoured, because every other block in this app is.** These were the last
+ * controls still drawn in the monochrome they were prototyped in — a black
+ * pill when chosen, a grey-bordered white one when not, and a grey label on
+ * both. Beside the dashboard's pink, blue and mint tiles they read as a
+ * different product, which is the one thing this palette exists to prevent.
+ *
+ * So a chip takes a flavour and the row carries the colour of what it filters:
+ * mint on Payments because that panel is money, blue on Episodes because the
+ * slate is information. The quiet state is the tinted block the dashboard
+ * tiles are made of; the chosen one is the raw neon, which is this design's
+ * own idea of emphasis — "large fills rather than timid accents". Both states
+ * carry the same 1px edge so choosing a chip never moves the row by a pixel.
+ *
+ * Sizes and the face come from the type scale (`type.meta`, the 10.5px
+ * monospace meta step) rather than from numbers typed here, which is the other
+ * half of why these looked foreign.
  */
 
 import { Pressable, View } from "react-native";
 
 import { AppText } from "./AppText";
 import { monthShort, type MonthSlot } from "../lib/months.ts";
-import { colors, fontFamily, radii, MIN_TAP_TARGET } from "../theme/tokens";
+import {
+  flavours,
+  fontFamily,
+  radii,
+  spacing,
+  MIN_TAP_TARGET,
+  type FlavourName,
+} from "../theme/tokens";
+import { type } from "../theme/typography";
 
 function Chip({
   label,
   on,
+  flavour,
   onPress,
 }: {
   label: string;
   on: boolean;
+  flavour: FlavourName;
   onPress: () => void;
 }) {
+  const tone = flavours[flavour];
   return (
     <Pressable
       onPress={onPress}
@@ -29,22 +57,26 @@ function Chip({
       accessibilityState={{ selected: on }}
       style={{
         paddingVertical: 7,
-        paddingHorizontal: 11,
+        paddingHorizontal: 12,
         borderRadius: radii.pill,
+        // The unchosen edge is the fill it sits on, so the border is there for
+        // the geometry and invisible until a chip is chosen.
         borderWidth: 1,
-        borderColor: on ? colors.ink : colors.hairlineStrong,
-        backgroundColor: on ? colors.ink : colors.surface,
+        borderColor: on ? tone.text : tone.soft,
+        backgroundColor: on ? tone.fill : tone.soft,
         minHeight: Math.min(34, MIN_TAP_TARGET),
         justifyContent: "center",
       }}
     >
       <AppText
-        style={{
-          fontFamily: fontFamily.monoMedium,
-          fontSize: 10.5,
-          lineHeight: 13,
-          color: on ? colors.white : colors.muted,
-        }}
+        style={[
+          type.meta,
+          {
+            fontFamily: fontFamily.monoMedium,
+            lineHeight: 13,
+            color: on ? tone.onFill : tone.text,
+          },
+        ]}
       >
         {label}
       </AppText>
@@ -62,11 +94,14 @@ function Chip({
 export function YearFilter({
   years,
   selected,
+  flavour,
   onSelect,
 }: {
   years: readonly number[];
   /** `null` is the rolling twelve months rather than a calendar year. */
   selected: number | null;
+  /** The colour of whatever is being filtered — money on Payments, information on Episodes. */
+  flavour: FlavourName;
   onSelect: (year: number | null) => void;
 }) {
   const options: { label: string; value: number | null }[] = [
@@ -75,12 +110,13 @@ export function YearFilter({
   ];
 
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.chipsTight }}>
       {options.map((option) => (
         <Chip
           key={option.label}
           label={option.label}
           on={option.value === selected}
+          flavour={flavour}
           onPress={() => onSelect(option.value)}
         />
       ))}
@@ -98,19 +134,22 @@ export function YearFilter({
 export function MonthFilter({
   months,
   selected,
+  flavour,
   onSelect,
 }: {
   months: readonly MonthSlot[];
   selected: MonthSlot | null;
+  flavour: FlavourName;
   onSelect: (slot: MonthSlot) => void;
 }) {
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.chipsTight }}>
       {months.map((slot) => (
         <Chip
           key={`${slot.year}-${slot.month}`}
           label={monthShort(slot)}
           on={selected?.year === slot.year && selected?.month === slot.month}
+          flavour={flavour}
           onPress={() => onSelect(slot)}
         />
       ))}
