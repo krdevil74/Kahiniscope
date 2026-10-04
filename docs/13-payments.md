@@ -248,6 +248,38 @@ calendar on a wall in Dhaka, and a boundary drawn in UTC would put the evening o
 the 31st in the wrong bar. Ranges are half-open (`>= start`, `< end`), so no
 payment lands in two months and none lands in neither.
 
+### The admin's side, in the member's language
+
+Both halves of this screen answer a question about money and both used to
+answer it in a white card with a near-black number, while the member's Summary
+— the same money, seen from the other end — was built from the palette. They
+are the same two devices now, through one `Block`:
+
+| | Quiet | Loud |
+| --- | --- | --- |
+| Payment pending | mint, when nobody is owed | **pink**, while somebody is |
+| Paid · *range* | mint, while the queue has work in it | **mint**, once it does not |
+
+Exactly **one block is loud at a time**, which is the restraint that makes the
+member's Summary land: a screen where everything shouts says nothing. Which
+one it is follows the admin's actual job — the queue while people are waiting,
+what has gone out once they are not.
+
+The pending figure is how many people are waiting rather than what they come
+to, because that amount is an estimate until an admin agrees it, and an
+estimate does not get the hero. The paid figure is the one number on this
+screen that is not an estimate of anything, which is what earns it the raw
+fill — and when it could not be added up it goes quiet and says so, because a
+figure of zero would be a claim about the money rather than about the
+connection.
+
+Captions on a loud block are full-strength, not held back with opacity. That
+was tried: the member's earnings block does it by hand at .85, which is fine
+on mint (6.8:1) and falls apart elsewhere — .80 puts a caption at 4.0 on blue
+and 3.7 on pink, and on the pending block that line is the one telling an
+admin what to do. A 9.5px uppercase monospace caption beside a 40px figure is
+already told apart without being faint.
+
 ### When the bars will not add up
 
 Twelve bars were twelve aggregations opened at once, gathered with

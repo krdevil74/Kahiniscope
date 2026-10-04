@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: **4 October 2026** (the two screens that said nothing was there, then their chips)
+Last updated: **4 October 2026** (the two screens that said nothing was there, then their colour)
 
 A running record of where this stands and what is left. Written to be read
 cold, after a gap, by someone who has forgotten the details.
@@ -326,6 +326,41 @@ instead.
 still uses `info` rather than the new `infoDeep`, so its label sits at 3.2:1 —
 worth raising one day, but not while it is the thing everything else is being
 matched to.
+
+## The admin's money, in the member's language
+
+The step named at the end of the chip work, asked for straight after it: the
+admin's Payments panels, flavoured the way the member's Summary is.
+
+Both panels answered a question about money in a white card with a near-black
+number, while the member's Summary — the same money from the other end — was
+built from the palette. They are the same two devices now, through one shared
+`Block`: the soft tinted tile, and the raw fill for the one figure that earns
+it.
+
+**Exactly one block is loud at a time**, and which one follows the admin's
+actual job. Somebody owed → the queue is a pink hero and what has gone out
+stands down to soft mint. Nobody owed → the queue goes quiet mint and the paid
+total takes the raw mint, which is the member's "earned, all time" block seen
+from the other side of the payment. That restraint is the thing that makes the
+Summary land; a screen where everything shouts says nothing.
+
+The pending figure stays the count of people waiting rather than the amount:
+the amount is an estimate until an admin agrees it, and an estimate does not
+get the hero. The paid figure goes quiet and says "could not be added up" when
+it could not be — the honesty work from earlier in the day, kept.
+
+**One thing was tried and dropped:** holding captions back with opacity on a
+loud block, the way the member's earnings block does by hand at .85. Fine on
+mint at 6.8:1, and it falls apart elsewhere — .80 puts a caption at 4.0 on
+blue and 3.7 on pink, and on the pending block that caption is the line
+telling an admin what to do. Captions are full strength; 9.5px uppercase
+monospace beside a 40px figure is already told apart.
+
+**Not changed:** the member's own Payments total. It is deliberately bare —
+"the total, clean, with the stamp beside it" — and the PAID stamp is drawn in
+`money` at 2.5px, which on raw mint would lose the one mark of colour that
+block exists for.
 
 ## Asked for on 30 September, in the same branch
 

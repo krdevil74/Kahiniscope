@@ -200,7 +200,18 @@ export interface Flavour {
   text: string;
   /** The loud state: the raw palette, as a fill rather than as an accent. */
   fill: string;
-  /** Text on `fill`. Measured, never white — see the note above. */
+  /**
+   * Text on `fill`. Measured, never white — see the note above.
+   *
+   * At full strength for the caption over a figure as well as for the figure.
+   * Holding a caption back with opacity is the obvious move and it was tried:
+   * the member's earnings block does it by hand at .85, which is fine on mint
+   * (6.8:1) and falls apart everywhere else — .80 puts the caption at 4.0 on
+   * blue and 3.7 on pink, and on the pending block that line is the one
+   * telling an admin what to do. The caption is already told apart by being
+   * 9.5px uppercase monospace beside a 40px figure. It does not also need to
+   * be faint.
+   */
   onFill: string;
 }
 

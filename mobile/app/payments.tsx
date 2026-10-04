@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 
 import { AppShell } from "../src/components/AppShell";
 import { AppText } from "../src/components/AppText";
+import { Block } from "../src/components/Block";
 import { Bounded } from "../src/components/Bounded";
 import { Avatar } from "../src/components/Avatar";
 import { Button } from "../src/components/Button";
@@ -51,7 +52,8 @@ import {
   monthSummary,
   monthsOfYear,
   monthUnreadable,
-  paidSummary,
+  paidHeroLabel,
+  paidHeroNote,
   pendingSummary,
   sameMonth,
   sumOf,
@@ -73,7 +75,7 @@ import {
 } from "../src/lib/payments.ts";
 import { markPaymentPaid, paidToast } from "../src/lib/review-actions.ts";
 import { useToast } from "../src/lib/toast";
-import { colors, fontFamily, radii, spacing, MIN_TAP_TARGET } from "../src/theme/tokens";
+import { colors, flavours, fontFamily, radii, spacing, MIN_TAP_TARGET } from "../src/theme/tokens";
 import { type } from "../src/theme/typography";
 
 export default function Payments() {
@@ -111,6 +113,17 @@ function AdminPayments() {
 
   /** The queue is folded away by default — it is a panel, not the page. */
   const [queueOpen, setQueueOpen] = useState(false);
+
+  /**
+   * Which of the two questions is live, and so which block is loud.
+   *
+   * The member's Summary has exactly one raw-fill block on it, and that
+   * restraint is the reason it lands: a screen where everything shouts says
+   * nothing. This screen asks two questions of roughly equal weight, so the
+   * loud one is whichever is actually the admin's job right now — the queue
+   * while somebody is owed, and what has gone out once nobody is.
+   */
+  const owing = pending.length > 0;
 
   // The chart: a rolling twelve months, or one calendar year if the admin
   // picks one.
@@ -164,64 +177,41 @@ function AdminPayments() {
     >
       <View style={{ padding: spacing.screen, gap: spacing.cardsTight }}>
         {/* ---- Panel one: what is owed ---------------------------------- */}
-        <Card radius={radii.card} style={{ paddingVertical: 14, paddingHorizontal: 15, gap: 12 }}>
-          <Pressable
-            onPress={() => setQueueOpen((v) => !v)}
-            disabled={pending.length === 0}
-            accessibilityRole="button"
-            accessibilityState={{ expanded: queueOpen, disabled: pending.length === 0 }}
-            accessibilityLabel={`${pendingSummary(pending.length, money(owed))}. ${
-              queueOpen ? "Hide" : "Show"
-            } the queue`}
-            android_ripple={{ color: colors.ripple }}
-            style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}
-          >
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <AppText
-                style={{
-                  fontFamily: fontFamily.monoMedium,
-                  fontSize: 9.5,
-                  lineHeight: 11,
-                  letterSpacing: 1.2,
-                  textTransform: "uppercase",
-                  color: colors.faint,
-                }}
-              >
-                Payment pending
-              </AppText>
-              {/* The one hero figure on the screen: how many people are owed. */}
-              <AppText
-                weight="semibold"
-                style={{
-                  fontFamily: fontFamily.extrabold,
-                  fontSize: 40,
-                  lineHeight: 44,
-                  letterSpacing: -2,
-                  marginTop: 4,
-                }}
-              >
-                {pending.length}
-              </AppText>
-              <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 4 }]}>
-                {pending.length === 0
-                  ? "Nothing waiting to be paid"
-                  : `${money(owed)} estimated · tap to ${queueOpen ? "hide" : "work through them"}`}
-              </AppText>
-            </View>
-            {pending.length > 0 ? (
+        {/* Pink while somebody is owed, because that is what pink is for, and
+            quiet mint when nobody is — the screen is loud only when there is
+            work in it. The figure is how many people are waiting rather than
+            what they come to: the amount is an estimate until an admin agrees
+            it, and an estimate does not get the hero. */}
+        <Block
+          label="Payment pending"
+          value={String(pending.length)}
+          note={
+            owing
+              ? `${money(owed)} estimated · tap to ${queueOpen ? "hide" : "work through them"}`
+              : "Nothing waiting to be paid"
+          }
+          flavour={owing ? "attention" : "money"}
+          loud={owing}
+          onPress={owing ? () => setQueueOpen((v) => !v) : undefined}
+          accessibilityLabel={`${pendingSummary(pending.length, money(owed))}. ${
+            queueOpen ? "Hide" : "Show"
+          } the queue`}
+          accessibilityState={{ expanded: queueOpen }}
+          right={
+            owing ? (
               <AppText
                 style={{
                   fontFamily: fontFamily.monoSemibold,
                   fontSize: 13,
                   lineHeight: 15,
-                  color: colors.muted,
+                  color: flavours.attention.onFill,
                 }}
               >
                 {queueOpen ? "▴" : "▾"}
               </AppText>
-            ) : null}
-          </Pressable>
-        </Card>
+            ) : null
+          }
+        />
 
         {/* One after another, oldest first, only once asked for. */}
         {queueOpen
@@ -241,38 +231,37 @@ function AdminPayments() {
           : null}
 
         {/* ---- Panel two: what has gone out ----------------------------- */}
+        {/* The money that exists, in the raw mint the member's "earned, all
+            time" block is drawn in — the same fact from the other side of the
+            payment. It is the one figure on this screen that is not an
+            estimate of anything — so it takes the loud block on the days
+            nobody is owed, and stands down to the soft one while the queue
+            has somebody in it. When it could not be added up it goes quiet
+            whatever else is true: a figure of zero is a claim about the
+            money, and this would be a claim about the connection. */}
+        <Block
+          label={paidHeroLabel(months)}
+          value={totalsError ? "—" : money(sumOf(totals))}
+          note={paidHeroNote(countOf(totals), totalsError !== null)}
+          flavour={totalsError ? "attention" : "money"}
+          loud={!owing && totalsError === null}
+        />
+
         <Card radius={radii.card} style={{ paddingVertical: 14, paddingHorizontal: 15, gap: 12 }}>
-          <View>
-            <AppText
-              style={{
-                fontFamily: fontFamily.monoMedium,
-                fontSize: 9.5,
-                lineHeight: 11,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                color: colors.faint,
-              }}
-            >
-              Paid month by month
-            </AppText>
-            <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 3 }]}>
-              {paidSummary(months, money(sumOf(totals)), countOf(totals), totalsError !== null)}
-            </AppText>
-            {/* The figures are right but they did not come from the index.
-                Said here rather than swallowed: a number is only as good as
-                where it came from — and said in pink, which is this palette's
-                one colour for something wanting attention. */}
-            {degraded ? (
-              <Note tone="attention" style={{ marginTop: 7 }}>
-                {addedUpHereNote(partial, WINDOW_READ_LIMIT)}
-              </Note>
-            ) : null}
+          <View style={{ gap: 3 }}>
+            <SectionCaption>Month by month</SectionCaption>
             {/* Said once, under the heading: a bar chart on a phone does not
                 look tappable until somebody tells you it is. */}
-            <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
+            <AppText style={[type.metaXSmall, { color: colors.faint }]}>
               {selected ? "Tap the month again to close it" : "Tap a month to list what went out"}
             </AppText>
           </View>
+
+          {/* The figures are right but they did not come from the index.
+              Said here rather than swallowed: a number is only as good as
+              where it came from — and said in pink, which is this palette's
+              one colour for something wanting attention. */}
+          {degraded ? <Note>{addedUpHereNote(partial, WINDOW_READ_LIMIT)}</Note> : null}
 
           {/* Mint, because this panel is money — the one job that colour has
               in this palette, and the same mint the dashboard's Done tile and

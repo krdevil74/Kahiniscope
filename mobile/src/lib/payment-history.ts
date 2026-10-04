@@ -150,22 +150,28 @@ export function monthUnreadable(slot: MonthSlot): string {
 }
 
 /**
- * The chart's own line: the range, and what it came to.
+ * The caption over the figure: what went out, and across what span.
  *
- * `failed` is a separate sentence rather than a figure of zero. "₹0 across 0
- * payments" is a claim about the money; not being able to add it up is a
- * claim about the connection, and the two must not read the same.
+ * The block under it carries the amount, so this carries everything else —
+ * the admin's version of the member's "EARNED, ALL TIME", which is the same
+ * fact seen from the other side of the money.
  */
-export function paidSummary(
-  months: readonly MonthSlot[],
-  amount: string,
-  count: number,
-  failed = false
-): string {
-  if (failed) return `${rangeLabel(months)} · could not be added up`;
-  return `${rangeLabel(months)} · ${amount} across ${count} ${
-    count === 1 ? "payment" : "payments"
-  }`;
+export function paidHeroLabel(months: readonly MonthSlot[]): string {
+  return `Paid · ${rangeLabel(months)}`;
+}
+
+/**
+ * The line under the figure. How many payments made it up, because a total
+ * with no count behind it is a number people quote at each other wrongly.
+ *
+ * `failed` is a separate sentence rather than a figure of zero: "₹0 across 0
+ * payments" is a claim about the money, and not being able to add it up is a
+ * claim about the connection. The two must not read the same.
+ */
+export function paidHeroNote(count: number, failed = false): string {
+  if (failed) return "Could not be added up";
+  if (count === 0) return "Nothing paid in these months";
+  return `${count} ${count === 1 ? "payment" : "payments"}`;
 }
 
 /**
