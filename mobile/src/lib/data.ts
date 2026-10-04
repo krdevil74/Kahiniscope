@@ -32,7 +32,7 @@ import { craftsFrom } from "./crafts";
 import { episodeStatusFrom, storedValuesFor } from "./episode-status.ts";
 import { ratesFrom, taskStatusFrom, toAdvance, toPayment } from "./payment-convert.ts";
 import { monthKey, monthRange, type MonthSlot } from "./months.ts";
-import type { MonthTotal } from "./payment-history.ts";
+import { bucketByMonth, type MonthTotal } from "./payment-history.ts";
 import {
   DEFAULT_SETTINGS,
   type ChannelId,
@@ -531,6 +531,109 @@ export function usePendingPayments(enabled = true): Live<Payment[]> {
   return useCollection("payments", toPayment, constraints, enabled);
 }
 
+/** The paid payments inside a half-open range, which all three month questions ask for. */
+function paidBetween(start: Date, end: Date, ...extra: QueryConstraint[]) {
+  return query(
+    collection(db, "payments"),
+    where("status", "==", "paid"),
+    where("paidAt", ">=", Timestamp.fromDate(start)),
+    where("paidAt", "<", Timestamp.fromDate(end)),
+    ...extra
+  );
+}
+
+/**
+ * How many aggregations are in flight at once.
+ *
+ * Twelve bars used to mean twelve requests opened together, and on a phone
+ * that is where this broke: one of them erroring took the whole chart with it,
+ * and the screen then said "No payments yet" about an operation that had paid
+ * people that week. Four at a time, and the ones that fail are retried.
+ */
+const MONTH_CONCURRENCY = 4;
+
+/**
+ * The ceiling on the fallback read, when the aggregations will not answer.
+ *
+ * It is a ceiling rather than a page because the alternative is the thing this
+ * whole module exists to stop: reading the collection to draw a chart. Five
+ * hundred documents is a year of a busy operation and a bounded cost, and when
+ * it is hit the screen says the oldest months in view may be short rather than
+ * quietly drawing a short bar.
+ */
+export const WINDOW_READ_LIMIT = 500;
+
+/** One bar: a sum and a count, added up by Firestore in the index. */
+async function aggregateMonth(slot: MonthSlot): Promise<MonthTotal> {
+  const { start, end } = monthRange(slot);
+  const snap = await getAggregateFromServer(paidBetween(start, end), {
+    total: sum("finalAmount"),
+    count: count(),
+  });
+  return {
+    ...slot,
+    total: Number(snap.data().total ?? 0),
+    count: Number(snap.data().count ?? 0),
+  };
+}
+
+/** Once more before giving up: most of what goes wrong out here is a moment long. */
+async function retrying<T>(attempt: () => Promise<T>, delayMs = 400): Promise<T> {
+  try {
+    return await attempt();
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return attempt();
+  }
+}
+
+/** Every bar, a few at a time. Rejects if any month still will not answer. */
+async function aggregateMonths(months: readonly MonthSlot[]): Promise<MonthTotal[]> {
+  const totals: MonthTotal[] = new Array(months.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < months.length) {
+      const index = next;
+      next += 1;
+      totals[index] = await retrying(() => aggregateMonth(months[index]));
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(MONTH_CONCURRENCY, months.length) }, worker)
+  );
+  return totals;
+}
+
+/**
+ * The way back: one read of the whole window, added up on the phone.
+ *
+ * Aggregations are the right way to draw this chart and the only one that does
+ * not get slower every month. But an admin who cannot see what went out is not
+ * helped by a screen that is cheap, so when the index will not answer this
+ * reads the window once — ordered newest first and capped — and buckets it.
+ */
+async function readMonths(
+  months: readonly MonthSlot[]
+): Promise<{ totals: MonthTotal[]; partial: boolean }> {
+  const { start } = monthRange(months[0]);
+  const { end } = monthRange(months[months.length - 1]);
+  const snap = await getDocs(
+    paidBetween(start, end, orderBy("paidAt", "desc"), fsLimit(WINDOW_READ_LIMIT))
+  );
+  return {
+    totals: bucketByMonth(months, snap.docs.map(toPayment)),
+    partial: snap.size >= WINDOW_READ_LIMIT,
+  };
+}
+
+export interface MonthlyTotals extends Live<MonthTotal[]> {
+  /** The bars were added up on the phone because the aggregations would not answer. */
+  degraded: boolean;
+  /** The fallback read hit its ceiling, so the oldest months in view may be short. */
+  partial: boolean;
+  reload: () => void;
+}
+
 /**
  * What went out each month — as a sum and a count, never as documents.
  *
@@ -542,12 +645,22 @@ export function usePendingPayments(enabled = true): Live<Payment[]> {
  * Not a listener: a month that has closed cannot change, and the current one
  * only changes when this admin marks something paid — which is what `reload`
  * is for.
+ *
+ * What it will not do is pretend. Twelve aggregations fired at once, with one
+ * rejection discarding all twelve, is how this screen came to say "No payments
+ * yet" to an operation that had paid six people that week. So the months are
+ * asked a few at a time and retried, there is a bounded read behind them if
+ * the aggregations cannot be had at all, and if even that fails the error
+ * comes back out to be said on screen rather than being logged and dressed up
+ * as an empty month.
  */
 export function useMonthlyPaidTotals(
   months: readonly MonthSlot[],
   enabled = true
-): Live<MonthTotal[]> & { reload: () => void } {
+): MonthlyTotals {
   const [data, setData] = useState<MonthTotal[]>([]);
+  const [degraded, setDegraded] = useState(false);
+  const [partial, setPartial] = useState(false);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
   const [version, setVersion] = useState(0);
@@ -557,43 +670,45 @@ export function useMonthlyPaidTotals(
   useEffect(() => {
     if (!enabled || months.length === 0) {
       setData([]);
+      setDegraded(false);
+      setPartial(false);
+      setError(null);
       setLoading(false);
       return;
     }
     let live = true;
     setLoading(true);
 
-    Promise.all(
-      months.map(async (slot) => {
-        const { start, end } = monthRange(slot);
-        const snap = await getAggregateFromServer(
-          query(
-            collection(db, "payments"),
-            where("status", "==", "paid"),
-            where("paidAt", ">=", Timestamp.fromDate(start)),
-            where("paidAt", "<", Timestamp.fromDate(end))
-          ),
-          { total: sum("finalAmount"), count: count() }
-        );
-        return {
-          ...slot,
-          total: Number(snap.data().total ?? 0),
-          count: Number(snap.data().count ?? 0),
-        };
-      })
-    )
-      .then((totals) => {
+    void (async () => {
+      try {
+        const totals = await aggregateMonths(months);
         if (!live) return;
         setData(totals);
-        setLoading(false);
+        setDegraded(false);
+        setPartial(false);
         setError(null);
-      })
-      .catch((err: Error) => {
+      } catch (aggregation) {
         if (!live) return;
-        console.warn("payment totals", err);
-        setError(err);
-        setLoading(false);
-      });
+        console.warn("payment totals", aggregation);
+        try {
+          const read = await readMonths(months);
+          if (!live) return;
+          setData(read.totals);
+          setDegraded(true);
+          setPartial(read.partial);
+          setError(null);
+        } catch (documents) {
+          if (!live) return;
+          console.warn("payment totals fallback", documents);
+          setData([]);
+          setDegraded(false);
+          setPartial(false);
+          setError(documents as Error);
+        }
+      } finally {
+        if (live) setLoading(false);
+      }
+    })();
 
     return () => {
       live = false;
@@ -601,7 +716,7 @@ export function useMonthlyPaidTotals(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, enabled, version]);
 
-  return { data, loading, error, reload: () => setVersion((v) => v + 1) };
+  return { data, loading, error, degraded, partial, reload: () => setVersion((v) => v + 1) };
 }
 
 /**
@@ -631,15 +746,7 @@ export function usePaidInMonth(
     setLoading(true);
     const { start, end } = monthRange(slot);
 
-    getDocs(
-      query(
-        collection(db, "payments"),
-        where("status", "==", "paid"),
-        where("paidAt", ">=", Timestamp.fromDate(start)),
-        where("paidAt", "<", Timestamp.fromDate(end)),
-        orderBy("paidAt", "desc")
-      )
-    )
+    getDocs(paidBetween(start, end, orderBy("paidAt", "desc")))
       .then((snap) => {
         if (!live) return;
         setData(snap.docs.map(toPayment));
@@ -675,12 +782,16 @@ export function useEarliestPaidYear(enabled = true): number | null {
   useEffect(() => {
     if (!enabled) return;
     let live = true;
-    getDocs(
-      query(
-        collection(db, "payments"),
-        where("status", "==", "paid"),
-        orderBy("paidAt", "asc"),
-        fsLimit(1)
+    // Retried, because a year the filter never offers is a year of history
+    // that cannot be reached at all — and the only sign is a chip not there.
+    retrying(() =>
+      getDocs(
+        query(
+          collection(db, "payments"),
+          where("status", "==", "paid"),
+          orderBy("paidAt", "asc"),
+          fsLimit(1)
+        )
       )
     )
       .then((snap) => {

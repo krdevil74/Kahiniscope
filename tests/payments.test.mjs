@@ -33,6 +33,7 @@ import {
   getDoc,
   getDocs,
   getFirestore,
+  limit,
   orderBy,
   query,
   serverTimestamp,
@@ -387,6 +388,45 @@ test("a month bar is a sum and a count, not a download", async () => {
 
   assert.equal(after.count - before.count, 2, "two more payments in this month");
   assert.equal(after.total - before.total, 750, "and ₹750 more, added by Firestore");
+});
+
+/**
+ * The ceiling on the read the chart falls back to. The app's own constant is
+ * `WINDOW_READ_LIMIT` in mobile/src/lib/data.ts; this is the same number, and
+ * what matters here is the ordering under it.
+ */
+const WINDOW_READ_LIMIT = 500;
+
+test("the months can be read from documents when the aggregation will not total them", async () => {
+  // Twelve aggregations fired at once, with one rejection discarding all
+  // twelve, is how the admin's chart came to say "No payments yet" about a
+  // week in which six people had been paid. There is a bounded read behind
+  // the bars now, and the two have to agree about the same month or the
+  // fallback is worse than the failure.
+  const { start, end } = monthRange(new Date());
+  await paidPayment(310);
+  await paidPayment(640);
+
+  const added = (
+    await getAggregateFromServer(paidBetween(owner.db, start, end), {
+      total: sum("finalAmount"),
+      count: count(),
+    })
+  ).data();
+
+  const read = await getDocs(
+    query(paidBetween(owner.db, start, end), orderBy("paidAt", "desc"), limit(WINDOW_READ_LIMIT))
+  );
+  const onThePhone = read.docs.reduce((sum, d) => sum + Number(d.data().finalAmount ?? 0), 0);
+
+  assert.equal(read.size, added.count, "the same payments the index counted");
+  assert.equal(onThePhone, added.total, "and the same rupees, added up here instead");
+
+  // Newest first, so a month that ever does reach the ceiling loses its
+  // oldest payments rather than an arbitrary handful — which is what lets the
+  // screen say the oldest months in view may be short.
+  const times = read.docs.map((d) => d.data().paidAt.toMillis());
+  assert.deepEqual(times, [...times].sort((a, b) => b - a));
 });
 
 test("a month nothing was paid in counts nothing", async () => {
