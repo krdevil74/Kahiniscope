@@ -23,6 +23,7 @@ import { Button } from "../src/components/Button";
 import { Card } from "../src/components/Card";
 import { EmptyState } from "../src/components/EmptyState";
 import { MemberHeader } from "../src/components/MemberHeader";
+import { Note } from "../src/components/Note";
 import { MemberTabs } from "../src/components/MemberTabs";
 import { PaidStamp } from "../src/components/PaidStamp";
 import { ProofAttach, ProofDownload, ProofNote } from "../src/components/PaymentProof";
@@ -259,11 +260,12 @@ function AdminPayments() {
             </AppText>
             {/* The figures are right but they did not come from the index.
                 Said here rather than swallowed: a number is only as good as
-                where it came from. */}
+                where it came from — and said in pink, which is this palette's
+                one colour for something wanting attention. */}
             {degraded ? (
-              <AppText style={[type.metaXSmall, { color: colors.muted, marginTop: 2 }]}>
+              <Note tone="attention" style={{ marginTop: 7 }}>
                 {addedUpHereNote(partial, WINDOW_READ_LIMIT)}
-              </AppText>
+              </Note>
             ) : null}
             {/* Said once, under the heading: a bar chart on a phone does not
                 look tappable until somebody tells you it is. */}
@@ -272,10 +274,18 @@ function AdminPayments() {
             </AppText>
           </View>
 
-          <YearFilter years={years} selected={year} onSelect={(next) => {
-            setYear(next);
-            setSelected(null);
-          }} />
+          {/* Mint, because this panel is money — the one job that colour has
+              in this palette, and the same mint the dashboard's Done tile and
+              the member's earnings block are drawn in. */}
+          <YearFilter
+            years={years}
+            selected={year}
+            flavour="money"
+            onSelect={(next) => {
+              setYear(next);
+              setSelected(null);
+            }}
+          />
 
           <MonthlyPaidChart
             totals={totals}

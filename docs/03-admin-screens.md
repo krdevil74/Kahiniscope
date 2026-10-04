@@ -143,6 +143,29 @@ two halves do not add up to it, the screen says how many episodes are in
 neither and how to put them back. `episodeStatusFrom` is not the safety net
 here; a query cannot use it.
 
+### Pink, blue and mint, like everything else
+
+The two halves and their filter chips were the last controls in the app still
+drawn in the monochrome they were prototyped in: a white tile and a near-black
+one, a black pill when a chip was chosen and a grey-bordered white one when it
+was not. Beside the board's three soft-fill tiles they read as a different
+product — which is the one thing a single palette exists to prevent.
+
+They take a **flavour** now (`FLAVOURS` in `src/theme/palettes.ts`): the soft
+tinted fill with its own hue as the text, and the raw neon for whatever is
+open or chosen. **In progress is blue**, because the slate is information;
+**Broadcast is mint**, because in this palette mint is what is done; and the
+notes under the chips are **pink**, because pink is what wants attention. The
+same device, and the same three colours, as the tiles an admin opens on.
+
+A flavour is asked for by name rather than assembled from loose colours at the
+call site, so a chip cannot end up with an unreadable pairing — the contrast
+is decided once. Three shades were added to the palette to make that true:
+`infoDeep` (blue is the one tone that fails on its own tint — 3.2:1, against
+money's 4.4 and attention's 4.6) and `onInfoFill` / `onAttentionFill`, which
+join `onMoneyFill`. White is never text on a raw fill: 1.4:1 on mint, 2.2 on
+blue, 3.0 on pink.
+
 ### A year chip is not a filter on its own
 
 Picking a year used to clear the chosen month, and the month is what the

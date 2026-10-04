@@ -21,6 +21,7 @@ import { AppText } from "../src/components/AppText";
 import { Card } from "../src/components/Card";
 import { EmptyState } from "../src/components/EmptyState";
 import { MonthFilter, YearFilter } from "../src/components/MonthFilter";
+import { Note } from "../src/components/Note";
 import { ProgressBar } from "../src/components/ProgressBar";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { StatusPill } from "../src/components/StatusPill";
@@ -48,7 +49,16 @@ import {
 import { lastMonths, monthLong, monthsOfYear, yearsFrom, type MonthSlot } from "../src/lib/months.ts";
 import type { Episode, Task } from "../src/lib/model";
 import { airLabel } from "../src/lib/format.ts";
-import { colors, fontFamily, layout, radii, spacing, MIN_TAP_TARGET } from "../src/theme/tokens";
+import {
+  colors,
+  flavours,
+  fontFamily,
+  layout,
+  radii,
+  spacing,
+  MIN_TAP_TARGET,
+  type FlavourName,
+} from "../src/theme/tokens";
 import { type } from "../src/theme/typography";
 
 export default function Episodes() {
@@ -122,6 +132,7 @@ export default function Episodes() {
             count={countLabel(counts.inProgress)}
             loading={countsLoading}
             open={half === "in-progress"}
+            flavour="info"
             onPress={() => openHalf("in-progress")}
           />
           <SlateTile
@@ -129,6 +140,7 @@ export default function Episodes() {
             count={countLabel(counts.broadcast)}
             loading={countsLoading}
             open={half === "broadcast"}
+            flavour="money"
             onPress={() => openHalf("broadcast")}
           />
         </View>
@@ -142,9 +154,12 @@ export default function Episodes() {
         {/* Broadcast is filtered by when it went out, so it needs a month. */}
         {half === "broadcast" ? (
           <View style={{ gap: 8 }}>
+            {/* Blue, because the slate is information — the same blue as the
+                dashboard's Open tasks tile and the review queue banner. */}
             <YearFilter
               years={years}
               selected={year}
+              flavour="info"
               onSelect={(next) => {
                 setYear(next);
                 // Not cleared: a year with no month showed an empty list
@@ -153,18 +168,17 @@ export default function Episodes() {
                 setMonth(newestOf(monthsIn(next)));
               }}
             />
-            <MonthFilter months={months} selected={month} onSelect={setMonth} />
+            <MonthFilter months={months} selected={month} flavour="info" onSelect={setMonth} />
+            {/* Episodes this filter cannot see. Pink, because that is what
+                this palette's pink is for, and because grey at 9.5px under a
+                row of chips is where a sentence goes to be unread. */}
             {broadcastGapNote(counts.broadcast, counts.dated) ? (
-              <AppText style={[type.metaXSmall, { color: colors.faint, lineHeight: 15 }]}>
-                {broadcastGapNote(counts.broadcast, counts.dated)}
-              </AppText>
+              <Note>{broadcastGapNote(counts.broadcast, counts.dated)}</Note>
             ) : null}
             {/* An episode in neither half is invisible on this screen. Said
                 here rather than left for somebody to work out from the tiles. */}
             {strandedNote(counts.total, counts.inProgress, counts.broadcast) ? (
-              <AppText style={[type.metaXSmall, { color: colors.muted, lineHeight: 15 }]}>
-                {strandedNote(counts.total, counts.inProgress, counts.broadcast)}
-              </AppText>
+              <Note>{strandedNote(counts.total, counts.inProgress, counts.broadcast)}</Note>
             ) : null}
           </View>
         ) : null}
@@ -215,12 +229,24 @@ export default function Episodes() {
  *
  * The open one fills, so which list is on screen is answered by the tile rather
  * than by reading the caption under it.
+ *
+ * These are the same device as the three tiles an admin opens the board on, in
+ * the same soft fills — which is the point. The board's own note says the admin
+ * and the member are looking at two views of one set of tasks and "until now
+ * the two screens did not look related"; the slate was the screen still left
+ * out, drawn in white and near-black while everything around it was pink, blue
+ * and mint. Blue for the work in hand, because the slate is information. Mint
+ * for what has gone out, because in this palette mint is what is done.
+ *
+ * Open is the raw fill rather than a darker neutral, so a tile emphasises in
+ * its own colour instead of leaving the hue behind the moment it is tapped.
  */
 function SlateTile({
   label,
   count,
   loading,
   open,
+  flavour,
   onPress,
 }: {
   label: string;
@@ -228,8 +254,10 @@ function SlateTile({
   count: string;
   loading: boolean;
   open: boolean;
+  flavour: FlavourName;
   onPress: () => void;
 }) {
+  const tone = flavours[flavour];
   return (
     <Card
       onPress={onPress}
@@ -240,7 +268,7 @@ function SlateTile({
         padding: spacing.card,
         minHeight: MIN_TAP_TARGET + 28,
         justifyContent: "center",
-        backgroundColor: open ? colors.bar : colors.surface,
+        backgroundColor: open ? tone.fill : tone.soft,
         borderRadius: radii.card,
       }}
     >
@@ -251,7 +279,7 @@ function SlateTile({
           lineHeight: 11,
           letterSpacing: 1.1,
           textTransform: "uppercase",
-          color: open ? colors.onInkMuted : colors.faint,
+          color: open ? tone.onFill : tone.text,
         }}
       >
         {label}
@@ -264,7 +292,7 @@ function SlateTile({
           lineHeight: 36,
           letterSpacing: -1.4,
           marginTop: 4,
-          color: open ? colors.white : colors.ink,
+          color: open ? tone.onFill : tone.text,
         }}
       >
         {loading ? "—" : count}
