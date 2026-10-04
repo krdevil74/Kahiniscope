@@ -16,7 +16,8 @@ import {
   monthSummary,
   monthsOfYear,
   monthUnreadable,
-  paidSummary,
+  paidHeroLabel,
+  paidHeroNote,
   pendingSummary,
   rangeLabel,
   sameMonth,
@@ -208,13 +209,12 @@ test("a payment counts even with no amount on it, because it happened", () => {
 
 test("not being able to add the months up does not read as nothing being paid", () => {
   const months = lastMonths(NOW, 3);
-  assert.equal(
-    paidSummary(months, "₹3,120", 4),
-    "Jul 2026 — Sep 2026 · ₹3,120 across 4 payments"
-  );
-  assert.equal(paidSummary(months, "₹500", 1), "Jul 2026 — Sep 2026 · ₹500 across 1 payment");
+  assert.equal(paidHeroLabel(months), "Paid · Jul 2026 — Sep 2026");
+  assert.equal(paidHeroNote(4), "4 payments");
+  assert.equal(paidHeroNote(1), "1 payment");
+  assert.equal(paidHeroNote(0), "Nothing paid in these months");
   // The failure says so, rather than claiming a figure of zero.
-  assert.equal(paidSummary(months, "₹0", 0, true), "Jul 2026 — Sep 2026 · could not be added up");
+  assert.equal(paidHeroNote(0, true), "Could not be added up");
   assert.equal(monthUnreadable({ year: 2026, month: 9 }), "September 2026 · could not be read");
 });
 
