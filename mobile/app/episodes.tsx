@@ -12,7 +12,7 @@
  * a time. Tasks are fetched only for the episodes actually on screen.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
@@ -36,8 +36,12 @@ import {
 } from "../src/lib/data";
 import {
   broadcastGapNote,
+  countLabel,
   listedSummary,
   monthEmptyNote,
+  monthUnreadableNote,
+  slateSubtitle,
+  strandedNote,
   tileLabel,
   type SlateHalf,
 } from "../src/lib/slate.ts";
@@ -61,10 +65,11 @@ export default function Episodes() {
   const { data: inProgress, loading: slateLoading } = useEpisodesInProgress(
     isAdmin && half === "in-progress"
   );
-  const { data: broadcast, loading: monthLoading } = useBroadcastInMonth(
-    half === "broadcast" ? month : null,
-    isAdmin
-  );
+  const {
+    data: broadcast,
+    loading: monthLoading,
+    error: monthError,
+  } = useBroadcastInMonth(half === "broadcast" ? month : null, isAdmin);
   const earliestYear = useEarliestBroadcastYear(isAdmin && half === "broadcast");
 
   const listed = useMemo<Episode[]>(
@@ -78,22 +83,32 @@ export default function Episodes() {
   const completion = useMemo(() => completionOf(tasks), [tasks]);
 
   const years = useMemo(() => yearsFrom(earliestYear, now), [earliestYear, now]);
-  const months = useMemo(
-    () => (year === null ? lastMonths(now) : monthsOfYear(year, now)),
-    [year, now]
+  const monthsIn = useCallback(
+    (of: number | null) => (of === null ? lastMonths(now) : monthsOfYear(of, now)),
+    [now]
   );
+  const months = useMemo(() => monthsIn(year), [monthsIn, year]);
+
+  /**
+   * The newest month of a range — the one somebody picking a year wants to see
+   * first, and the one this screen must never be without while Broadcast is
+   * open. A year chosen with no month is an empty list with nothing on screen
+   * saying why, which is how picking "2026" came to look like a filter that
+   * had lost the episodes.
+   */
+  const newestOf = (range: readonly MonthSlot[]) => range[range.length - 1] ?? null;
 
   function openHalf(next: SlateHalf) {
     setHalf((current) => (current === next ? null : next));
     // Opening Broadcast with no month chosen would be an empty list and no
     // reason for it, so it starts on the month somebody is most likely to want.
-    if (next === "broadcast" && !month) setMonth(months[months.length - 1] ?? null);
+    if (next === "broadcast" && !month) setMonth(newestOf(months));
   }
 
   return (
     <AppShell
       title="Episodes"
-      subtitle={`${counts.inProgress} in progress · ${counts.broadcast} broadcast`}
+      subtitle={slateSubtitle(counts.inProgress, counts.broadcast)}
       activeTab="episodes"
       showFab
     >
@@ -104,14 +119,14 @@ export default function Episodes() {
         <View style={{ flexDirection: "row", gap: spacing.cardsTight }}>
           <SlateTile
             label={tileLabel("in-progress")}
-            count={counts.inProgress}
+            count={countLabel(counts.inProgress)}
             loading={countsLoading}
             open={half === "in-progress"}
             onPress={() => openHalf("in-progress")}
           />
           <SlateTile
             label={tileLabel("broadcast")}
-            count={counts.broadcast}
+            count={countLabel(counts.broadcast)}
             loading={countsLoading}
             open={half === "broadcast"}
             onPress={() => openHalf("broadcast")}
@@ -132,13 +147,23 @@ export default function Episodes() {
               selected={year}
               onSelect={(next) => {
                 setYear(next);
-                setMonth(null);
+                // Not cleared: a year with no month showed an empty list
+                // labelled "Nothing that month" about a month nobody had
+                // picked. Land on the newest month of the year instead.
+                setMonth(newestOf(monthsIn(next)));
               }}
             />
             <MonthFilter months={months} selected={month} onSelect={setMonth} />
             {broadcastGapNote(counts.broadcast, counts.dated) ? (
               <AppText style={[type.metaXSmall, { color: colors.faint, lineHeight: 15 }]}>
                 {broadcastGapNote(counts.broadcast, counts.dated)}
+              </AppText>
+            ) : null}
+            {/* An episode in neither half is invisible on this screen. Said
+                here rather than left for somebody to work out from the tiles. */}
+            {strandedNote(counts.total, counts.inProgress, counts.broadcast) ? (
+              <AppText style={[type.metaXSmall, { color: colors.muted, lineHeight: 15 }]}>
+                {strandedNote(counts.total, counts.inProgress, counts.broadcast)}
               </AppText>
             ) : null}
           </View>
@@ -160,11 +185,19 @@ export default function Episodes() {
 
         {half !== null && listed.length === 0 && !slateLoading && !monthLoading ? (
           <EmptyState
-            title={half === "in-progress" ? "Nothing in progress" : "Nothing that month"}
+            title={
+              half === "in-progress"
+                ? "Nothing in progress"
+                : monthError
+                  ? "That month would not load"
+                  : "Nothing that month"
+            }
             detail={
               half === "in-progress"
                 ? "Episodes appear here as soon as the first task is assigned to one."
-                : monthEmptyNote(month, counts.broadcast, counts.dated)
+                : monthError
+                  ? monthUnreadableNote(month)
+                  : monthEmptyNote(month, counts.broadcast, counts.dated)
             }
           />
         ) : null}
@@ -191,7 +224,8 @@ function SlateTile({
   onPress,
 }: {
   label: string;
-  count: number;
+  /** Already a string, so a count that did not answer can be a dash. */
+  count: string;
   loading: boolean;
   open: boolean;
   onPress: () => void;

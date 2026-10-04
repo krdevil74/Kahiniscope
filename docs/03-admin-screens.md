@@ -134,6 +134,33 @@ asks for both spellings, from the one place they are named —
 Reading a single document still goes through `episodeStatusFrom`, which folds the
 old pair into the new one.
 
+And a **third** spelling, if one ever turns up, is in neither half. Both halves
+name their values, so an episode stored as something else is in neither query
+and appears nowhere on this screen — where before the slate was split, reading
+each document folded the unknown value into "in progress" and it was at least
+visible. A fourth `count()` over the whole collection is what notices: when the
+two halves do not add up to it, the screen says how many episodes are in
+neither and how to put them back. `episodeStatusFrom` is not the safety net
+here; a query cannot use it.
+
+### A year chip is not a filter on its own
+
+Picking a year used to clear the chosen month, and the month is what the
+Broadcast half actually queries. The result was an empty list under the heading
+**"Nothing that month"** — about a month nobody had picked — which reads
+exactly like a filter that has lost the episodes. Picking a year now lands on
+the newest month of that year, the same month opening the half lands on.
+
+### A month that will not load is not an empty month
+
+The counts were four aggregations gathered with `Promise.all`, so one refusal
+zeroed all four: both tiles read **0**, the undated-episode note went quiet
+because `broadcast` and `dated` were both zero, and the screen said the channel
+had made nothing. They are gathered with `allSettled` and retried now, and a
+count that did not answer is drawn as **—** rather than as a zero nobody can
+trust. The month list is retried too, and a month that still will not load says
+so instead of reading as a month nothing went out in.
+
 ---
 
 ## Navigation

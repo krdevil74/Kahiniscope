@@ -3,8 +3,13 @@ import test from "node:test";
 
 import {
   broadcastGapNote,
+  countLabel,
   listedSummary,
   monthEmptyNote,
+  monthUnreadableNote,
+  slateSubtitle,
+  strandedEpisodes,
+  strandedNote,
   tileLabel,
   undatedBroadcast,
 } from "./slate.ts";
@@ -64,4 +69,52 @@ test("the caption counts what is on screen, not what exists", () => {
 test("an empty half says so in its own words", () => {
   assert.equal(listedSummary("in-progress", 0, { done: 0, total: 0 }), "Nothing in progress");
   assert.equal(listedSummary("broadcast", 0, { done: 0, total: 0 }), "Nothing that month");
+});
+
+// ---------------------------------------------------------------------------
+// Counts that did not answer, and episodes in neither half
+// ---------------------------------------------------------------------------
+
+test("a count that could not be had is a dash, never a zero", () => {
+  // "0 broadcast" is a statement about the channel. A dash is a statement
+  // about the asking, and the two must not look the same on a tile.
+  assert.equal(countLabel(0), "0");
+  assert.equal(countLabel(11), "11");
+  assert.equal(countLabel(null), "—");
+  assert.equal(slateSubtitle(4, 11), "4 in progress · 11 broadcast");
+  assert.equal(slateSubtitle(null, null), "— in progress · — broadcast");
+});
+
+test("the notes stay quiet about numbers they do not have", () => {
+  // A gap worked out from a count that failed is not a gap, and saying "4 of
+  // — episodes" would be worse than saying nothing.
+  assert.equal(undatedBroadcast(null, 7), 0);
+  assert.equal(undatedBroadcast(11, null), 0);
+  assert.equal(broadcastGapNote(null, 7), null);
+  assert.equal(broadcastGapNote(11, null), null);
+  assert.match(monthEmptyNote(SEPTEMBER, null, null), /Try another month or year/);
+});
+
+test("episodes in neither half are counted and named", () => {
+  // Both halves ask for named status spellings, so an episode stored as
+  // anything else is in neither query — and before the slate was split it was
+  // folded into "in progress" on the phone and at least visible.
+  assert.equal(strandedEpisodes(14, 4, 9), 1);
+  assert.equal(strandedEpisodes(13, 4, 9), 0);
+  assert.equal(strandedEpisodes(14, null, 9), null, "not a gap if a count failed");
+
+  assert.equal(strandedNote(13, 4, 9), null, "nothing to say when they add up");
+  assert.equal(strandedNote(14, null, 9), null);
+
+  const one = strandedNote(14, 4, 9) ?? "";
+  assert.match(one, /1 episode is in neither half/);
+  assert.match(one, /spelling this screen does not know/);
+  assert.match(strandedNote(16, 4, 9) ?? "", /3 episodes are in neither half/);
+});
+
+test("a month that could not be read says so, and does not read as empty", () => {
+  const note = monthUnreadableNote(SEPTEMBER);
+  assert.match(note, /September 2026 could not be read/);
+  assert.match(note, /nothing has been lost/);
+  assert.match(monthUnreadableNote(null), /that month could not be read/);
 });
