@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  addedUpHereNote,
   barsFrom,
+  bucketByMonth,
   busiestMonth,
   countOf,
   EMPTY_BAR,
@@ -13,6 +15,8 @@ import {
   monthShort,
   monthSummary,
   monthsOfYear,
+  monthUnreadable,
+  paidSummary,
   pendingSummary,
   rangeLabel,
   sameMonth,
@@ -151,4 +155,72 @@ test("an opened month says what is in it", () => {
   assert.equal(monthSummary(september, 0, "₹0"), "September 2026 · nothing paid");
   assert.equal(monthSummary(september, 1, "₹500"), "September 2026 · 1 payment · ₹500");
   assert.equal(monthSummary(september, 4, "₹3,120"), "September 2026 · 4 payments · ₹3,120");
+});
+
+// ---------------------------------------------------------------------------
+// Adding up on the phone, when the index will not
+// ---------------------------------------------------------------------------
+
+const paid = (at: Date | null, finalAmount: number | null) => ({ paidAt: at, finalAmount });
+
+test("payments land in the month they were paid in, and nowhere else", () => {
+  const months = lastMonths(NOW, 3); // Jul, Aug, Sep 2026
+  const totals = bucketByMonth(months, [
+    paid(new Date(2026, 8, 30, 23, 59, 59), 500),
+    paid(new Date(2026, 8, 1, 0, 0, 0), 300),
+    paid(new Date(2026, 7, 14), 200),
+  ]);
+
+  assert.deepEqual(totals, [
+    { year: 2026, month: 7, total: 0, count: 0 },
+    { year: 2026, month: 8, total: 200, count: 1 },
+    { year: 2026, month: 9, total: 800, count: 2 },
+  ]);
+});
+
+test("every month asked for comes back, so the chart draws the same columns either way", () => {
+  const months = lastMonths(NOW);
+  assert.equal(bucketByMonth(months, []).length, 12);
+  assert.deepEqual(
+    bucketByMonth(months, []).map((t) => t.total),
+    new Array(12).fill(0)
+  );
+});
+
+test("a payment outside the window, or with no date, is in no month", () => {
+  const months = lastMonths(NOW, 2); // Aug, Sep 2026
+  const totals = bucketByMonth(months, [
+    paid(new Date(2025, 2, 4), 900), // long before the window
+    paid(new Date(2026, 11, 4), 900), // after it
+    paid(null, 900), // never paid, or paid before paidAt existed
+    paid(new Date(2026, 8, 9), 150),
+  ]);
+  assert.equal(sumOf(totals), 150);
+  assert.equal(countOf(totals), 1);
+});
+
+test("a payment counts even with no amount on it, because it happened", () => {
+  // The count is how many payments went out; the total is what they came to.
+  // A payment with no finalAmount is one of the former and none of the latter.
+  const totals = bucketByMonth([{ year: 2026, month: 9 }], [paid(new Date(2026, 8, 9), null)]);
+  assert.deepEqual(totals, [{ year: 2026, month: 9, total: 0, count: 1 }]);
+});
+
+test("not being able to add the months up does not read as nothing being paid", () => {
+  const months = lastMonths(NOW, 3);
+  assert.equal(
+    paidSummary(months, "₹3,120", 4),
+    "Jul 2026 — Sep 2026 · ₹3,120 across 4 payments"
+  );
+  assert.equal(paidSummary(months, "₹500", 1), "Jul 2026 — Sep 2026 · ₹500 across 1 payment");
+  // The failure says so, rather than claiming a figure of zero.
+  assert.equal(paidSummary(months, "₹0", 0, true), "Jul 2026 — Sep 2026 · could not be added up");
+  assert.equal(monthUnreadable({ year: 2026, month: 9 }), "September 2026 · could not be read");
+});
+
+test("the fallback says where its figures came from, and when they may be short", () => {
+  assert.match(addedUpHereNote(false, 500), /Added up on this phone/);
+  assert.doesNotMatch(addedUpHereNote(false, 500), /500/);
+  assert.match(addedUpHereNote(true, 500), /most recent 500 payments/);
+  assert.match(addedUpHereNote(true, 500), /may be short/);
 });

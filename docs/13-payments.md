@@ -248,6 +248,37 @@ calendar on a wall in Dhaka, and a boundary drawn in UTC would put the evening o
 the 31st in the wrong bar. Ranges are half-open (`>= start`, `< end`), so no
 payment lands in two months and none lands in neither.
 
+### When the bars will not add up
+
+Twelve bars were twelve aggregations opened at once, gathered with
+`Promise.all`, and a single rejection among them threw all twelve away. The
+screen then had an empty array and one word for it: **"No payments yet"** —
+said to an operation that had paid six people that week. The figures were in
+Firestore the whole time, the index was deployed, the rules allowed it; the
+chart simply could not say the difference between *nothing was paid* and *I
+could not ask*.
+
+So the months are asked four at a time, each retried once, and behind them sit
+two more rungs:
+
+| What happened | What the screen does |
+| --- | --- |
+| every month answered | the bars, as before — nothing is read, nothing is transferred |
+| the aggregations will not answer | one capped read of the window (`WINDOW_READ_LIMIT`, 500, newest first), bucketed by month on the phone, and a line under the heading saying so |
+| that fails too | the error is said out loud, with **Try again** — never an empty month |
+
+The fallback is a ceiling rather than a page, because the alternative is the
+thing this screen exists to avoid: reading the collection to draw a chart. 500
+documents is a bounded cost, and when the cap is reached the screen says the
+oldest months in view may be short rather than quietly drawing a short bar.
+Ordered newest first, so what a cap drops is the far end of the window and not
+an arbitrary handful.
+
+The same rule covers the month list and the screen's own empty state: a month
+that could not be read says *could not be read*, and **"No payments yet"**
+appears only when the screen actually knows it. An error is not an empty
+operation.
+
 **A member** sees their **available balance** first, if they have one — it is
 the question somebody opens this screen to answer — then two figures kept
 apart: paid all time, and approved-but-not-yet-paid as an estimate, with the
@@ -409,17 +440,21 @@ reopenable.
 - **4 unit tests** on which of the three things the tick does, including that
   an unread session is nobody's own work — `"" === ""` is the one comparison
   that would hand somebody else's task an approval.
-- **15 unit tests** on the month arithmetic behind the chart: the rolling window
+- **21 unit tests** on the month arithmetic behind the chart: the rolling window
   crossing a new year, a calendar year that never runs into the future, half-open
   month ranges, bars scaled against the tallest month, a ₹50 month staying
   visible beside a ₹50,000 one, and an empty month drawing a stub rather than
-  nothing.
-- **5 emulator tests** on what the screen actually asks Firestore for: that a
+  nothing. Six of them are the fallback: payments bucketed into the month they
+  were paid in and no other, every month asked for coming back so the chart
+  draws the same columns either way, a payment with no `paidAt` counted in no
+  month, and a failure that reads as a failure rather than as a figure of zero.
+- **6 emulator tests** on what the screen actually asks Firestore for: that a
   bar is a sum and a count rather than a download, that the month before does not
   pick up this month's work, that opening one month returns only that month, that
-  paying something takes it out of the pending query for good, and that a member
-  cannot run the admin's totals across everybody — the aggregation obeys the same
-  rules as the documents.
+  paying something takes it out of the pending query for good, that the capped
+  read behind the bars adds up to exactly what the index totalled, and that a
+  member cannot run the admin's totals across everybody — the aggregation obeys
+  the same rules as the documents.
 - **9 unit tests and 6 more on the server** on the screenshot: what the row says
   in each of its three states, that expiry is judged by the date rather than by
   the sweep having run, the payload cap, the file name a download lands in, the

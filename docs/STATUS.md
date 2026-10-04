@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: **3 October 2026** (the Episodes slate)
+Last updated: **4 October 2026** (the Payments chart that said "No payments yet")
 
 A running record of where this stands and what is left. Written to be read
 cold, after a gap, by someone who has forgotten the details.
@@ -34,7 +34,7 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 271 backend, 280 app.** All green. `npm test` at the root runs the
+**Tests: 272 backend, 286 app.** All green. `npm test` at the root runs the
 backend suites (unit + rules + six emulator suites); `npm run verify` in
 `mobile/` runs typecheck, unit tests and a render of all 17 routes.
 
@@ -222,6 +222,39 @@ build can never be paid for twice. The three note lines that promised
 "reminder #1 in 3d" on work that is in review say "in review" instead.
 
 Detail and the state table: `docs/13-payments.md`.
+
+## The bug the perf work left behind
+
+Reported on 4 October: **the admin's Payments tab said "No payments yet"** under
+every chip, with a fortnight of payments sitting in the database.
+
+Nothing was wrong with the data or the backend — checked, in production: paid
+payments exist with `paidAt` timestamps (the `markPaymentPaid` logs show six on
+1–2 October), the composite index on `payments` is deployed exactly as
+`firestore.indexes.json` declares it, and the rules let an admin read and
+aggregate the collection. What was wrong was the shape of the asking. Twelve
+bars were twelve aggregation queries opened at once and gathered with
+`Promise.all`, so **one rejection among the twelve discarded all twelve** — and
+the screen had no way to say the difference between "nothing was paid" and "I
+could not ask". It chose the first, in those words, about somebody's own money.
+
+Three changes, in `mobile/src/lib/data.ts` and the screen above it:
+
+- the months are asked **four at a time and each retried once**, rather than
+  twelve at once with no second attempt;
+- behind them, **one capped read of the window** (500 payments, newest first)
+  bucketed by month on the phone — the figures stay right and the cost stays
+  bounded, and the screen says where they came from;
+- if even that fails, the **error is said out loud with Try again**. "No
+  payments yet" now appears only when the screen actually knows it, and a month
+  that would not load says so instead of reading as a month nobody was paid in.
+
+If the note *"Added up on this phone, because Firestore would not total these
+months"* shows up on a device, the aggregations themselves are failing there and
+that is the next thing to look at — the chart works either way now, which is
+the point.
+
+Detail: `docs/13-payments.md`, "When the bars will not add up".
 
 ## Asked for on 30 September, in the same branch
 

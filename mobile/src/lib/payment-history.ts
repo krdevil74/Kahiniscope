@@ -44,6 +44,7 @@ import {
   monthKey,
   monthLong,
   monthShort,
+  monthSlotOf,
   sameMonth,
   type MonthSlot,
 } from "./months.ts";
@@ -141,4 +142,82 @@ export function rangeLabel(months: readonly MonthSlot[]): string {
 export function monthSummary(slot: MonthSlot, count: number, amount: string): string {
   if (count === 0) return `${monthLong(slot)} · nothing paid`;
   return `${monthLong(slot)} · ${count} ${count === 1 ? "payment" : "payments"} · ${amount}`;
+}
+
+/** The same heading when that month could not be read at all. */
+export function monthUnreadable(slot: MonthSlot): string {
+  return `${monthLong(slot)} · could not be read`;
+}
+
+/**
+ * The chart's own line: the range, and what it came to.
+ *
+ * `failed` is a separate sentence rather than a figure of zero. "₹0 across 0
+ * payments" is a claim about the money; not being able to add it up is a
+ * claim about the connection, and the two must not read the same.
+ */
+export function paidSummary(
+  months: readonly MonthSlot[],
+  amount: string,
+  count: number,
+  failed = false
+): string {
+  if (failed) return `${rangeLabel(months)} · could not be added up`;
+  return `${rangeLabel(months)} · ${amount} across ${count} ${
+    count === 1 ? "payment" : "payments"
+  }`;
+}
+
+/**
+ * Said out loud when the bars were added up here rather than in the index.
+ *
+ * Not an apology — a caveat. The figures are right, but they came from a
+ * capped read, and if the cap was reached the oldest months in view are short
+ * and nobody should read them as the truth about last November.
+ */
+export function addedUpHereNote(partial: boolean, limit: number): string {
+  if (partial) {
+    return `Added up on this phone from the most recent ${limit} payments — the oldest months in view may be short.`;
+  }
+  return "Added up on this phone, because Firestore would not total these months.";
+}
+
+// ---------------------------------------------------------------------------
+// Adding up on the phone, when the index will not
+// ---------------------------------------------------------------------------
+
+/** The least a payment has to be for this module to put it in a month. */
+export interface Paid {
+  paidAt: Date | null;
+  finalAmount: number | null;
+}
+
+/**
+ * Add payments up into the months they fall in.
+ *
+ * The bars are meant to come back from Firestore as a sum and a count, which
+ * is what keeps the chart costing the same whether a month holds four payments
+ * or four thousand. This is the way back when those aggregations will not
+ * answer: the window is read once, under a ceiling, and added up here.
+ *
+ * Every month asked for comes back, zeroed if nothing fell in it, so the chart
+ * draws the same twelve columns either way. A payment with no `paidAt` is in
+ * no month and is counted in none — the same documents the aggregation's index
+ * skips, so both paths agree on what is missing.
+ */
+export function bucketByMonth(
+  months: readonly MonthSlot[],
+  payments: readonly Paid[]
+): MonthTotal[] {
+  const buckets = new Map<string, MonthTotal>(
+    months.map((slot) => [monthKey(slot), { ...slot, total: 0, count: 0 }])
+  );
+  for (const payment of payments) {
+    if (!payment.paidAt) continue;
+    const bucket = buckets.get(monthKey(monthSlotOf(payment.paidAt)));
+    if (!bucket) continue;
+    bucket.total += payment.finalAmount ?? 0;
+    bucket.count += 1;
+  }
+  return months.map((slot) => buckets.get(monthKey(slot))!);
 }

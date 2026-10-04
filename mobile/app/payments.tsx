@@ -39,16 +39,19 @@ import {
   usePayments,
   usePendingPayments,
   useTeam,
+  WINDOW_READ_LIMIT,
 } from "../src/lib/data";
 import { MonthlyPaidChart } from "../src/components/MonthlyPaidChart";
 import { YearFilter } from "../src/components/MonthFilter";
 import {
+  addedUpHereNote,
   countOf,
   lastMonths,
   monthSummary,
   monthsOfYear,
+  monthUnreadable,
+  paidSummary,
   pendingSummary,
-  rangeLabel,
   sameMonth,
   sumOf,
   yearsFrom,
@@ -119,12 +122,22 @@ function AdminPayments() {
     () => (year === null ? lastMonths(now) : monthsOfYear(year, now)),
     [year, now]
   );
-  const { data: totals, loading: totalsLoading, reload: reloadTotals } =
-    useMonthlyPaidTotals(months, isAdmin);
+  const {
+    data: totals,
+    loading: totalsLoading,
+    error: totalsError,
+    degraded,
+    partial,
+    reload: reloadTotals,
+  } = useMonthlyPaidTotals(months, isAdmin);
 
   // Only the month on screen is ever fetched as documents.
-  const { data: monthPayments, loading: monthLoading, reload: reloadMonth } =
-    usePaidInMonth(selected, isAdmin);
+  const {
+    data: monthPayments,
+    loading: monthLoading,
+    error: monthError,
+    reload: reloadMonth,
+  } = usePaidInMonth(selected, isAdmin);
   const [monthShown, setMonthShown] = useState(PAGE_SIZE);
   const monthPage = pageOf(monthPayments, monthShown);
   const monthTotal = monthPayments.reduce((sum, p) => sum + (p.finalAmount ?? 0), 0);
@@ -242,8 +255,16 @@ function AdminPayments() {
               Paid month by month
             </AppText>
             <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 3 }]}>
-              {`${rangeLabel(months)} · ${money(sumOf(totals))} across ${countOf(totals)} payments`}
+              {paidSummary(months, money(sumOf(totals)), countOf(totals), totalsError !== null)}
             </AppText>
+            {/* The figures are right but they did not come from the index.
+                Said here rather than swallowed: a number is only as good as
+                where it came from. */}
+            {degraded ? (
+              <AppText style={[type.metaXSmall, { color: colors.muted, marginTop: 2 }]}>
+                {addedUpHereNote(partial, WINDOW_READ_LIMIT)}
+              </AppText>
+            ) : null}
             {/* Said once, under the heading: a bar chart on a phone does not
                 look tappable until somebody tells you it is. */}
             <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
@@ -260,7 +281,9 @@ function AdminPayments() {
             totals={totals}
             selected={selected}
             loading={totalsLoading}
+            error={totalsError}
             onSelect={pickMonth}
+            onRetry={reloadTotals}
           />
         </Card>
 
@@ -268,7 +291,9 @@ function AdminPayments() {
         {selected ? (
           <>
             <SectionCaption>
-              {monthSummary(selected, monthPayments.length, money(monthTotal))}
+              {monthError
+                ? monthUnreadable(selected)
+                : monthSummary(selected, monthPayments.length, money(monthTotal))}
             </SectionCaption>
 
             {monthLoading && monthPayments.length === 0 ? (
@@ -278,10 +303,17 @@ function AdminPayments() {
             ) : null}
 
             {!monthLoading && monthPayments.length === 0 ? (
-              <EmptyState
-                title="Nothing paid that month"
-                detail="Pick another bar, or a different year."
-              />
+              monthError ? (
+                <EmptyState
+                  title="That month would not load"
+                  detail="Nothing has been lost — the list could not be fetched. Close the month and open it again to retry."
+                />
+              ) : (
+                <EmptyState
+                  title="Nothing paid that month"
+                  detail="Pick another bar, or a different year."
+                />
+              )
             ) : null}
 
             {monthPage.shown.map((payment) => (
@@ -306,7 +338,9 @@ function AdminPayments() {
           </>
         ) : null}
 
-        {pending.length === 0 && totals.length === 0 && !totalsLoading ? (
+        {/* Only when the screen actually knows there is nothing: an error is
+            not an empty operation. */}
+        {pending.length === 0 && totals.length === 0 && !totalsLoading && !totalsError ? (
           <EmptyState
             title="No payments yet"
             detail="A payment opens when you approve somebody's work from the review queue on the Board."

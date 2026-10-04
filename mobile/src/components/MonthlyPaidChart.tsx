@@ -47,12 +47,17 @@ export function MonthlyPaidChart({
   totals,
   selected,
   loading,
+  error,
   onSelect,
+  onRetry,
 }: {
   totals: readonly MonthTotal[];
   selected: MonthSlot | null;
   loading: boolean;
+  /** Nothing could be asked, which is not the same fact as nothing being there. */
+  error?: Error | null;
   onSelect: (slot: MonthSlot) => void;
+  onRetry?: () => void;
 }) {
   const bars = barsFrom(totals, PLOT_HEIGHT);
   const peak = busiestMonth(totals);
@@ -65,12 +70,40 @@ export function MonthlyPaidChart({
       ? `Highest: ${monthLong(peak)} · ${money(peak.total)}`
       : "Nothing paid yet";
 
+  // Three different facts, and this chart used to tell all of them as the
+  // last one: still asking, could not ask, and nothing there. An admin who
+  // has paid six people this month and reads "No payments yet" has been told
+  // something untrue about their own money.
   if (totals.length === 0) {
     return (
-      <View style={{ paddingVertical: 18, alignItems: "center" }}>
-        <AppText style={[type.metaXSmall, { color: colors.faint }]}>
-          {loading ? "Adding it up…" : "No payments yet"}
+      <View style={{ paddingVertical: 18, alignItems: "center", gap: 6 }}>
+        <AppText style={[type.metaXSmall, { color: colors.faint, textAlign: "center" }]}>
+          {loading
+            ? "Adding it up…"
+            : error
+              ? "Could not add these months up"
+              : "No payments yet"}
         </AppText>
+        {error && !loading && onRetry ? (
+          <Pressable
+            onPress={onRetry}
+            accessibilityRole="button"
+            accessibilityLabel="Try adding the months up again"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <AppText
+              style={{
+                fontFamily: fontFamily.monoMedium,
+                fontSize: 10.5,
+                lineHeight: 13,
+                color: colors.ink,
+                textDecorationLine: "underline",
+              }}
+            >
+              Try again
+            </AppText>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
