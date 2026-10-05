@@ -360,13 +360,54 @@ function monthRange(date) {
   };
 }
 
+/**
+ * What the screen actually asks for: a range on `paidAt` and nothing else.
+ *
+ * No `status == "paid"` beside it. Two fields need a composite index and one
+ * does not, and in production every query here that wanted a composite index
+ * failed while every query that did not, worked. Dropping it lets nothing in —
+ * `paidAt` is written in the same breath as the status and is null on every
+ * payment that has not been paid, which the next test pins down.
+ */
 const paidBetween = (db, start, end) =>
   query(
     collection(db, "payments"),
-    where("status", "==", "paid"),
     where("paidAt", ">=", Timestamp.fromDate(start)),
     where("paidAt", "<", Timestamp.fromDate(end))
   );
+
+test("a payment with a paidAt is a paid payment, which is what lets the query drop the status", async () => {
+  // The invariant the month queries lean on. `reviewTask` opens a payment with
+  // `paidAt: null` and `markPaymentPaid` sets the two together, so a date in
+  // the window is the same set of documents as a status of "paid" — and the
+  // query needs one field instead of two.
+  const taskId = await newTask();
+  await updateDoc(doc(artist.db, "tasks", taskId), { status: "submitted", submittedAt: Timestamp.now() });
+  const { data } = await call(owner, "reviewTask", {
+    taskId,
+    decision: "approve",
+    unit: "voice-character",
+    recordingMinutes: 3,
+  });
+
+  const waiting = await read("payments", data.paymentId);
+  assert.equal(waiting.status, "pending");
+  assert.equal(waiting.paidAt, null, "nothing waiting carries a date");
+
+  await call(owner, "markPaymentPaid", { paymentId: data.paymentId, amount: 195 });
+  const settled = await read("payments", data.paymentId);
+  assert.equal(settled.status, "paid");
+  assert.ok(settled.paidAt, "and paying it sets the two together");
+
+  // So every document the date-only query returns is paid.
+  const { start, end } = monthRange(new Date());
+  const inMonth = await getDocs(paidBetween(owner.db, start, end));
+  assert.ok(inMonth.size > 0);
+  assert.ok(
+    inMonth.docs.every((d) => d.data().status === "paid"),
+    "a range on paidAt alone returns paid payments and nothing else"
+  );
+});
 
 test("a month bar is a sum and a count, not a download", async () => {
   // `payments` is unwritable by every client, admin included, so a payment

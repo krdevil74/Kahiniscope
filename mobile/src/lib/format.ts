@@ -65,6 +65,23 @@ export function airLabel(date: Date | null): string {
   return `Air ${String(date.getDate()).padStart(2, "0")} ${MONTHS_SHORT[date.getMonth()]}`;
 }
 
+/**
+ * "Out 03 Oct" — when an episode actually went out.
+ *
+ * Which is not the air date, and a card that shows the air date on a broadcast
+ * episode is telling a small lie: an episode due on the 20th of August and
+ * marked broadcast on the 3rd of September went out in September, and the
+ * month filter above the card has already filed it under September. The two
+ * disagreeing on one screen is how somebody decides the filter is broken.
+ *
+ * Falls back to the air date for the episodes marked broadcast before the app
+ * recorded when — said as an air date, because that is what it is.
+ */
+export function outLabel(broadcastAt: Date | null, airDate: Date | null): string {
+  if (!broadcastAt) return airLabel(airDate);
+  return `Out ${String(broadcastAt.getDate()).padStart(2, "0")} ${MONTHS_SHORT[broadcastAt.getMonth()]}`;
+}
+
 /** "Tuesday, 14 September" — the Board's header subtitle. */
 export function boardDateLabel(date: Date): string {
   return `${WEEKDAYS_LONG[date.getDay()]}, ${date.getDate()} ${MONTHS_LONG[date.getMonth()]}`;

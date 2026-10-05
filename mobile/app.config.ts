@@ -93,8 +93,22 @@ const config: ExpoConfig = {
           "Kahiniscope needs one photo at a time, so you can attach the screenshot of a payment you have just made.",
       },
     ],
-    // Handing the saved screenshot to the share sheet, which is how a member
-    // gets it out of the app and into their own storage.
+    [
+      // Saving the payment screenshot into the phone's own photos, which is
+      // what the ⤓ means to the person tapping it. Write-only: this adds one
+      // image and never reads the library, and the permission strings say so
+      // — a dialog that asks for less is a dialog people say yes to.
+      "expo-media-library",
+      {
+        photosPermission:
+          "Kahiniscope saves the screenshot of a payment to your photos, so you keep your own record of it.",
+        savePhotosPermission:
+          "Kahiniscope saves the screenshot of a payment to your photos, so you keep your own record of it.",
+        isAccessMediaLocationEnabled: false,
+      },
+    ],
+    // Still here as the way out when saving to photos is refused, and the way
+    // a member sends the screenshot on to somebody.
     "expo-sharing",
   ],
 

@@ -48,7 +48,7 @@ import {
 } from "../src/lib/slate.ts";
 import { lastMonths, monthLong, monthsOfYear, yearsFrom, type MonthSlot } from "../src/lib/months.ts";
 import type { Episode, Task } from "../src/lib/model";
-import { airLabel } from "../src/lib/format.ts";
+import { airLabel, outLabel } from "../src/lib/format.ts";
 import {
   colors,
   flavours,
@@ -353,7 +353,12 @@ function EpisodeCard({
               color: colors.faint,
             }}
           >
-            {airLabel(episode.airDate)}
+            {/* A broadcast episode says when it went out; one still in
+                progress says when it is due. The card and the month filter
+                above it are then talking about the same date. */}
+            {episode.status === "broadcast"
+              ? outLabel(episode.broadcastAt, episode.airDate)
+              : airLabel(episode.airDate)}
           </AppText>
           <StatusPill status={episode.status} />
         </View>

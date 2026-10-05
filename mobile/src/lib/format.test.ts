@@ -9,6 +9,7 @@ import {
   initials,
   maskPhone,
   pluralise,
+  outLabel,
   relativeTime,
 } from "./format.ts";
 
@@ -63,4 +64,19 @@ test("plurals", () => {
   assert.equal(pluralise(1, "task"), "1 task");
   assert.equal(pluralise(3, "task"), "3 tasks");
   assert.equal(pluralise(2, "person", "people"), "2 people");
+});
+
+test("a broadcast episode is dated by when it went out, not when it was due", () => {
+  // Due on the 20th of August, marked broadcast on the 3rd of September. The
+  // month filter files it under September, and the card has to agree or one
+  // of the two looks broken.
+  const aired = new Date(2026, 7, 20);
+  const wentOut = new Date(2026, 8, 3);
+  assert.equal(outLabel(wentOut, aired), "Out 03 Sep");
+  assert.equal(airLabel(aired), "Air 20 Aug");
+
+  // Marked broadcast before the app recorded when: the air date is all there
+  // is, and it is said as an air date rather than dressed up as the other.
+  assert.equal(outLabel(null, aired), "Air 20 Aug");
+  assert.equal(outLabel(null, null), "no air date");
 });
