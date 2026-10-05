@@ -29,7 +29,7 @@ import {
 import { db } from "./firebase";
 import { toBool, toDate, toId, toNumber, toStringArray, toStringOrNull } from "./convert.ts";
 import { craftsFrom } from "./crafts";
-import { episodeStatusFrom, storedValuesFor } from "./episode-status.ts";
+import { episodeStatusFrom, isBroadcast, storedValuesFor } from "./episode-status.ts";
 import { ratesFrom, taskStatusFrom, toAdvance, toPayment } from "./payment-convert.ts";
 import { monthKey, monthRange, type MonthSlot } from "./months.ts";
 import { bucketByMonth, type MonthTotal } from "./payment-history.ts";
@@ -344,7 +344,11 @@ export function useEpisodeCounts(
     void Promise.allSettled([
       counted(where("status", "in", storedValuesFor("in_progress"))),
       counted(where("status", "in", storedValuesFor("broadcast"))),
-      counted(where("status", "in", storedValuesFor("broadcast")), orderBy("broadcastAt")),
+      // How many carry a date at all. Ordered by the field and nothing else,
+      // because an aggregation ordered by a field skips the documents that
+      // lack it — which is the whole point of this number — and because one
+      // field needs no composite index.
+      counted(orderBy("broadcastAt")),
       counted(),
     ]).then((results) => {
       if (!live) return;
@@ -418,12 +422,18 @@ export function useBroadcastInMonth(
     setLoading(true);
     const { start, end } = monthRange(slot);
 
+    // On `broadcastAt` alone. A `status in [...]` beside a range is two
+    // fields and a composite index; the date on its own needs nothing. It is
+    // also exact: the status switch stamps `broadcastAt` when an episode goes
+    // out and clears it when one is reopened, so an episode with a date in
+    // this month went out in this month. The status is checked below, on
+    // documents already in hand.
+    //
     // Retried, because the alternative reads as a month nothing went out in.
     retrying(() =>
       getDocs(
         query(
           collection(db, "episodes"),
-          where("status", "in", storedValuesFor("broadcast")),
           where("broadcastAt", ">=", Timestamp.fromDate(start)),
           where("broadcastAt", "<", Timestamp.fromDate(end)),
           orderBy("broadcastAt", "desc")
@@ -432,7 +442,7 @@ export function useBroadcastInMonth(
     )
       .then((snap) => {
         if (!live) return;
-        setData(snap.docs.map(toEpisode));
+        setData(snap.docs.map(toEpisode).filter(isBroadcast));
         setLoading(false);
         setError(null);
       })
@@ -462,14 +472,7 @@ export function useEarliestBroadcastYear(enabled = true): number | null {
     // Retried: a year the filter never offers is a year of episodes nobody can
     // reach, and the only sign of it is a chip that is not there.
     retrying(() =>
-      getDocs(
-        query(
-          collection(db, "episodes"),
-          where("status", "in", storedValuesFor("broadcast")),
-          orderBy("broadcastAt", "asc"),
-          fsLimit(1)
-        )
-      )
+      getDocs(query(collection(db, "episodes"), orderBy("broadcastAt", "asc"), fsLimit(1)))
     )
       .then((snap) => {
         if (!live || snap.empty) return;
@@ -596,16 +599,35 @@ export function usePendingPayments(enabled = true): Live<Payment[]> {
   return useCollection("payments", toPayment, constraints, enabled);
 }
 
-/** The paid payments inside a half-open range, which all three month questions ask for. */
+/**
+ * The payments inside a half-open range, which all three month questions ask.
+ *
+ * **On `paidAt` alone, with no `status` filter**, and that is the fix for a
+ * screen that spent a week saying it could not add anything up. `status ==
+ * "paid"` beside a range on `paidAt` is two fields, and two fields need a
+ * composite index; `paidAt` on its own needs nothing but the single-field
+ * index every field gets for free. The split in production was exact — every
+ * query here that wanted a composite index failed, and every query that did
+ * not, worked.
+ *
+ * Nothing is let in by dropping it. `paidAt` is written in the same breath as
+ * `status: "paid"` and is null on every payment that has not been paid
+ * (functions/src/review.ts), so a payment with a `paidAt` *is* a paid payment.
+ * The callers that read documents still check the status in memory, which
+ * costs nothing on a document already fetched and keeps a hand-edited record
+ * from sneaking in.
+ */
 function paidBetween(start: Date, end: Date, ...extra: QueryConstraint[]) {
   return query(
     collection(db, "payments"),
-    where("status", "==", "paid"),
     where("paidAt", ">=", Timestamp.fromDate(start)),
     where("paidAt", "<", Timestamp.fromDate(end)),
     ...extra
   );
 }
+
+/** The guard the query no longer carries, applied to what came back. */
+const isPaid = (payment: Payment) => payment.status === "paid";
 
 /**
  * How many aggregations are in flight at once.
@@ -676,7 +698,7 @@ async function readMonths(
     paidBetween(start, end, orderBy("paidAt", "desc"), fsLimit(WINDOW_READ_LIMIT))
   );
   return {
-    totals: bucketByMonth(months, snap.docs.map(toPayment)),
+    totals: bucketByMonth(months, snap.docs.map(toPayment).filter(isPaid)),
     partial: snap.size >= WINDOW_READ_LIMIT,
   };
 }
@@ -804,7 +826,7 @@ export function usePaidInMonth(
     getDocs(paidBetween(start, end, orderBy("paidAt", "desc")))
       .then((snap) => {
         if (!live) return;
-        setData(snap.docs.map(toPayment));
+        setData(snap.docs.map(toPayment).filter(isPaid));
         setLoading(false);
         setError(null);
       })
@@ -840,14 +862,7 @@ export function useEarliestPaidYear(enabled = true): number | null {
     // Retried, because a year the filter never offers is a year of history
     // that cannot be reached at all — and the only sign is a chip not there.
     retrying(() =>
-      getDocs(
-        query(
-          collection(db, "payments"),
-          where("status", "==", "paid"),
-          orderBy("paidAt", "asc"),
-          fsLimit(1)
-        )
-      )
+      getDocs(query(collection(db, "payments"), orderBy("paidAt", "asc"), fsLimit(1)))
     )
       .then((snap) => {
         if (!live || snap.empty) return;

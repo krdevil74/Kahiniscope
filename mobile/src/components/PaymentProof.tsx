@@ -63,8 +63,10 @@ export function ProofDownload({ payment, now }: { payment: ProofPayment; now: Da
         toast("That screenshot has been deleted — payments keep theirs for 30 days.");
         return;
       }
-      const shared = await saveProofToDevice(payment, proof);
-      if (!shared) toast("This build cannot save files. Open the app on your phone.");
+      const saved = await saveProofToDevice(payment, proof);
+      if (saved === "saved") toast("Saved to your photos.");
+      if (saved === "unavailable") toast("This build cannot save files. Open the app on your phone.");
+      // "shared" says nothing: the sheet they just used is its own receipt.
     } catch (err) {
       toast(err instanceof Error ? err.message : "That did not download.");
     } finally {

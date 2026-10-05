@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: **4 October 2026** (the two screens that said nothing was there, then their colour)
+Last updated: **5 October 2026** (why those two screens could not read anything)
 
 A running record of where this stands and what is left. Written to be read
 cold, after a gap, by someone who has forgotten the details.
@@ -34,7 +34,7 @@ All ten steps of the handoff's build order, plus CI/CD.
 | 10. Build and Play listing materials | materials written; **no build shipped** |
 | CI / deploy workflows | done, green |
 
-**Tests: 272 backend, 290 app.** All green. `npm test` at the root runs the
+**Tests: 274 backend, 291 app.** All green. `npm test` at the root runs the
 backend suites (unit + rules + six emulator suites); `npm run verify` in
 `mobile/` runs typecheck, unit tests and a render of all 17 routes.
 
@@ -361,6 +361,55 @@ monospace beside a 40px figure is already told apart.
 "the total, clean, with the stamp beside it" — and the PAID stamp is drawn in
 `money` at 2.5px, which on raw mint would lose the one mark of colour that
 block exists for.
+
+## The answer: one field, not two
+
+Screenshots from the phone on 5 October, and this time the screens said what
+was wrong rather than shrugging — "That month would not load", "Could not be
+added up". The honesty work from the day before is what made this findable.
+
+The split in what worked was exact:
+
+| Worked | Failed |
+| --- | --- |
+| the pending queue (`status == pending`) | the month totals (`status == paid` **+ a `paidAt` range**) |
+| both episode tiles (`status in [...]`) | the capped read behind them, same two fields |
+| the tasks behind each card (`episodeId in [...]`) | the paid month list, same two fields |
+| the in-progress slate (`status in [...]`) | the broadcast month list (`status in [...]` **+ a `broadcastAt` range**) |
+
+**Every query that wanted a composite index failed. Every query that did not,
+worked.** The indexes are declared in `firestore.indexes.json`, deployed, and
+listed by `firebase firestore:indexes` exactly as declared — and they are not
+serving these queries. Worth a look in the console at their *state*, which the
+CLI does not print.
+
+The fix does not wait on that, because the second field was never needed.
+`paidAt` is written in the same breath as `status: "paid"` and is null
+otherwise; `broadcastAt` is stamped when an episode goes out and cleared when
+one is reopened. **A date on those fields already means the status.** So every
+one of those queries now asks for a range on the date alone — one field, the
+single-field index every field gets for free — and the status is checked in
+memory on the documents that come back, which costs nothing and keeps a
+hand-edited record out.
+
+**No query the app makes needs a composite index any more.** The declared ones
+are left in place rather than deleted: an index in a bad state is worth
+looking at, not worth quietly removing the evidence of. The Cloud Functions
+still use theirs (escalation), and those have not been observed running yet.
+
+Three more things from the same screenshots:
+
+- **A broadcast card showed the air date.** An episode due on the 20th of
+  August and marked broadcast on the 3rd of September went out in September,
+  which is where the month filter above the card had already put it; the card
+  said `Air 20 Aug` beside it. It says `Out 03 Sep` now, falling back to the
+  air date for the episodes marked before the app recorded when.
+- **The ⤓ on a payment opened the share sheet**, which offered WhatsApp and
+  Messenger to somebody who only wanted to keep their own evidence. It saves
+  to the phone's photos now, asking once, write-only — and falls back to the
+  share sheet if that is refused or the module is not in the build.
+  `expo-media-library` is a new native dependency: **this needs a new build,
+  not an OTA update.**
 
 ## Asked for on 30 September, in the same branch
 

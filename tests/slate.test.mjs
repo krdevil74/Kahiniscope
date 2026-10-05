@@ -139,14 +139,14 @@ test("the counts include the spellings written before the life cycle existed", a
 
 test("the dated count is how many can be filtered, which is not the same number", async () => {
   const beforeAired = await countOf(where("status", "in", BROADCAST_VALUES));
-  const beforeDated = await countOf(where("status", "in", BROADCAST_VALUES), orderBy("broadcastAt"));
+  const beforeDated = await countOf(orderBy("broadcastAt"));
 
   // Marked broadcast before the app recorded when — exactly the live data this
   // ships into.
   await episode({ status: "broadcast" });
 
   const aired = await countOf(where("status", "in", BROADCAST_VALUES));
-  const dated = await countOf(where("status", "in", BROADCAST_VALUES), orderBy("broadcastAt"));
+  const dated = await countOf(orderBy("broadcastAt"));
 
   assert.equal(aired, beforeAired + 1, "it counts as broadcast");
   assert.equal(dated, beforeDated, "and not as datable — which is the gap the screen reports");
@@ -172,18 +172,32 @@ test("a month returns what went out in it, by the broadcast date", async () => {
     broadcastAt: new Date(2026, 9, 2, 19, 0),
   });
 
-  const inMonth = async (year, month) =>
+  // On `broadcastAt` alone, which is what the screen asks: a `status in [...]`
+  // beside a range is two fields and a composite index, and the date on its
+  // own needs neither. The status is checked below, on what came back.
+  const inMonthRaw = async (year, month) =>
     (
       await getDocs(
         query(
           collection(owner.db, "episodes"),
-          where("status", "in", BROADCAST_VALUES),
           where("broadcastAt", ">=", Timestamp.fromDate(new Date(year, month - 1, 1))),
           where("broadcastAt", "<", Timestamp.fromDate(new Date(year, month, 1))),
           orderBy("broadcastAt", "desc")
         )
       )
-    ).docs.map((d) => d.id);
+    ).docs;
+
+  const inMonth = async (year, month) =>
+    (await inMonthRaw(year, month))
+      .filter((d) => BROADCAST_VALUES.includes(d.data().status))
+      .map((d) => d.id);
+
+  // The date is only ever on an episode that has gone out, so the filter above
+  // is a guard rather than the thing doing the work.
+  assert.ok(
+    (await inMonthRaw(2026, 9)).every((d) => BROADCAST_VALUES.includes(d.data().status)),
+    "a range on broadcastAt alone returns broadcast episodes and nothing else"
+  );
 
   const september = await inMonth(2026, 9);
   assert.ok(september.includes(late), "the one that slipped is in the month it actually went out");
@@ -203,12 +217,7 @@ test("the year filter's floor is one document, not the collection", async () => 
   await episode({ status: "broadcast", broadcastAt: new Date(2024, 2, 9) });
 
   const first = await getDocs(
-    query(
-      collection(owner.db, "episodes"),
-      where("status", "in", BROADCAST_VALUES),
-      orderBy("broadcastAt", "asc"),
-      fsLimit(1)
-    )
+    query(collection(owner.db, "episodes"), orderBy("broadcastAt", "asc"), fsLimit(1))
   );
 
   assert.equal(first.size, 1, "one read answers how far back the filter should offer");

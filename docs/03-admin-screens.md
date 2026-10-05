@@ -143,6 +143,32 @@ two halves do not add up to it, the screen says how many episodes are in
 neither and how to put them back. `episodeStatusFrom` is not the safety net
 here; a query cannot use it.
 
+### One field, not two
+
+The broadcast half asks for a range on `broadcastAt` **and nothing else** — no
+`status in [...]` beside it. Two fields need a composite index and one does
+not, and in production every query on this screen that wanted a composite
+index failed while every query that did not, worked.
+
+It lets nothing in: the status switch stamps `broadcastAt` when an episode
+goes out and clears it when one is reopened, so an episode carrying a date in
+September went out in September. The status is still checked, in memory, on
+the documents that come back.
+
+The same goes for the year filter's floor (one document, ordered by the date)
+and for the `dated` count, which is now simply "how many episodes carry a
+`broadcastAt`" — an aggregation ordered by a field skips the documents that
+lack it, which is the whole point of that number.
+
+### The date on a broadcast card
+
+A card in the broadcast half says **when it went out**, not when it was due:
+`Out 03 Oct`. An episode due on the 20th of August and marked broadcast on the
+3rd of September went out in September, the month filter above the card has
+already filed it under September, and a card showing `Air 20 Aug` next to it
+is how somebody decides the filter is broken. Episodes marked broadcast before
+the app recorded when fall back to the air date, said as an air date.
+
 ### Pink, blue and mint, like everything else
 
 The two halves and their filter chips were the last controls in the app still

@@ -147,28 +147,34 @@ export async function fetchPaymentProof(paymentId: string): Promise<PaymentProof
 // Off the phone
 // ---------------------------------------------------------------------------
 
+/** What happened to the screenshot, so the toast can say the true thing. */
+export type ProofSaved = "saved" | "shared" | "unavailable";
+
 /**
- * Write the image to a file and hand it to the share sheet.
+ * Put the image on the phone.
  *
- * That sheet is what "download" means on Android: Save to Files, Save to
- * Photos, or send it on to somebody — the member's own choice rather than this
- * app deciding where their evidence lives. It also avoids asking for the
- * media-library permission, which is a lot to ask for one screenshot.
+ * It used to go straight to the share sheet, on the reasoning that the sheet
+ * is what "download" means on Android and that the media-library permission is
+ * a lot to ask for one screenshot. In the hand it is not what it means: tapping
+ * a ⤓ and being offered WhatsApp and Messenger is being asked to send your own
+ * evidence to somebody, when all you wanted was to keep it.
  *
- * Returns false when there is nothing to share it with, which is the honest
- * answer on a web render and in Expo Go.
+ * So it saves to the photos first, and asks once. If the permission is refused
+ * — or the module is not in this build — the share sheet is still there, which
+ * is a smaller promise honestly kept rather than a dead button.
+ *
+ * `unavailable` is the honest answer on a web render and in Expo Go, where
+ * neither route exists.
  */
 export async function saveProofToDevice(
   payment: { id: string; taskType: string },
   proof: PaymentProof
-): Promise<boolean> {
+): Promise<ProofSaved> {
   const fs = loadFileSystem();
-  const sharing = loadSharing();
-  if (!fs || !sharing) return false;
-  if (!(await sharing.isAvailableAsync())) return false;
+  if (!fs) return "unavailable";
 
   const file = new fs.File(fs.Paths.cache, proofFileName(payment, proof.contentType));
-  // A stale file from a previous tap would otherwise be shared instead.
+  // A stale file from a previous tap would otherwise be saved instead.
   if (file.exists) file.delete();
   file.create();
   // The bytes are handed over as base64 rather than decoded here: React Native
@@ -176,12 +182,41 @@ export async function saveProofToDevice(
   // dependency this does not need when the file layer already speaks it.
   file.write(proof.data, { encoding: "base64" });
 
+  if (await saveToPhotos(file.uri)) return "saved";
+
+  const sharing = loadSharing();
+  if (!sharing || !(await sharing.isAvailableAsync())) return "unavailable";
   await sharing.shareAsync(file.uri, {
     mimeType: proof.contentType,
     dialogTitle: "Save the payment screenshot",
     UTI: "public.image",
   });
-  return true;
+  return "shared";
+}
+
+/**
+ * Into the phone's own photos, if we are allowed.
+ *
+ * `writeOnly` because that is all this does — it adds one image and never
+ * reads the library, and the system dialog says so, which is the difference
+ * between a reasonable request and an alarming one. Refusal is an ordinary
+ * answer here, not an error: the caller falls back to the share sheet.
+ */
+async function saveToPhotos(uri: string): Promise<boolean> {
+  const media = loadMediaLibrary();
+  if (!media) return false;
+  try {
+    const existing = await media.getPermissionsAsync(true);
+    const granted =
+      existing.granted || (existing.canAskAgain && (await media.requestPermissionsAsync(true)).granted);
+    if (!granted) return false;
+    await media.saveToLibraryAsync(uri);
+    return true;
+  } catch {
+    // Including the one that matters on Android 13+: a library that is there
+    // but refuses to write. The share sheet is still a way out.
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -223,6 +258,15 @@ function loadFileSystem(): typeof import("expo-file-system") | null {
   if (absent()) return null;
   try {
     return require("expo-file-system");
+  } catch {
+    return null;
+  }
+}
+
+function loadMediaLibrary(): typeof import("expo-media-library") | null {
+  if (absent()) return null;
+  try {
+    return require("expo-media-library");
   } catch {
     return null;
   }

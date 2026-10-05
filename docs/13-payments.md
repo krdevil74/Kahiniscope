@@ -280,6 +280,32 @@ and 3.7 on pink, and on the pending block that line is the one telling an
 admin what to do. A 9.5px uppercase monospace caption beside a 40px figure is
 already told apart without being faint.
 
+### One field, not two
+
+Every month question asks for a range on `paidAt` **and nothing else**. There
+is no `status == "paid"` beside it, and that is deliberate:
+
+> Two fields need a composite index. One field needs the single-field index
+> every field gets for nothing.
+
+In production the split was exact. Every query on this screen that wanted a
+composite index failed — the totals, the month list, the capped read behind
+them — while every query that did not, worked: the pending queue, the counts,
+the tasks behind the cards. The screens said so out loud, which is the only
+reason it was findable.
+
+Dropping the status lets nothing in. `paidAt` is written in the same breath as
+`status: "paid"` and is `null` on every payment that has not been paid
+(`functions/src/review.ts`), so a payment with a `paidAt` **is** a paid
+payment. The callers that read documents still check the status in memory,
+which costs nothing on a document already fetched and keeps a hand-edited
+record out. An emulator test pins the invariant down rather than trusting it.
+
+The composite index on `payments` is still in `firestore.indexes.json` and
+nothing queries it any more. It is left there rather than deleted because an
+index in a bad state is a thing worth looking at in the console, not a thing
+worth quietly removing the evidence of.
+
 ### When the bars will not add up
 
 Twelve bars were twelve aggregations opened at once, gathered with
