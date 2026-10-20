@@ -66,6 +66,18 @@ const config: ExpoConfig = {
       "android.permission.SYSTEM_ALERT_WINDOW",
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
+      // Play treats these as "photo and video permissions" and refuses a
+      // release that declares them without a core-purpose declaration, which
+      // one payment screenshot is not. Nothing here needs them: picking goes
+      // through the system photo picker, and a write-only save on Android 13+
+      // asks for nothing. expo-media-library adds all four unless told not to.
+      "android.permission.READ_MEDIA_IMAGES",
+      "android.permission.READ_MEDIA_VIDEO",
+      "android.permission.READ_MEDIA_AUDIO",
+      "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+      // expo-image-picker's own manifest asks for the camera; the app only
+      // ever picks from the gallery.
+      "android.permission.CAMERA",
     ],
   },
 
@@ -91,6 +103,8 @@ const config: ExpoConfig = {
       {
         photosPermission:
           "Kahiniscope needs one photo at a time, so you can attach the screenshot of a payment you have just made.",
+        cameraPermission: false,
+        microphonePermission: false,
       },
     ],
     [
@@ -105,6 +119,8 @@ const config: ExpoConfig = {
         savePhotosPermission:
           "Kahiniscope saves the screenshot of a payment to your photos, so you keep your own record of it.",
         isAccessMediaLocationEnabled: false,
+        // Write-only, so no read permission for any media type.
+        granularPermissions: [],
       },
     ],
     // Still here as the way out when saving to photos is refused, and the way
