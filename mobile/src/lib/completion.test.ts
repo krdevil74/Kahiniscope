@@ -53,6 +53,7 @@ function member(uid: string, name: string): TeamMember {
     phone: "+8801712344192",
     telegramChatId: null,
     accountless: false,
+    signInMethod: null,
     rates: EMPTY_RATES,
     balance: 0,
   crafts: ["Voice"],

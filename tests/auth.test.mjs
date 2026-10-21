@@ -19,11 +19,13 @@ import assert from "node:assert/strict";
 import { initializeApp, deleteApp } from "firebase/app";
 import {
   connectAuthEmulator,
+  createUserWithEmailAndPassword,
   deleteUser,
   getAuth,
   getIdTokenResult,
   GoogleAuthProvider,
   signInWithCredential,
+  signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
 import {
@@ -296,4 +298,51 @@ test("the owner cannot lock themselves out", async () => {
     "the owner document to be restored"
   );
   assert.equal(restored.status, "approved");
+});
+
+test("an email-and-password account lands pending, marked as such", async () => {
+  const c = openClient("password-newcomer");
+  const { user } = await createUserWithEmailAndPassword(
+    c.auth,
+    "play.review@example.com",
+    "a-long-password"
+  );
+
+  const claims = await waitForClaims(user, (c) => c.role !== undefined, "password claims");
+  assert.equal(claims.role, "member");
+  assert.equal(claims.status, "pending");
+
+  const own = await waitForDoc(
+    c.db,
+    ["users", user.uid],
+    (d) => d.signInMethod !== undefined,
+    "the password account's user document"
+  );
+  assert.equal(own.signInMethod, "password");
+  assert.equal(own.email, "play.review@example.com");
+  assert.equal(own.name, "play.review");
+
+  // Signing in again finds the same account and the same pending state.
+  await signOut(c.auth);
+  const again = await signInWithEmailAndPassword(
+    c.auth,
+    "play.review@example.com",
+    "a-long-password"
+  );
+  assert.equal(again.user.uid, user.uid);
+  const reclaims = await waitForClaims(again.user, (c) => c.role !== undefined, "claims on return");
+  assert.equal(reclaims.status, "pending");
+
+  await deleteUser(again.user);
+});
+
+test("nobody can make a password account on the owner's address", async () => {
+  // The Google owner account above holds the address, and Firebase allows one
+  // account per address. Had it not, the account would arrive unverified,
+  // which the first test in this file shows is worth nothing.
+  const c = openClient("password-owner-squatter");
+  await assert.rejects(
+    () => createUserWithEmailAndPassword(c.auth, OWNER_EMAIL, "a-long-password"),
+    /email-already-in-use/
+  );
 });

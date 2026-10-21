@@ -1,5 +1,6 @@
 /**
- * Google sign-in, the only way into the app.
+ * Google sign-in, the main way into the app. Email and password is the
+ * other (password-sign-in.ts).
  *
  * Native sign-in (the account sheet, not a browser round trip) needs a
  * development or production build. In Expo Go the module is absent, so the

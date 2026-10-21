@@ -173,7 +173,8 @@ function RegistrationForm({
   onSignOut: () => Promise<void>;
 }) {
   const toast = useToast();
-  // Prefilled from the Google account, because it is usually right and
+  // Prefilled from the Google account (or the address, for an email
+  // sign-up), because it is usually right and
   // retyping it would be busywork — but editable, because it is often not
   // what this person is called on the team. Whatever is here is the name the
   // admin sees on every screen from now on.

@@ -168,6 +168,23 @@ The best use of those two weeks is to **run one real episode through the app**.
 It is a genuine test, it keeps the testers engaged, and it is the only way
 some of the list below gets proven.
 
+## Reviewer access
+
+Play reviews every release by signing in. **Give them an email-and-password
+account, not a Google one**: a Google account signing in on a reviewer's
+device stops at "Verify it's you" even with 2-Step Verification off, and the
+release is rejected for incorrect credentials (20 October 2026).
+
+1. Firebase console → Authentication → Sign-in method → **Email/Password**
+   enabled (once).
+2. In the app, **New here? Create an account** with a dedicated address — not
+   an owner address, which must never be handed out.
+3. Approve it from Requests. It shows "email sign-in, unverified".
+4. Play Console → App content → App access: that address and password, with
+   "Enter them under *or with email* and tap Sign in with email."
+
+Leave the account and its approval in place; every update is reviewed with it.
+
 ## 8. Apply for production, release staged
 
 After fourteen continuous days, apply for production access. Release with a

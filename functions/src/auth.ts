@@ -3,9 +3,10 @@
  *
  * Three functions cover the whole of it:
  *
- *   onBeforeCreate  — first sign-in ever. Writes users/{uid} and decides,
- *                     from the verified Google token, whether this is the
- *                     owner or yet another pending stranger.
+ *   onBeforeCreate  — first sign-in ever, by Google or by email and
+ *                     password. Writes users/{uid} and decides, from the
+ *                     token, whether this is the owner or yet another
+ *                     pending stranger.
  *   onBeforeSignIn  — every sign-in. Re-mints claims from the stored document
  *                     so an approval or a promotion is on the token the next
  *                     time the member opens the app.
@@ -35,6 +36,7 @@ import {
   displayNameFrom,
   initialAccess,
   reconcileAccess,
+  signInMethodFrom,
 } from "./roles";
 
 const db = () => getFirestore();
@@ -47,7 +49,7 @@ function claimsFor(access: Access) {
 /**
  * Create users/{uid} for a sign-in we have not seen before.
  *
- * Only the fields we can know from the Google token are filled. Phone, crafts
+ * Only the fields we can know from the sign-in are filled. Phone, crafts
  * and the applicant's note are typed into the registration form afterwards
  * and written by the client onto its own document, which is the one write a
  * pending account is allowed to make.
@@ -73,6 +75,10 @@ async function createUserDocument(
         role: access.role,
         fcmTokens: [],
         note: null,
+        signInMethod: signInMethodFrom([
+          event.additionalUserInfo?.providerId,
+          ...(user.providerData ?? []).map((p) => p.providerId),
+        ]),
         createdAt: FieldValue.serverTimestamp(),
       },
       // merge, so a re-run after a partial failure never clobbers a note or
