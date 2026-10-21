@@ -23,7 +23,29 @@ const VALID_ROLES: readonly Role[] = ["owner", "admin", "member"];
 const VALID_STATUSES: readonly AccountStatus[] = ["pending", "approved"];
 
 /**
- * True only for a verified Google address on the owner list. An unverified
+ * How an account proves who it is. Recorded on users/{uid} so an admin
+ * approving a registration can tell a Google account, whose address Google
+ * has checked, from an email-and-password one, whose address nobody has.
+ */
+export type SignInMethod = "google" | "password";
+
+/**
+ * Read the method off the providers Firebase reports for a sign-up. Google
+ * wins when both are present: it is the one that vouches for the address.
+ * Null for anything else, which this app does not offer.
+ */
+export function signInMethodFrom(
+  providerIds: readonly (string | undefined | null)[]
+): SignInMethod | null {
+  if (providerIds.includes("google.com")) return "google";
+  if (providerIds.includes("password")) return "password";
+  return null;
+}
+
+/**
+ * True only for a verified address on the owner list. An email-and-password
+ * account arrives unverified, so it can never be the owner, whatever address
+ * it was created with. An unverified
  * token never qualifies, however the address is spelled: without
  * `email_verified` we have no evidence the signer controls the mailbox.
  */
@@ -39,7 +61,7 @@ export function isOwnerEmail(
 
 /**
  * What a brand-new sign-in is worth. The owner address lands approved and in
- * charge; every other Google account in the world lands pending, which the
+ * charge; every other account in the world lands pending, which the
  * security rules read as "may see nothing but your own user document".
  */
 export function initialAccess(

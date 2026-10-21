@@ -27,6 +27,7 @@ function member(overrides: Partial<TeamMember>): TeamMember {
     note: null,
     preferredChannel: null,
     accountless: false,
+    signInMethod: null,
     rates: EMPTY_RATES,
     balance: 0,
     createdAt: null,

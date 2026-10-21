@@ -149,6 +149,21 @@ export default function Requests() {
                 >
                   {`${maskPhone(member.phone)} · registered ${relativeTime(member.createdAt, now)}`}
                 </AppText>
+                {/* A Google account's address is Google's word. A password
+                    account's is only what they typed, so say which. */}
+                {member.signInMethod === "password" ? (
+                  <AppText
+                    numberOfLines={1}
+                    style={{
+                      fontFamily: fontFamily.mono,
+                      fontSize: 10.5,
+                      lineHeight: 15.75,
+                      color: colors.faint,
+                    }}
+                  >
+                    {`${member.email} · email sign-in, unverified`}
+                  </AppText>
+                ) : null}
               </View>
 
               <View

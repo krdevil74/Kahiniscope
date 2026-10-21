@@ -12,6 +12,7 @@ import {
   reconcileAccess,
   accessChanged,
   displayNameFrom,
+  signInMethodFrom,
 } from "../lib/roles.js";
 
 const OWNERS = ["owner@kahiniscope.test"];
@@ -169,4 +170,14 @@ test("display name falls back to the address local part", () => {
   assert.equal(displayNameFrom("Rizu Ahmed", "rizu@gmail.com"), "Rizu Ahmed");
   assert.equal(displayNameFrom("  ", "rizu@gmail.com"), "rizu");
   assert.equal(displayNameFrom(null, null), "New member");
+});
+
+test("the sign-in method is read off the providers, Google first", () => {
+  assert.equal(signInMethodFrom(["google.com"]), "google");
+  assert.equal(signInMethodFrom(["password"]), "password");
+  assert.equal(signInMethodFrom([undefined, "password"]), "password");
+  // Linked to both: Google is the one that vouches for the address.
+  assert.equal(signInMethodFrom(["password", "google.com"]), "google");
+  assert.equal(signInMethodFrom([]), null);
+  assert.equal(signInMethodFrom(["phone"]), null);
 });

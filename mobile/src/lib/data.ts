@@ -101,6 +101,8 @@ function toMember(snap: QueryDocumentSnapshot<DocumentData>): TeamMember {
     note: toStringOrNull(d.note),
     preferredChannel: (toStringOrNull(d.preferredChannel) as ChannelId | null) ?? null,
     accountless: d.accountless === true,
+    signInMethod:
+      d.signInMethod === "password" || d.signInMethod === "google" ? d.signInMethod : null,
     rates: ratesFrom(d.rates),
     balance: toNumber(d.balance),
     createdAt: toDate(d.createdAt),

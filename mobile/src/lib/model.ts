@@ -208,6 +208,13 @@ export interface TeamMember {
    * is not a channel that can reach them.
    */
   accountless: boolean;
+  /**
+   * How they sign in. "password" means the address is whatever they typed —
+   * nobody has checked they own it — which is worth knowing before approving
+   * them. Null on contacts and on accounts from before this was recorded,
+   * all of which were Google.
+   */
+  signInMethod: "google" | "password" | null;
   createdAt: Date | null;
 }
 
