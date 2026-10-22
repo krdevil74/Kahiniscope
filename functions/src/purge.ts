@@ -203,3 +203,27 @@ export function cutoffFor(day: string, now: Date = new Date(), timeZone: string 
 
   return cutoff;
 }
+
+/**
+ * A fresh start: every collection emptied except these.
+ *
+ * `users` is the team — each document is half of an account, as above, and
+ * the approvals on them are the work of setting the app up. `settings` is the
+ * configuration (reminder plan, quiet hours, which channels are on), not
+ * data, and starting production should not quietly put it back to defaults.
+ */
+export const FRESH_START_KEEPS: readonly string[] = ["users", "settings"];
+
+/**
+ * Which of the collections that exist a fresh start empties. Worked out from
+ * what is actually in the database rather than from a list, so a collection
+ * added later is not silently left full of test data — and sorted with
+ * `tasks` first, because deleting a task rewrites its episode's roster, and
+ * that rewrite should find no tasks left by the time the episodes go.
+ */
+export function freshStartTargets(existing: readonly string[]): string[] {
+  const rank = (name: string) => (name === "tasks" ? 0 : 1);
+  return existing
+    .filter((name) => !FRESH_START_KEEPS.includes(name))
+    .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}

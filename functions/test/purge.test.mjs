@@ -15,6 +15,8 @@ import {
   targetFor,
   startOfDay,
   cutoffFor,
+  FRESH_START_KEEPS,
+  freshStartTargets,
 } from "../lib/purge.js";
 
 const NOW = new Date("2026-09-29T09:00:00Z");
@@ -120,4 +122,26 @@ test("a date becomes purgeable when Dhaka's day rolls over, not UTC's", () => {
 
 test("an ordinary clean-up passes", () => {
   assert.equal(cutoffFor("2025-01-01", NOW).toISOString(), "2024-12-31T18:00:00.000Z");
+});
+
+test("a fresh start keeps users and settings, and nothing else", () => {
+  assert.deepEqual([...FRESH_START_KEEPS].sort(), ["settings", "users"]);
+  assert.deepEqual(
+    freshStartTargets([
+      "advances",
+      "episodes",
+      "paymentProofs",
+      "payments",
+      "reminderLog",
+      "settings",
+      "tasks",
+      "users",
+    ]),
+    ["tasks", "advances", "episodes", "paymentProofs", "payments", "reminderLog"]
+  );
+});
+
+test("a collection nobody listed is still emptied by a fresh start", () => {
+  assert.deepEqual(freshStartTargets(["users", "somethingNew"]), ["somethingNew"]);
+  assert.deepEqual(freshStartTargets(["users", "settings"]), []);
 });
