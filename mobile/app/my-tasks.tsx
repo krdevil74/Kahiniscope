@@ -463,7 +463,7 @@ function ConnectTelegram({ onToast }: { onToast: (message: string) => void }) {
             marginTop: 3,
           }}
         >
-          Reminders arrive in your chat, and you can close a task from the message
+          Reminders arrive in your chat, and you can submit a task from the message
           without opening the app.
         </AppText>
       </View>

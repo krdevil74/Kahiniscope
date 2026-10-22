@@ -6,15 +6,16 @@
  *  1. `/start <token>` — a member opening the bot for the first time. The
  *     token ties this chat to a user, and the chat id is written to their
  *     record so reminders can find them.
- *  2. A tap on the inline "Mark done" button, which closes the task from the
- *     chat. That is the highest-value part of the whole channel: it removes
- *     the need to open the app at all.
+ *  2. A tap on the inline "Submit for review" button, which hands the task in
+ *     from the chat — the same write as the app's button. That is the
+ *     highest-value part of the whole channel: it removes the need to open
+ *     the app at all. It does not close the task; an admin still reviews it.
  *
  * The URL carries a secret path segment and Telegram is asked to send a
  * secret header, because a webhook is public by nature.
  */
 
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { defineSecret } from "firebase-functions/params";
 import { onRequest } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
@@ -22,6 +23,7 @@ import { logger } from "firebase-functions/v2";
 import { REGION } from "./config";
 import { readSecret } from "./messaging/configured";
 import { parseCallbackData, telegramCall, TELEGRAM_BOT_TOKEN } from "./messaging/telegram";
+import { tapAnswer, tapOutcome, TELEGRAM_SUBMISSION_NOTE, type TapOutcome } from "./telegram-submit";
 
 /** Sent by Telegram as X-Telegram-Bot-Api-Secret-Token on every update. */
 export const TELEGRAM_WEBHOOK_SECRET = defineSecret("TELEGRAM_WEBHOOK_SECRET");
@@ -115,7 +117,7 @@ async function handleMessage(update: TelegramUpdate): Promise<void> {
   logger.info("Telegram chat linked", { uid: user.id });
   await telegramCall("sendMessage", {
     chat_id: chatId,
-    text: `Linked. Reminders for ${user.data().name ?? "you"} will arrive here, and you can close a task with the button on each one.`,
+    text: `Linked. Reminders for ${user.data().name ?? "you"} will arrive here, and you can submit a task for review with the button on each one.`,
   });
 }
 
@@ -162,15 +164,25 @@ async function handleCallback(update: TelegramUpdate): Promise<void> {
     await answer("That task is not yours.");
     return;
   }
-  if (task.data()?.done === true) {
-    await answer("Already done — thank you.");
-    return;
+  // In a transaction, so a tap racing an admin's review cannot submit work
+  // that was approved a moment earlier.
+  const outcome = await db.runTransaction<TapOutcome>(async (tx) => {
+    const fresh = await tx.get(taskRef);
+    const decided = tapOutcome(fresh.data() ?? {});
+    if (decided === "submit") {
+      tx.update(taskRef, {
+        status: "submitted",
+        submittedAt: FieldValue.serverTimestamp(),
+        submissionNote: TELEGRAM_SUBMISSION_NOTE,
+      });
+    }
+    return decided;
+  });
+  if (outcome === "submit") {
+    logger.info("Task submitted from Telegram", { uid, taskId: parsed.taskId });
   }
 
-  await taskRef.update({ done: true, doneAt: Timestamp.now() });
-  logger.info("Task closed from Telegram", { uid, taskId: parsed.taskId });
-
-  await answer("Marked done. Reminders stopped.");
+  await answer(tapAnswer(outcome));
 
   // Take the button away so it cannot be tapped twice.
   await telegramCall("editMessageReplyMarkup", {

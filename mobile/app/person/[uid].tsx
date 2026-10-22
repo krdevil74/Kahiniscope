@@ -439,7 +439,7 @@ export default function PersonDetail() {
           <SectionCaption>No app on their phone</SectionCaption>
           <AppText style={[type.bodySmall, { color: colors.muted }]}>
             {member.telegramChatId
-              ? "Telegram is connected — reminders arrive there, and they can close a task from the chat."
+              ? "Telegram is connected — reminders arrive there, and they can submit a task from the chat."
               : member.preferredChannel === "telegram"
                 ? "Telegram is not connected yet. Only they can start the chat, so send them the invite below."
                 : `Reminders go to ${maskPhone(member.phone)}.`}

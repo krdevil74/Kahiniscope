@@ -1,8 +1,8 @@
 /**
  * Telegram. Free, unlimited, and the workhorse of the chain.
  *
- * The message carries an inline "Mark done" button, so a member can close a
- * task from the chat without opening the app at all. The handoff calls that
+ * The message carries an inline "Submit for review" button, so a member can
+ * hand a task in from the chat without opening the app at all. The handoff calls that
  * the highest-value extra, and it is: the whole point of the escalation
  * ladder is to stop having to chase people, and a one-tap reply in a chat
  * they are already reading is the shortest path to done.
@@ -44,7 +44,11 @@ export async function telegramCall(
   return json;
 }
 
-/** The callback payload behind the inline button, kept under Telegram's 64 bytes. */
+/**
+ * The callback payload behind the inline button, kept under Telegram's 64
+ * bytes. Still "done:" although the button now submits: buttons already sat in
+ * people's chats with this payload, and they should keep working.
+ */
 export function doneCallbackData(taskId: string): string {
   return `done:${taskId}`;
 }
@@ -64,7 +68,7 @@ export const telegramAdapter: ChannelAdapter = {
     const replyMarkup = message.actionableTaskId
       ? {
           inline_keyboard: [
-            [{ text: "✓ Mark done", callback_data: doneCallbackData(message.actionableTaskId) }],
+            [{ text: "✓ Submit for review", callback_data: doneCallbackData(message.actionableTaskId) }],
           ],
         }
       : undefined;
