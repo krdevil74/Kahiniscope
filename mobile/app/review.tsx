@@ -23,6 +23,7 @@ import { EmptyState } from "../src/components/EmptyState";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { useSession } from "../src/lib/auth";
 import { indexBy, useEpisodes, useTasks, useTeam } from "../src/lib/data";
+import { episodeLabel } from "../src/lib/format.ts";
 import type { Task, TeamMember } from "../src/lib/model";
 import {
   estimateFor,
@@ -77,7 +78,7 @@ export default function Review() {
             key={task.id}
             task={task}
             member={byUid.get(task.assigneeUid) ?? null}
-            episodeCode={byEpisode.get(task.episodeId)?.code ?? ""}
+            episodeLabel={episodeLabel(byEpisode.get(task.episodeId))}
           />
         ))}
       </View>
@@ -88,11 +89,12 @@ export default function Review() {
 function ReviewCard({
   task,
   member,
-  episodeCode,
+  episodeLabel,
 }: {
   task: Task;
   member: TeamMember | null;
-  episodeCode: string;
+  /** "EP-61 · রক্তমুখী নীলা": the code alone does not say which one it is. */
+  episodeLabel: string;
 }) {
   const toast = useToast();
 
@@ -168,7 +170,7 @@ function ReviewCard({
         <Avatar name={member?.name ?? "?"} size={30} variant="light" />
         <View style={{ flex: 1, minWidth: 0 }}>
           <AppText weight="semibold" style={[type.bodySmall]}>
-            {`${task.type}${episodeCode ? ` · ${episodeCode}` : ""}`}
+            {`${task.type}${episodeLabel ? ` · ${episodeLabel}` : ""}`}
           </AppText>
           <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
             {`${member?.name ?? "Somebody"}${task.rejectedCount > 0 ? ` · back for the ${task.rejectedCount + 1}${task.rejectedCount === 0 ? "st" : "th"} time` : ""}`}

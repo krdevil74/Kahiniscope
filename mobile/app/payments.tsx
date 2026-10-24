@@ -60,6 +60,7 @@ import {
   yearsFrom,
   type MonthSlot,
 } from "../src/lib/payment-history.ts";
+import { episodeLabel } from "../src/lib/format.ts";
 import type { Episode } from "../src/lib/model";
 import {
   amountToShow,
@@ -221,7 +222,7 @@ function AdminPayments() {
                 payment={payment}
                 name={byUid.get(payment.uid)?.name ?? "Somebody"}
                 balance={byUid.get(payment.uid)?.balance ?? 0}
-                episodeCode={byEpisode.get(payment.episodeId)?.code ?? ""}
+                episodeLabel={episodeLabel(byEpisode.get(payment.episodeId))}
                 now={now}
                 onPaid={(amount) => afterPaid(byUid.get(payment.uid)?.name ?? "them", amount)}
                 onError={(message) => toast(message)}
@@ -354,7 +355,7 @@ function PendingCard({
   payment,
   name,
   balance,
-  episodeCode,
+  episodeLabel,
   now,
   onPaid,
   onError,
@@ -363,7 +364,8 @@ function PendingCard({
   payment: Payment;
   name: string;
   balance: number;
-  episodeCode: string;
+  /** "EP-61 · রক্তমুখী নীলা": the code alone does not say which one it is. */
+  episodeLabel: string;
   now: Date;
   onPaid: (amount: number) => void;
   onError: (message: string) => void;
@@ -399,7 +401,7 @@ function PendingCard({
         <View style={{ flex: 1, minWidth: 0 }}>
           <AppText weight="semibold" style={[type.bodySmall]}>{name}</AppText>
           <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
-            {`${payment.taskType}${episodeCode ? ` · ${episodeCode}` : ""} · ${UNIT_LABELS[payment.unit]}`}
+            {`${payment.taskType}${episodeLabel ? ` · ${episodeLabel}` : ""} · ${UNIT_LABELS[payment.unit]}`}
           </AppText>
         </View>
       </View>

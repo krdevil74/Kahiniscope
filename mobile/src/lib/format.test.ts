@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   airLabel,
   boardDateLabel,
+  episodeLabel,
   feedTimeLabel,
   firstName,
   initials,
@@ -79,4 +80,11 @@ test("a broadcast episode is dated by when it went out, not when it was due", ()
   // is, and it is said as an air date rather than dressed up as the other.
   assert.equal(outLabel(null, aired), "Air 20 Aug");
   assert.equal(outLabel(null, null), "no air date");
+});
+
+test("episodeLabel puts the title beside the code", () => {
+  assert.equal(episodeLabel({ code: "EP-61", title: "রক্তমুখী নীলা" }), "EP-61 · রক্তমুখী নীলা");
+  assert.equal(episodeLabel({ code: "EP-02", title: "  " }), "EP-02");
+  assert.equal(episodeLabel({ code: "", title: "দাগ" }), "দাগ");
+  assert.equal(episodeLabel(undefined), "");
 });
