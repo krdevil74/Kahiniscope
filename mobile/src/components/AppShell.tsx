@@ -8,11 +8,12 @@
  */
 
 import type { ReactNode } from "react";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 
 import { Bounded } from "./Bounded";
 import { FloatingAdd } from "./FloatingAdd";
+import { KeyboardScroll } from "./KeyboardScroll";
 import { ScreenHeader } from "./ScreenHeader";
 import { TabBar, type TabItem } from "./TabBar";
 import { useSession } from "../lib/auth";
@@ -76,12 +77,12 @@ export function AppShell({
       />
 
       {scroll ? (
-        <ScrollView
+        <KeyboardScroll
           contentContainerStyle={{ paddingBottom: bottomPadding }}
           showsVerticalScrollIndicator={false}
         >
           <Bounded>{children}</Bounded>
-        </ScrollView>
+        </KeyboardScroll>
       ) : (
         <View style={{ flex: 1 }}>
           <Bounded style={{ flex: 1 }}>{children}</Bounded>

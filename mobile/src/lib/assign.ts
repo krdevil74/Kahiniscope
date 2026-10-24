@@ -177,3 +177,21 @@ export function searchPeople<T extends { name: string; crafts: string[] }>(
     return haystack.includes(needle);
   });
 }
+
+/**
+ * Match on code or title. "08", "EP-08" and a word of the Bengali title all
+ * find the same episode; case and surrounding space are ignored, and an empty
+ * query is not a filter.
+ *
+ * Pure: no React, no Firebase. Unit tested.
+ */
+export function searchEpisodes<T extends { code: string; title: string }>(
+  episodes: readonly T[],
+  query: string
+): T[] {
+  const needle = (query ?? "").trim().toLowerCase();
+  if (!needle) return [...episodes];
+  return episodes.filter((episode) =>
+    `${episode.code} ${episode.title}`.toLowerCase().includes(needle)
+  );
+}

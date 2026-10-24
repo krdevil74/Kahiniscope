@@ -12,11 +12,12 @@
  */
 
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { AppShell } from "../src/components/AppShell";
 import { AppText } from "../src/components/AppText";
+import { KeyboardScroll } from "../src/components/KeyboardScroll";
 import { Block } from "../src/components/Block";
 import { Bounded } from "../src/components/Bounded";
 import { Avatar } from "../src/components/Avatar";
@@ -544,7 +545,7 @@ function MemberPayments() {
       <MemberHeader title="Payments" subtitle={`${payments.length} entries`} />
       <MemberTabs active="payments" />
 
-      <ScrollView
+      <KeyboardScroll
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
@@ -693,7 +694,7 @@ function MemberPayments() {
           />
         ) : null}
       </Bounded>
-      </ScrollView>
+      </KeyboardScroll>
     </View>
   );
 }
