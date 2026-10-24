@@ -13,6 +13,7 @@ import {
   MAX_TASK_TYPE_LENGTH,
   nextEpisodeCode,
   normaliseTaskType,
+  searchEpisodes,
   searchPeople,
   stepDueDays,
   submitLabel,
@@ -149,4 +150,17 @@ test("a box with nothing in it is not a task type", () => {
 test("a typed type is capped rather than refused", () => {
   const long = "x".repeat(MAX_TASK_TYPE_LENGTH + 20);
   assert.equal(normaliseTaskType(long)?.length, MAX_TASK_TYPE_LENGTH);
+});
+
+test("searching episodes matches on code or title", () => {
+  const episodes = [
+    { code: "EP-07", title: "Clocktower vasco da gama" },
+    { code: "EP-08", title: "বারো দিন তেইশ ঘন্টা" },
+  ];
+  assert.deepEqual(searchEpisodes(episodes, "  "), episodes);
+  assert.deepEqual(searchEpisodes(episodes, "ep-08"), [episodes[1]]);
+  assert.deepEqual(searchEpisodes(episodes, "08"), [episodes[1]]);
+  assert.deepEqual(searchEpisodes(episodes, "VASCO"), [episodes[0]]);
+  assert.deepEqual(searchEpisodes(episodes, "তেইশ"), [episodes[1]]);
+  assert.deepEqual(searchEpisodes(episodes, "sherlock"), []);
 });

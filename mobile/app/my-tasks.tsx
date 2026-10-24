@@ -11,10 +11,11 @@
  */
 
 import { useMemo, useState } from "react";
-import { Linking, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Linking, Pressable, TextInput, View } from "react-native";
 import { Redirect } from "expo-router";
 
 import { AppText } from "../src/components/AppText";
+import { KeyboardScroll } from "../src/components/KeyboardScroll";
 import { Bounded } from "../src/components/Bounded";
 import { MemberHeader } from "../src/components/MemberHeader";
 import { MemberTabs } from "../src/components/MemberTabs";
@@ -149,7 +150,7 @@ function MemberDashboard({
         </AppText>
       </View>
 
-      <ScrollView
+      <KeyboardScroll
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
@@ -407,7 +408,7 @@ function MemberDashboard({
         </View>
 
       </Bounded>
-      </ScrollView>
+      </KeyboardScroll>
     </View>
   );
 }

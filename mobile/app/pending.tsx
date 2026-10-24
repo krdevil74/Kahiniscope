@@ -17,6 +17,7 @@ import { Pressable, RefreshControl, ScrollView, TextInput, View } from "react-na
 import { Redirect } from "expo-router";
 
 import { AppText } from "../src/components/AppText";
+import { KeyboardScroll } from "../src/components/KeyboardScroll";
 import { Button } from "../src/components/Button";
 import { Logo } from "../src/components/Logo";
 import { SectionCaption } from "../src/components/SectionCaption";
@@ -211,7 +212,7 @@ function RegistrationForm({
   }
 
   return (
-    <ScrollView
+    <KeyboardScroll
       contentContainerStyle={{
         padding: spacing.screen,
         paddingTop: 40,
@@ -367,6 +368,6 @@ function RegistrationForm({
       >
         {`Signed in as ${email} · sign out`}
       </AppText>
-    </ScrollView>
+    </KeyboardScroll>
   );
 }

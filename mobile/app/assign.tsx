@@ -15,6 +15,7 @@ import { AppShell } from "../src/components/AppShell";
 import { AppText } from "../src/components/AppText";
 import { Avatar } from "../src/components/Avatar";
 import { Button } from "../src/components/Button";
+import { EpisodePicker } from "../src/components/EpisodePicker";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { useSession } from "../src/lib/auth";
 import { createEpisode, createTask } from "../src/lib/actions";
@@ -39,7 +40,7 @@ import {
 import { byAirDate } from "../src/lib/completion.ts";
 import { assignableEpisodes } from "../src/lib/episode-status.ts";
 import { useEpisodes, useNow, useSettings, useTeam } from "../src/lib/data";
-import { airLabel, firstName } from "../src/lib/format.ts";
+import { firstName } from "../src/lib/format.ts";
 import { TASK_TYPES, type ChannelId } from "../src/lib/model";
 import { useToast } from "../src/lib/toast";
 import { colors, fontFamily, radii, spacing, MIN_TAP_TARGET, heatFor } from "../src/theme/tokens";
@@ -293,72 +294,13 @@ export default function Assign() {
               </AppText>
             ) : null}
 
-            {ordered.map((episode) => {
-              const on = episode.id === draft.episodeId;
-              return (
-                <Pressable
-                  key={episode.id}
-                  onPress={() => patch({ episodeId: episode.id })}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={`${episode.code} ${episode.title}`}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: spacing.cards,
-                    paddingVertical: 11,
-                    paddingHorizontal: 12,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: on ? colors.brand : colors.hairlineStrong,
-                    backgroundColor: on ? colors.selectedFill : colors.surface,
-                    minHeight: MIN_TAP_TARGET,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: radii.pill,
-                      backgroundColor: on ? colors.brand : colors.hairlineStrong,
-                    }}
-                  />
-                  <AppText
-                    style={{
-                      fontFamily: fontFamily.monoSemibold,
-                      fontSize: 10,
-                      lineHeight: 11,
-                      color: colors.yellowDeep,
-                    }}
-                  >
-                    {episode.code}
-                  </AppText>
-                  <AppText
-                    numberOfLines={1}
-                    weight="medium"
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      fontFamily: fontFamily.medium,
-                      fontSize: 12.5,
-                      lineHeight: 15,
-                    }}
-                  >
-                    {episode.title}
-                  </AppText>
-                  <AppText
-                    style={{
-                      fontFamily: fontFamily.mono,
-                      fontSize: 10,
-                      lineHeight: 11,
-                      color: colors.faint,
-                    }}
-                  >
-                    {airLabel(episode.airDate)}
-                  </AppText>
-                </Pressable>
-              );
-            })}
+            {ordered.length > 0 ? (
+              <EpisodePicker
+                episodes={ordered}
+                selectedId={draft.episodeId}
+                onSelect={(id) => patch({ episodeId: id })}
+              />
+            ) : null}
 
             {addingEpisode ? (
               <NewEpisode

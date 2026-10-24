@@ -7,6 +7,7 @@ import { useCallback, useEffect } from "react";
 import { View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
@@ -63,6 +64,8 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      {/* Tracks the keyboard for every screen's KeyboardScroll. */}
+      <KeyboardProvider>
       <SessionProvider>
         <ToastProvider>
           <SignedOutGate />
@@ -81,6 +84,7 @@ export default function RootLayout() {
         </View>
         </ToastProvider>
       </SessionProvider>
+      </KeyboardProvider>
     </SafeAreaProvider>
   );
 }
