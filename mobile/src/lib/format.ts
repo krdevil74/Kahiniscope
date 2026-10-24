@@ -136,3 +136,14 @@ export function maskPhone(phone: string | null | undefined): string {
 export function pluralise(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`;
 }
+
+/**
+ * "EP-61 · রক্তমুখী নীলা". The code alone does not tell an admin with three
+ * payments for one person which episode each is for; the title does.
+ */
+export function episodeLabel(
+  episode: { code: string; title: string } | null | undefined
+): string {
+  if (!episode) return "";
+  return [episode.code.trim(), episode.title.trim()].filter(Boolean).join(" · ");
+}
