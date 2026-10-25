@@ -20,6 +20,7 @@ import {
   assertSucceeds,
 } from "@firebase/rules-unit-testing";
 import {
+  arrayUnion,
   addDoc,
   collection,
   deleteDoc,
@@ -367,6 +368,16 @@ test("member: keeps its own FCM tokens, but not its status", async () => {
   await assertFails(updateDoc(doc(db, "users", MEMBER), { role: "admin" }));
   await assertFails(updateDoc(doc(db, "users", MEMBER), { status: "pending" }));
   await assertFails(updateDoc(doc(db, "users", OTHER_MEMBER), { fcmTokens: ["token-b"] }));
+});
+
+// The app registers the device while the account is still pending, so the
+// first nudge after approval has somewhere to go even if the app is closed.
+test("pending: keeps its own FCM tokens before it is approved", async () => {
+  const db = asPending();
+  await assertSucceeds(
+    setDoc(doc(db, "users", PENDING), { fcmTokens: arrayUnion("token-new") }, { merge: true })
+  );
+  await assertFails(updateDoc(doc(db, "users", PENDING), { status: "approved" }));
 });
 
 // ---------------------------------------------------------------------------
