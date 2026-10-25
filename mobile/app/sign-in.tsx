@@ -6,10 +6,11 @@
  */
 
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
 import { Redirect } from "expo-router";
 
 import { AppText } from "../src/components/AppText";
+import { KeyboardScroll } from "../src/components/KeyboardScroll";
 import { Logo } from "../src/components/Logo";
 import { PosterWall } from "../src/components/PosterWall";
 import { useSession } from "../src/lib/auth";
@@ -109,7 +110,7 @@ export default function SignIn() {
       {/* What this app is for, said before anybody has signed in. */}
       <PosterWall />
 
-      <ScrollView
+      <KeyboardScroll
         contentContainerStyle={{
           flexGrow: 1,
           alignItems: "center",
@@ -373,7 +374,7 @@ export default function SignIn() {
             </View>
           ) : null}
         </View>
-      </ScrollView>
+      </KeyboardScroll>
     </View>
   );
 }
