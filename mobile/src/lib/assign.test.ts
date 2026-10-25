@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   INITIAL_DRAFT,
   assignedToast,
+  byName,
   dueDateFrom,
   isComplete,
   isEpisodeValid,
@@ -163,4 +164,12 @@ test("searching episodes matches on code or title", () => {
   assert.deepEqual(searchEpisodes(episodes, "VASCO"), [episodes[0]]);
   assert.deepEqual(searchEpisodes(episodes, "তেইশ"), [episodes[1]]);
   assert.deepEqual(searchEpisodes(episodes, "sherlock"), []);
+});
+
+test("people sort A to Z, ignoring case", () => {
+  const people = [{ name: "rizu Ahmed" }, { name: "Ankita Das" }, { name: "Nabanita Roy" }];
+  assert.deepEqual(
+    [...people].sort(byName).map((p) => p.name),
+    ["Ankita Das", "Nabanita Roy", "rizu Ahmed"]
+  );
 });

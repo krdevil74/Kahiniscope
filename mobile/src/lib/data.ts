@@ -28,6 +28,7 @@ import {
 
 import { db } from "./firebase";
 import { toBool, toDate, toId, toNumber, toStringArray, toStringOrNull } from "./convert.ts";
+import { byName } from "./assign";
 import { craftsFrom } from "./crafts";
 import { episodeStatusFrom, isBroadcast, storedValuesFor } from "./episode-status.ts";
 import { ratesFrom, taskStatusFrom, toAdvance, toPayment } from "./payment-convert.ts";
@@ -569,8 +570,11 @@ export function useTasksForEpisodes(
 }
 
 /** Everyone, pending included. The Team screen filters; Requests does not. */
+/** Alphabetical, so every list of people on the admin side reads A to Z. */
 export function useTeam(enabled = true): Live<TeamMember[]> {
-  return useCollection("users", toMember, [], enabled);
+  const live = useCollection("users", toMember, [], enabled);
+  const sorted = useMemo(() => [...live.data].sort(byName), [live.data]);
+  return { ...live, data: sorted };
 }
 
 /**

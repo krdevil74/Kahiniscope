@@ -14,6 +14,7 @@ import {
   needsRecordingTime,
   pageOf,
   needsWordCount,
+  owedByPerson,
   rateFor,
   rateLabel,
   settleFromBalance,
@@ -327,4 +328,27 @@ test("a final figure that matches the estimate needs no explanation", () => {
     payment({ status: "paid", unit: "cover", rate: 700, quantity: 1, estimatedAmount: 700, finalAmount: 700 })
   );
   assert.equal(b.note, null);
+});
+
+test("the queue is one request per person, their tasks oldest first", () => {
+  const groups = owedByPerson([
+    payment({ id: "a2", uid: "a", estimatedAmount: 300, approvedAt: new Date("2026-10-20") }),
+    payment({ id: "b1", uid: "b", estimatedAmount: 500, approvedAt: new Date("2026-10-01") }),
+    payment({ id: "a1", uid: "a", estimatedAmount: 200, approvedAt: new Date("2026-10-05") }),
+  ]);
+  assert.deepEqual(
+    groups.map((g) => [g.uid, g.payments.map((p) => p.id), g.estimated]),
+    [
+      ["a", ["a1", "a2"], 500],
+      ["b", ["b1"], 500],
+    ]
+  );
+});
+
+test("a line with no estimate adds nothing to the person's total", () => {
+  const [group] = owedByPerson([
+    payment({ id: "x", estimatedAmount: null }),
+    payment({ id: "y", estimatedAmount: 420 }),
+  ]);
+  assert.equal(group.estimated, 420);
 });
