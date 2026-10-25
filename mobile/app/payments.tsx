@@ -28,6 +28,7 @@ import { MemberHeader } from "../src/components/MemberHeader";
 import { Note } from "../src/components/Note";
 import { MemberTabs } from "../src/components/MemberTabs";
 import { PaidStamp } from "../src/components/PaidStamp";
+import { PaymentInsights } from "../src/components/PaymentInsights";
 import { ProofAttach, ProofDownload, ProofNote } from "../src/components/PaymentProof";
 import { Ribbon, RibbonInfo } from "../src/components/Ribbon";
 import { SectionCaption } from "../src/components/SectionCaption";
@@ -344,6 +345,9 @@ function AdminPayments() {
             ) : null}
           </>
         ) : null}
+
+        {/* ---- Panel three: questions of what has gone out ------------- */}
+        <PaymentInsights byUid={byUid} byEpisode={byEpisode} years={years} now={now} />
 
         {/* Only when the screen actually knows there is nothing: an error is
             not an empty operation. */}
