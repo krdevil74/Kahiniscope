@@ -38,7 +38,7 @@ import {
 } from "../theme/tokens";
 import { type } from "../theme/typography";
 
-function Chip({
+export function Chip({
   label,
   on,
   flavour,
@@ -95,6 +95,7 @@ export function YearFilter({
   years,
   selected,
   flavour,
+  hideRolling = false,
   onSelect,
 }: {
   years: readonly number[];
@@ -102,10 +103,12 @@ export function YearFilter({
   selected: number | null;
   /** The colour of whatever is being filtered — money on Payments, information on Episodes. */
   flavour: FlavourName;
+  /** Calendar years only — for a month picker, where a rolling window means nothing. */
+  hideRolling?: boolean;
   onSelect: (year: number | null) => void;
 }) {
   const options: { label: string; value: number | null }[] = [
-    { label: "Last 12 months", value: null },
+    ...(hideRolling ? [] : [{ label: "Last 12 months", value: null }]),
     ...years.map((year) => ({ label: String(year), value: year })),
   ];
 

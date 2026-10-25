@@ -853,6 +853,57 @@ export function usePaidInMonth(
 }
 
 /**
+ * Every payment made in a range, for the Insights panel to add up.
+ *
+ * One read, not a listener, capped at the same ceiling as the chart's fallback
+ * and newest first — so if a long range hits it, what is missing is the oldest
+ * end, and `partial` says so rather than the panel quietly ranking on less.
+ */
+export function usePaidBetween(
+  range: { start: Date; end: Date },
+  enabled = true
+): Live<Payment[]> & { partial: boolean; reload: () => void } {
+  const [data, setData] = useState<Payment[]>([]);
+  const [partial, setPartial] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [version, setVersion] = useState(0);
+
+  const key = `${range.start.getTime()}-${range.end.getTime()}`;
+
+  useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    let live = true;
+    setLoading(true);
+
+    getDocs(paidBetween(range.start, range.end, orderBy("paidAt", "desc"), fsLimit(WINDOW_READ_LIMIT)))
+      .then((snap) => {
+        if (!live) return;
+        setData(snap.docs.map(toPayment).filter(isPaid));
+        setPartial(snap.size >= WINDOW_READ_LIMIT);
+        setError(null);
+        setLoading(false);
+      })
+      .catch((err: Error) => {
+        if (!live) return;
+        console.warn("payments in range", err);
+        setError(err);
+        setLoading(false);
+      });
+
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, enabled, version]);
+
+  return { data, partial, loading, error, reload: () => setVersion((v) => v + 1) };
+}
+
+/**
  * The year of the first payment ever made, for the year filter.
  *
  * One document — the oldest paid payment — rather than the collection. The
