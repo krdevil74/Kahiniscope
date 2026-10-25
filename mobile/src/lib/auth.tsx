@@ -163,9 +163,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
    * device's token is on the record. Registering here means it happens once
    * per approved session, wherever the app opens, rather than being the job
    * of whichever screen happened to be built first.
+   *
+   * It starts while the account is still pending, not once it is approved.
+   * Somebody newly approved usually has the app closed — they registered,
+   * saw the holding screen and put the phone down — so a token registered
+   * only on approval would not exist until they next opened it, and every
+   * nudge in between had no device to go to. The rules let a pending account
+   * write its own tokens; they do not let it write a blank name, which the
+   * record can hold until the registration form is filled in, so it waits
+   * for that.
    */
+  const hasName = Boolean(profile?.name?.trim());
   useEffect(() => {
-    if (!user || status !== "approved") return;
+    if (!user || !hasName) return;
     let cancelled = false;
     void registerForPush(user.uid).then((result) => {
       if (cancelled || result.status === "registered") return;
@@ -176,7 +186,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user, status]);
+  }, [user, status, hasName]);
 
   const value = useMemo<Session>(
     () => ({
