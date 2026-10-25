@@ -22,6 +22,7 @@ import {
   signInWithCredential,
 } from "firebase/auth";
 import {
+  arrayUnion,
   addDoc,
   connectFirestoreEmulator,
   doc,
@@ -159,10 +160,13 @@ test("revoking puts them back in the queue and closes the door again", async () 
   await assert.rejects(() => getDoc(doc(c.db, "episodes", "ep41")), /permission|PERMISSION/);
 });
 
-test("declining deletes the document and the account", async () => {
+test("declining deletes the document and the account, and the device with them", async () => {
   const c = client("applicant-declined");
   const user = await signIn(c, { sub: "applicant-4", email: "nope@gmail.com", name: "Not Suitable" });
   await waitForClaims(user, (cl) => cl.status === "pending", "pending claims");
+
+  // The app registers for push while pending, so there is a device to forget.
+  await setDoc(doc(c.db, "users", user.uid), { fcmTokens: arrayUnion("declined-phone") }, { merge: true });
 
   const decline = httpsCallable(owner.functions, "declineRegistration");
   const result = await decline({ uid: user.uid });
@@ -170,6 +174,13 @@ test("declining deletes the document and the account", async () => {
 
   const gone = await getDoc(doc(owner.db, "users", user.uid));
   assert.equal(gone.exists(), false);
+
+  // An app still open on that phone cannot put its token back: re-creating
+  // the record is a create, and no client may create a user.
+  await assert.rejects(
+    () => setDoc(doc(c.db, "users", user.uid), { fcmTokens: arrayUnion("declined-phone") }, { merge: true }),
+    /permission|PERMISSION/
+  );
 });
 
 test("a member cannot decline anybody", async () => {
