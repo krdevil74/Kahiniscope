@@ -113,29 +113,33 @@ export function ProofDownload({ payment, now }: { payment: ProofPayment; now: Da
  *
  * Replacing resets the thirty days, which is worth knowing and is why the label
  * changes rather than the button disappearing once something is attached.
+ *
+ * Several payments take the same screenshot when one transfer settled them
+ * all — the person's pending card pays every line at once.
  */
 export function ProofAttach({
-  payment,
+  payments,
   now,
   compact = false,
 }: {
-  payment: ProofPayment;
+  payments: readonly ProofPayment[];
   now: Date;
   /** Inside an expanded row, where the button is one of several quiet ones. */
   compact?: boolean;
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const attached = isProofAvailable(payment, now);
+  const attached = payments.length > 0 && payments.every((p) => isProofAvailable(p, now));
+  const what = payments.length === 1 ? payments[0].taskType : `${payments.length} tasks`;
 
   async function attach() {
-    if (busy) return;
+    if (busy || payments.length === 0) return;
     setBusy(true);
     try {
       const image = await pickProofImage();
       // Backing out of the gallery is not a failure and says nothing.
       if (!image) return;
-      await attachPaymentProof(payment.id, image);
+      for (const payment of payments) await attachPaymentProof(payment.id, image);
       toast(attached ? "Screenshot replaced — 30 days from now." : "Screenshot attached.");
     } catch (err) {
       toast(err instanceof Error ? err.message : "That did not attach.");
@@ -153,7 +157,7 @@ export function ProofAttach({
         radius={radii.cardSmall}
         disabled={busy}
         onPress={() => void attach()}
-        accessibilityLabel={`${attached ? "Replace" : "Attach"} the payment screenshot for ${payment.taskType}`}
+        accessibilityLabel={`${attached ? "Replace" : "Attach"} the payment screenshot for ${what}`}
         style={{ borderColor: colors.hairlineStrong }}
       />
       {!compact ? (

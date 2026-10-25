@@ -386,3 +386,38 @@ export function breakdownOf(payment: Payment): Breakdown {
         : null,
   };
 }
+
+// ---------------------------------------------------------------------------
+// One request per person
+// ---------------------------------------------------------------------------
+
+export interface PersonOwed {
+  uid: string;
+  /** Everything approved and not yet paid, oldest first. */
+  payments: Payment[];
+  /** The estimates added up. Lines with no estimate add nothing. */
+  estimated: number;
+}
+
+/**
+ * The queue as people rather than tasks: one transfer settles everything a
+ * person is owed, so that is what the admin should see — a single figure,
+ * with the tasks behind it as its breakdown.
+ *
+ * Groups come out in the order their first payment appears.
+ *
+ * Pure: no React, no Firebase. Unit tested.
+ */
+export function owedByPerson(payments: readonly Payment[]): PersonOwed[] {
+  const groups = new Map<string, PersonOwed>();
+  for (const payment of payments) {
+    const group = groups.get(payment.uid) ?? { uid: payment.uid, payments: [], estimated: 0 };
+    group.payments.push(payment);
+    group.estimated += payment.estimatedAmount ?? 0;
+    groups.set(payment.uid, group);
+  }
+  for (const group of groups.values()) {
+    group.payments.sort((a, b) => (a.approvedAt?.getTime() ?? 0) - (b.approvedAt?.getTime() ?? 0));
+  }
+  return [...groups.values()];
+}

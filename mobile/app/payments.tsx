@@ -61,19 +61,20 @@ import {
   yearsFrom,
   type MonthSlot,
 } from "../src/lib/payment-history.ts";
+import { byName } from "../src/lib/assign";
 import { episodeLabel } from "../src/lib/format.ts";
 import type { Episode } from "../src/lib/model";
 import {
-  amountToShow,
   breakdownOf,
   earningsFor,
   ESTIMATE_DISCLAIMER,
   money,
   moreLabel,
   PAGE_SIZE,
+  owedByPerson,
   pageOf,
-  UNIT_LABELS,
   type Payment,
+  type PersonOwed,
 } from "../src/lib/payments.ts";
 import { markPaymentPaid, paidToast } from "../src/lib/review-actions.ts";
 import { useToast } from "../src/lib/toast";
@@ -105,13 +106,14 @@ function AdminPayments() {
   const byUid = useMemo(() => indexBy(team, (m) => m.uid), [team]);
   const byEpisode = useMemo(() => indexBy(episodes, (e) => e.id), [episodes]);
 
-  // Oldest first: somebody approved a fortnight ago should not sit behind
-  // somebody approved this morning.
+  // One request per person, A to Z by name so a person is found where the eye
+  // expects them. Their tasks inside it run oldest first.
+  const nameOf = (uid: string) => ({ name: byUid.get(uid)?.name ?? "" });
   const pending = useMemo(
-    () => [...pendingRaw].sort((a, b) => (a.approvedAt?.getTime() ?? 0) - (b.approvedAt?.getTime() ?? 0)),
-    [pendingRaw]
+    () => owedByPerson(pendingRaw).sort((a, b) => byName(nameOf(a.uid), nameOf(b.uid))),
+    [pendingRaw, byUid]
   );
-  const owed = pending.reduce((sum, p) => sum + (p.estimatedAmount ?? 0), 0);
+  const owed = pending.reduce((sum, person) => sum + person.estimated, 0);
 
   /** The queue is folded away by default — it is a panel, not the page. */
   const [queueOpen, setQueueOpen] = useState(false);
@@ -155,7 +157,11 @@ function AdminPayments() {
     reload: reloadMonth,
   } = usePaidInMonth(selected, isAdmin);
   const [monthShown, setMonthShown] = useState(PAGE_SIZE);
-  const monthPage = pageOf(monthPayments, monthShown);
+  const monthSorted = useMemo(
+    () => [...monthPayments].sort((a, b) => byName(nameOf(a.uid), nameOf(b.uid))),
+    [monthPayments, byUid]
+  );
+  const monthPage = pageOf(monthSorted, monthShown);
   const monthTotal = monthPayments.reduce((sum, p) => sum + (p.finalAmount ?? 0), 0);
 
   function pickMonth(slot: MonthSlot) {
@@ -215,19 +221,19 @@ function AdminPayments() {
           }
         />
 
-        {/* One after another, oldest first, only once asked for. */}
+        {/* One card per person, only once asked for. */}
         {queueOpen
-          ? pending.map((payment) => (
+          ? pending.map((person) => (
               <PendingCard
-                key={payment.id}
-                payment={payment}
-                name={byUid.get(payment.uid)?.name ?? "Somebody"}
-                balance={byUid.get(payment.uid)?.balance ?? 0}
-                episodeLabel={episodeLabel(byEpisode.get(payment.episodeId))}
+                key={person.uid}
+                person={person}
+                name={byUid.get(person.uid)?.name ?? "Somebody"}
+                balance={byUid.get(person.uid)?.balance ?? 0}
+                byEpisode={byEpisode}
                 now={now}
-                onPaid={(amount) => afterPaid(byUid.get(payment.uid)?.name ?? "them", amount)}
+                onPaid={(amount) => afterPaid(byUid.get(person.uid)?.name ?? "them", amount)}
                 onError={(message) => toast(message)}
-                onOpenPerson={() => router.push(`/person/${payment.uid}`)}
+                onOpenPerson={() => router.push(`/person/${person.uid}`)}
               />
             ))
           : null}
@@ -353,47 +359,61 @@ function AdminPayments() {
 }
 
 function PendingCard({
-  payment,
+  person,
   name,
   balance,
-  episodeLabel,
+  byEpisode,
   now,
   onPaid,
   onError,
   onOpenPerson,
 }: {
-  payment: Payment;
+  person: PersonOwed;
   name: string;
   balance: number;
-  /** "EP-61 · রক্তমুখী নীলা": the code alone does not say which one it is. */
-  episodeLabel: string;
+  byEpisode: Map<string, Episode>;
   now: Date;
   onPaid: (amount: number) => void;
   onError: (message: string) => void;
   onOpenPerson: () => void;
 }) {
-  // Pre-filled with the estimate, because most of the time that is the
-  // figure — but it is a text field and not a label, because the whole point
-  // is that the admin decides.
-  const [amount, setAmount] = useState(
-    payment.estimatedAmount === null ? "" : String(payment.estimatedAmount)
-  );
+  // One field per task, pre-filled with its estimate, because most of the
+  // time that is the figure — but a field and not a label, because the whole
+  // point is that the admin decides. Kept per task rather than as one total
+  // so each payment record still says what that piece of work was paid.
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
-  const value = Number(amount);
-  const valid = amount.trim() !== "" && Number.isFinite(value) && value >= 0;
+  const amountFor = (payment: Payment) =>
+    amounts[payment.id] ?? (payment.estimatedAmount === null ? "" : String(payment.estimatedAmount));
+  const values = person.payments.map((payment) => {
+    const raw = amountFor(payment);
+    const value = Number(raw);
+    return raw.trim() !== "" && Number.isFinite(value) && value >= 0 ? Math.round(value) : null;
+  });
+  const valid = values.every((value) => value !== null);
+  const total = values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
 
   async function pay() {
     if (!valid || busy) return;
     setBusy(true);
+    let paid = 0;
     try {
-      await markPaymentPaid(payment.id, Math.round(value));
-      onPaid(Math.round(value));
+      // One after another, so a failure part-way leaves a clear line: what
+      // was marked has left the queue, and what is left on the card was not.
+      for (const [i, payment] of person.payments.entries()) {
+        await markPaymentPaid(payment.id, values[i] as number);
+        paid += values[i] as number;
+      }
+      onPaid(paid);
     } catch (err) {
-      onError(err instanceof Error ? err.message : "That did not save.");
+      const reason = err instanceof Error ? err.message : "That did not save.";
+      onError(paid > 0 ? `${money(paid)} marked paid, the rest did not save — ${reason}` : reason);
       setBusy(false);
     }
   }
+
+  const count = person.payments.length;
 
   return (
     <Card radius={11} style={{ paddingVertical: 12, paddingHorizontal: 13, gap: 10 }}>
@@ -402,14 +422,45 @@ function PendingCard({
         <View style={{ flex: 1, minWidth: 0 }}>
           <AppText weight="semibold" style={[type.bodySmall]}>{name}</AppText>
           <AppText style={[type.metaXSmall, { color: colors.faint, marginTop: 2 }]}>
-            {`${payment.taskType}${episodeLabel ? ` · ${episodeLabel}` : ""} · ${UNIT_LABELS[payment.unit]}`}
+            {`${count} approved ${count === 1 ? "task" : "tasks"}`}
           </AppText>
         </View>
+        <AppText weight="semibold" style={[type.bodySmall, { fontFamily: fontFamily.monoSemibold }]}>
+          {money(total)}
+        </AppText>
       </View>
 
-      <WorkingNote payment={payment} />
+      {/* The breakdown: every task behind the one figure. */}
+      <View style={{ gap: 6 }}>
+        {person.payments.map((payment) => (
+          <PendingLine
+            key={payment.id}
+            payment={payment}
+            episode={byEpisode.get(payment.episodeId)}
+            amount={amountFor(payment)}
+            onChangeAmount={(text) => setAmounts((current) => ({ ...current, [payment.id]: text }))}
+            name={name}
+          />
+        ))}
+      </View>
 
-      {/* If they are carrying an advance, this one did not come off it —
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          paddingHorizontal: 2,
+          borderTopWidth: 1,
+          borderTopColor: colors.hairlineStrong,
+          paddingTop: 8,
+        }}
+      >
+        <AppText weight="semibold" style={[type.bodySmall]}>Total</AppText>
+        <AppText weight="semibold" style={[type.bodySmall, { fontFamily: fontFamily.monoSemibold }]}>
+          {money(total)}
+        </AppText>
+      </View>
+
+      {/* If they are carrying an advance, none of this came off it —
           otherwise it would never have reached the queue. Worth saying, since
           the obvious next thought is "haven't I already paid them?". */}
       {balance > 0 ? (
@@ -418,49 +469,21 @@ function PendingCard({
         </AppText>
       ) : null}
 
-      {payment.comment ? (
-        <AppText style={[type.bodySmall, { color: colors.muted }]}>
-          {`“${payment.comment}”`}
-        </AppText>
-      ) : null}
-
-      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.chips }}>
-        <TextInput
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
-          placeholder="Amount"
-          placeholderTextColor={colors.faint}
-          accessibilityLabel={`Amount to pay ${name}`}
-          style={{
-            flex: 1,
-            minHeight: MIN_TAP_TARGET,
-            paddingHorizontal: 12,
-            borderRadius: radii.chipLarge,
-            borderWidth: 1,
-            borderColor: colors.hairlineStrong,
-            backgroundColor: colors.surface,
-            fontFamily: fontFamily.mono,
-            fontSize: 13,
-            color: colors.ink,
-          }}
-        />
-        <Button
-          label={busy ? "Saving…" : "Mark paid"}
-          radius={radii.cardSmall}
-          disabled={!valid || busy}
-          onPress={() => void pay()}
-          accessibilityLabel={`Mark ${name} paid`}
-          style={{ flex: 1 }}
-        />
-      </View>
+      <Button
+        label={busy ? "Saving…" : valid ? `Mark ${money(total)} paid` : "Fill in every amount"}
+        radius={radii.cardSmall}
+        disabled={!valid || busy}
+        onPress={() => void pay()}
+        accessibilityLabel={`Mark ${name} paid ${money(total)}`}
+      />
 
       {/* The screenshot of the transfer, attached where the transfer is being
           recorded — the admin has just made it and has the confirmation open.
-          It can be attached before or after Mark paid; the payment does not
-          wait on it, because an evidence step that blocks the money is an
-          evidence step people work around. */}
-      <ProofAttach payment={payment} now={now} />
+          One transfer, so one screenshot, put on every task it paid. It can
+          be attached before or after Mark paid; the payment does not wait on
+          it, because an evidence step that blocks the money is an evidence
+          step people work around. */}
+      <ProofAttach payments={person.payments} now={now} />
 
       <Button
         label="Open their page"
@@ -473,16 +496,32 @@ function PendingCard({
   );
 }
 
-/** "12 min × ₹35 = ₹420", or what there is of it. */
-function WorkingNote({ payment }: { payment: Payment }) {
-  const parts: string[] = [];
+/**
+ * One task in a person's request: "EP-04 · রক্তমুখী নীলা", then "Voice
+ * recording · 12 min × ₹35", any comment, and the subtotal as a field.
+ */
+function PendingLine({
+  payment,
+  episode,
+  amount,
+  onChangeAmount,
+  name,
+}: {
+  payment: Payment;
+  episode: Episode | undefined;
+  amount: string;
+  onChangeAmount: (text: string) => void;
+  name: string;
+}) {
+  const parts = [payment.taskType];
   if (payment.quantity !== null && payment.rate !== null) {
     const noun = payment.unit === "cover" ? "cover" : "min";
     parts.push(`${payment.quantity} ${noun} × ${money(payment.rate)}`);
+  } else {
+    parts.push("no rate on file");
   }
   if (payment.wordCount !== null) parts.push(`${payment.wordCount.toLocaleString("en-IN")} words`);
 
-  const estimate = amountToShow(payment);
   return (
     <View
       style={{
@@ -491,16 +530,44 @@ function WorkingNote({ payment }: { payment: Payment }) {
         paddingVertical: 9,
         paddingHorizontal: 11,
         flexDirection: "row",
-        justifyContent: "space-between",
+        alignItems: "center",
         gap: spacing.chips,
       }}
     >
-      <AppText style={[type.metaXSmall, { color: colors.muted }]}>
-        {parts.length ? parts.join(" · ") : "No rate on file — type the amount"}
-      </AppText>
-      <AppText weight="semibold" style={[type.metaXSmall]}>
-        {estimate === null ? "—" : `est. ${money(estimate)}`}
-      </AppText>
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <AppText weight="semibold" style={[type.metaXSmall]}>
+          {episodeLabel(episode) || "Unknown episode"}
+        </AppText>
+        <AppText style={[type.metaXSmall, { color: colors.muted }]}>{parts.join(" · ")}</AppText>
+        {payment.comment ? (
+          <AppText style={[type.metaXSmall, { color: colors.muted }]}>
+            {`“${payment.comment}”`}
+          </AppText>
+        ) : null}
+      </View>
+      <TextInput
+        value={amount}
+        onChangeText={onChangeAmount}
+        keyboardType="numeric"
+        placeholder="₹"
+        placeholderTextColor={colors.faint}
+        accessibilityLabel={`Amount to pay ${name} for ${payment.taskType}${
+          episode ? ` on ${episode.code}` : ""
+        }`}
+        style={{
+          width: 84,
+          minHeight: MIN_TAP_TARGET,
+          paddingHorizontal: 10,
+          borderRadius: radii.chipLarge,
+          borderWidth: 1,
+          borderColor: colors.hairlineStrong,
+          backgroundColor: colors.surface,
+          fontFamily: fontFamily.mono,
+          fontSize: 13,
+          color: colors.ink,
+          textAlign: "right",
+        }}
+      />
     </View>
   );
 }
@@ -827,7 +894,7 @@ function PaymentRow({
               is the line that accounts for the one that vanished. */}
           <ProofNote payment={payment} now={now} />
 
-          {canAttach ? <ProofAttach payment={payment} now={now} compact /> : null}
+          {canAttach ? <ProofAttach payments={[payment]} now={now} compact /> : null}
 
           {/* What the admin said when they approved it. Worth surfacing:
               it is the only feedback most work ever gets. */}

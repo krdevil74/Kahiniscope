@@ -160,6 +160,16 @@ export function isEpisodeValid(draft: EpisodeDraft): boolean {
 export const COLLAPSED_PEOPLE = 6;
 
 /**
+ * A to Z by name, ignoring case and accents. Firestore hands people back in
+ * document-id order, which on screen reads as no order at all.
+ *
+ * Pure: no React, no Firebase. Unit tested.
+ */
+export function byName(a: { name: string }, b: { name: string }): number {
+  return a.name.trim().localeCompare(b.name.trim(), undefined, { sensitivity: "base" });
+}
+
+/**
  * Match on name or craft, because "who does the voices" is as natural a way
  * to look somebody up as their name. Case and surrounding space are ignored;
  * an empty query is not a filter.
