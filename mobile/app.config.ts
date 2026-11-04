@@ -26,7 +26,7 @@ const config: ExpoConfig = {
   name: "Kahiniscope",
   slug: "kahiniscope-production",
   scheme: "kahiniscope",
-  version: "1.0.0",
+  version: "1.1.0",
   orientation: "portrait",
   // The design is a light design. Following the system into dark mode would
   // repaint every surface token, so the app opts out.
