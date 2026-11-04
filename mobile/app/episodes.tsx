@@ -10,6 +10,10 @@
  * aggregations; opening **In progress** subscribes to the slate, which is
  * bounded by what is in production; opening **Broadcast** asks for one month at
  * a time. Tasks are fetched only for the episodes actually on screen.
+ *
+ * **Tasks in progress** is the third tile: every task not yet accepted, across
+ * the whole slate, narrowed to one person with a tap. It answers "what is still
+ * with Rina?" without opening her page or every episode in turn.
  */
 
 import { useCallback, useMemo, useState } from "react";
@@ -18,33 +22,49 @@ import { useRouter } from "expo-router";
 
 import { AppShell } from "../src/components/AppShell";
 import { AppText } from "../src/components/AppText";
+import { Avatar } from "../src/components/Avatar";
 import { Card } from "../src/components/Card";
 import { EmptyState } from "../src/components/EmptyState";
-import { MonthFilter, YearFilter } from "../src/components/MonthFilter";
+import { HeatBadge } from "../src/components/HeatBadge";
+import { Chip, MonthFilter, YearFilter } from "../src/components/MonthFilter";
 import { Note } from "../src/components/Note";
 import { ProgressBar } from "../src/components/ProgressBar";
 import { SectionCaption } from "../src/components/SectionCaption";
 import { StatusPill } from "../src/components/StatusPill";
 import { useSession } from "../src/lib/auth";
-import { byAirDate, completionOf, overdueCount, tasksForEpisode } from "../src/lib/completion.ts";
+import {
+  byAirDate,
+  completionOf,
+  overdueCount,
+  tasksForEpisode,
+  tasksForMember,
+} from "../src/lib/completion.ts";
 import {
   useBroadcastInMonth,
   useEarliestBroadcastYear,
   useEpisodeCounts,
+  useEpisodesByIds,
   useEpisodesInProgress,
   useNow,
+  useOpenTasks,
   useTasksForEpisodes,
+  useTeam,
+  indexBy,
 } from "../src/lib/data";
+import { byChaseOrder, dueLabel } from "../src/lib/escalation.ts";
 import {
   broadcastGapNote,
   countLabel,
   listedSummary,
   monthEmptyNote,
   monthUnreadableNote,
+  openTaskTallies,
+  openTasksCaption,
   slateSubtitle,
   strandedNote,
   tileLabel,
   type SlateHalf,
+  type SlateView,
 } from "../src/lib/slate.ts";
 import { lastMonths, monthLong, monthsOfYear, yearsFrom, type MonthSlot } from "../src/lib/months.ts";
 import type { Episode, Task } from "../src/lib/model";
@@ -65,8 +85,9 @@ export default function Episodes() {
   const now = useNow();
   const { isAdmin } = useSession();
 
-  /** Neither half is open until one is tapped — that is the whole point. */
-  const [half, setHalf] = useState<SlateHalf | null>(null);
+  /** Nothing is open until a tile is tapped — that is the whole point. */
+  const [view, setView] = useState<SlateView | null>(null);
+  const half: SlateHalf | null = view === "tasks" ? null : view;
   const [year, setYear] = useState<number | null>(null);
   const [month, setMonth] = useState<MonthSlot | null>(null);
 
@@ -81,9 +102,14 @@ export default function Episodes() {
     error: monthError,
   } = useBroadcastInMonth(half === "broadcast" ? month : null, isAdmin);
   const earliestYear = useEarliestBroadcastYear(isAdmin && half === "broadcast");
+  const {
+    data: openTasks,
+    loading: openTasksLoading,
+    error: openTasksError,
+  } = useOpenTasks(isAdmin && view === "tasks");
 
   const listed = useMemo<Episode[]>(
-    () => (half === "in-progress" ? byAirDate(inProgress) : broadcast),
+    () => (half === null ? [] : half === "in-progress" ? byAirDate(inProgress) : broadcast),
     [half, inProgress, broadcast]
   );
 
@@ -108,8 +134,8 @@ export default function Episodes() {
    */
   const newestOf = (range: readonly MonthSlot[]) => range[range.length - 1] ?? null;
 
-  function openHalf(next: SlateHalf) {
-    setHalf((current) => (current === next ? null : next));
+  function open(next: SlateView) {
+    setView((current) => (current === next ? null : next));
     // Opening Broadcast with no month chosen would be an empty list and no
     // reason for it, so it starts on the month somebody is most likely to want.
     if (next === "broadcast" && !month) setMonth(newestOf(months));
@@ -133,7 +159,7 @@ export default function Episodes() {
             loading={countsLoading}
             open={half === "in-progress"}
             flavour="info"
-            onPress={() => openHalf("in-progress")}
+            onPress={() => open("in-progress")}
           />
           <SlateTile
             label={tileLabel("broadcast")}
@@ -141,14 +167,43 @@ export default function Episodes() {
             loading={countsLoading}
             open={half === "broadcast"}
             flavour="money"
-            onPress={() => openHalf("broadcast")}
+            onPress={() => open("broadcast")}
           />
         </View>
 
-        {half === null ? (
+        {/* A row of its own: these are tasks, where the pair above are episodes,
+            and its label would not fit a third of a phone. Pink, because this
+            is the work somebody may have to chase. Once open it counts the live
+            list, so the tile and the list under it cannot disagree. */}
+        <View style={{ flexDirection: "row" }}>
+          <SlateTile
+            label={tileLabel("tasks")}
+            count={
+              view === "tasks" && !openTasksLoading && !openTasksError
+                ? String(openTasks.length)
+                : countLabel(counts.openTasks)
+            }
+            loading={countsLoading}
+            open={view === "tasks"}
+            flavour="attention"
+            onPress={() => open("tasks")}
+          />
+        </View>
+
+        {view === null ? (
           <AppText style={[type.metaXSmall, { color: colors.faint, paddingHorizontal: 2 }]}>
-            Tap either half to list it. Nothing is loaded until you do.
+            Tap a tile to list it. Nothing is loaded until you do.
           </AppText>
+        ) : null}
+
+        {view === "tasks" ? (
+          <OpenTasks
+            tasks={openTasks}
+            loading={openTasksLoading}
+            failed={openTasksError !== null}
+            enabled={isAdmin}
+            now={now}
+          />
         ) : null}
 
         {/* Broadcast is filtered by when it went out, so it needs a month. */}
@@ -221,6 +276,137 @@ export default function Episodes() {
         ))}
       </View>
     </AppShell>
+  );
+}
+
+/**
+ * The open tasks, and who they are with.
+ *
+ * "All" first, because the total is what the tile promised; then one chip for
+ * each person who has something open. Tapping a row opens its episode, which is
+ * where a task is reviewed or reassigned. Team and episode titles are only asked
+ * for while this is on screen.
+ */
+function OpenTasks({
+  tasks,
+  loading,
+  failed,
+  enabled,
+  now,
+}: {
+  tasks: readonly Task[];
+  loading: boolean;
+  failed: boolean;
+  enabled: boolean;
+  now: Date;
+}) {
+  const router = useRouter();
+  const [chosen, setChosen] = useState<string | null>(null);
+
+  const { data: team, loading: teamLoading } = useTeam(enabled);
+  const episodeIds = useMemo(() => tasks.map((t) => t.episodeId), [tasks]);
+  const { data: episodes } = useEpisodesByIds(episodeIds, enabled);
+
+  const byUid = useMemo(() => indexBy(team, (m) => m.uid), [team]);
+  const byEpisode = useMemo(() => indexBy(episodes, (e) => e.id), [episodes]);
+  const tallies = useMemo(() => openTaskTallies(tasks, team), [tasks, team]);
+
+  // Read rather than stored: somebody whose last task closes while they are
+  // chosen has no chip left to tap, so the list falls back to everyone instead
+  // of sitting empty with nothing on screen saying why.
+  const person = tallies.find((tally) => tally.uid === chosen) ?? null;
+  const shown = useMemo(
+    () => byChaseOrder(person ? tasksForMember(tasks, person.uid) : tasks, now),
+    [tasks, person, now]
+  );
+
+  if (tasks.length === 0) {
+    if (loading) return null;
+    return failed ? (
+      <EmptyState
+        title="Those tasks would not load"
+        detail="Nothing has been lost. Tap the tile twice to try again."
+      />
+    ) : (
+      <EmptyState
+        title="No tasks in progress"
+        detail="Every assigned task has been accepted. New work goes out with the + button."
+      />
+    );
+  }
+
+  return (
+    <>
+      {/* Held back until the names are in, so nobody flashes up as off the team. */}
+      {teamLoading ? null : (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.chipsTight }}>
+          <Chip
+            label={`All · ${tasks.length}`}
+            on={person === null}
+            flavour="attention"
+            onPress={() => setChosen(null)}
+          />
+          {tallies.map((tally) => (
+            <Chip
+              key={tally.uid}
+              label={`${tally.name} · ${tally.count}`}
+              on={person?.uid === tally.uid}
+              flavour="attention"
+              onPress={() => setChosen(tally.uid)}
+            />
+          ))}
+        </View>
+      )}
+
+      <SectionCaption>{openTasksCaption(shown.length, person?.name ?? null)}</SectionCaption>
+
+      {shown.map((task) => {
+        const episode = byEpisode.get(task.episodeId);
+        const name = byUid.get(task.assigneeUid)?.name;
+        return (
+          <Card
+            key={task.id}
+            onPress={() => router.push(`/episode/${task.episodeId}`)}
+            accessibilityLabel={`${task.type} for ${name ?? "somebody not on the team"}`}
+            style={{
+              padding: spacing.card,
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: spacing.cards,
+            }}
+          >
+            <Avatar name={name ?? ""} size={layout.avatar} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <AppText weight="semibold" style={type.cardTitle}>
+                {task.type}
+              </AppText>
+              {episode ? (
+                <AppText numberOfLines={1} style={[type.metaXSmall, { color: colors.muted, marginTop: 3 }]}>
+                  {`${episode.code} · ${episode.title}`}
+                </AppText>
+              ) : null}
+              <AppText
+                numberOfLines={1}
+                style={{
+                  fontFamily: fontFamily.mono,
+                  fontSize: 11,
+                  lineHeight: 15.4,
+                  color: colors.faint,
+                  marginTop: 3,
+                }}
+              >
+                {[name, dueLabel(task, now)].filter(Boolean).join(" · ")}
+              </AppText>
+            </View>
+            {/* Handed in and waiting on an admin, so chasing the artist is wrong. */}
+            <HeatBadge
+              step={task.remindersSent}
+              label={task.status === "submitted" ? "In review" : undefined}
+            />
+          </Card>
+        );
+      })}
+    </>
   );
 }
 
