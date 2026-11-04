@@ -12,6 +12,7 @@ import {
   collection,
   count,
   doc,
+  documentId,
   getAggregateFromServer,
   getDocs,
   limit as fsLimit,
@@ -279,6 +280,17 @@ export function useTasks(options: { assigneeUid?: string; enabled?: boolean } = 
   return useCollection("tasks", toTask, constraints, enabled);
 }
 
+/**
+ * Every task not yet accepted, whoever it is with: what the Episodes screen
+ * lists under Tasks in progress. Live, like the slate, because it is the working
+ * set and it is bounded by what is outstanding rather than by everything ever
+ * assigned.
+ */
+export function useOpenTasks(enabled = true): Live<Task[]> {
+  const constraints = useMemo(() => [where("done", "==", false)], []);
+  return useCollection("tasks", toTask, constraints, enabled);
+}
+
 export interface SlateCounts {
   /** `null` is "could not be counted", which is not the same number as zero. */
   inProgress: number | null;
@@ -287,13 +299,15 @@ export interface SlateCounts {
   dated: number | null;
   /** Every episode, whatever is written on it — the check on the two halves. */
   total: number | null;
+  /** Every task not yet accepted — the same number as the Board's Open tasks. */
+  openTasks: number | null;
 }
 
 /**
  * How many episodes are on the slate, how many have gone out, and how many of
  * those the month filter can actually see.
  *
- * Four `count()` aggregations rather than the collection. The Episodes screen
+ * `count()` aggregations rather than the collection. The Episodes screen
  * used to load every episode ever made to put two numbers in its subtitle,
  * which is a page that gets slower every month a channel runs.
  *
@@ -309,7 +323,7 @@ export interface SlateCounts {
  * progress" on the phone and at least visible. `total` is what lets the screen
  * notice that and say it.
  *
- * Gathered with `allSettled` and each one retried, because these four were a
+ * Gathered with `allSettled` and each one retried, because these were a
  * `Promise.all`: one refusal zeroed all of them, and a tile reading 0 is a
  * statement about the channel rather than about the connection. A count that
  * did not answer comes back as `null` and is drawn as a dash.
@@ -322,6 +336,7 @@ export function useEpisodeCounts(
     broadcast: null,
     dated: null,
     total: null,
+    openTasks: null,
   });
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
@@ -336,13 +351,12 @@ export function useEpisodeCounts(
     setLoading(true);
 
     const episodes = collection(db, "episodes");
-    const counted = (...constraints: QueryConstraint[]) =>
+    const tally = (asked: ReturnType<typeof query>) =>
       retrying(async () => {
-        const snap = await getAggregateFromServer(query(episodes, ...constraints), {
-          n: count(),
-        });
+        const snap = await getAggregateFromServer(asked, { n: count() });
         return Number(snap.data().n ?? 0);
       });
+    const counted = (...constraints: QueryConstraint[]) => tally(query(episodes, ...constraints));
 
     void Promise.allSettled([
       counted(where("status", "in", storedValuesFor("in_progress"))),
@@ -353,14 +367,16 @@ export function useEpisodeCounts(
       // field needs no composite index.
       counted(orderBy("broadcastAt")),
       counted(),
+      tally(query(collection(db, "tasks"), where("done", "==", false))),
     ]).then((results) => {
       if (!live) return;
-      const [inProgress, broadcast, dated, total] = results;
+      const [inProgress, broadcast, dated, total, openTasks] = results;
       setData({
         inProgress: settled(inProgress),
         broadcast: settled(broadcast),
         dated: settled(dated),
         total: settled(total),
+        openTasks: settled(openTasks),
       });
       const refused = results.find((result) => result.status === "rejected");
       if (refused && refused.status === "rejected") {
@@ -564,6 +580,55 @@ export function useTasksForEpisodes(
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, enabled]);
+
+  return { data, loading, error };
+}
+
+/**
+ * Named episodes and no others, so a list of tasks can put a title against each
+ * row without loading every episode ever made. Chunked at 30 because that is the
+ * limit on `in`.
+ */
+export function useEpisodesByIds(ids: readonly string[], enabled = true): Live<Episode[]> {
+  const [data, setData] = useState<Episode[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const key = [...new Set(ids)].sort().join(",");
+
+  useEffect(() => {
+    if (!enabled || !key) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+    let live = true;
+    setLoading(true);
+
+    const unique = key.split(",");
+    const chunks: string[][] = [];
+    for (let from = 0; from < unique.length; from += 30) chunks.push(unique.slice(from, from + 30));
+
+    Promise.all(
+      chunks.map((chunk) => getDocs(query(collection(db, "episodes"), where(documentId(), "in", chunk))))
+    )
+      .then((snaps) => {
+        if (!live) return;
+        setData(snaps.flatMap((snap) => snap.docs.map(toEpisode)));
+        setLoading(false);
+        setError(null);
+      })
+      .catch((err: Error) => {
+        if (!live) return;
+        console.warn("episodes by id", err);
+        setError(err);
+        setLoading(false);
+      });
+
+    return () => {
+      live = false;
+    };
   }, [key, enabled]);
 
   return { data, loading, error };

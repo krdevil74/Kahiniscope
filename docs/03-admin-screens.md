@@ -98,6 +98,15 @@ fetched only for the episodes actually listed — two queries, because `episodeI
 is a DocumentReference on everything the Assign form wrote and a string on
 everything the seed wrote, and a query on one shape does not match the other.
 
+### Tasks in progress
+
+A third tile under the two halves: every task with `done == false`, the same
+number as the Board's **Open tasks**. A submitted task is still in it, marked
+"In review", because the work is not accepted yet. Opening it starts a live
+query for those tasks and shows a chip for "All" and for each person who has
+something open; tapping a name narrows the list to them. Only the titles of the
+episodes those tasks belong to are fetched, not the slate.
+
 ### `broadcastAt`, and why not `airDate`
 
 Broadcast episodes are filtered by **when they were marked broadcast**, not by

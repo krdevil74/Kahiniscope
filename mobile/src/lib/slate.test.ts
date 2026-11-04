@@ -7,6 +7,8 @@ import {
   listedSummary,
   monthEmptyNote,
   monthUnreadableNote,
+  openTaskTallies,
+  openTasksCaption,
   slateSubtitle,
   strandedEpisodes,
   strandedNote,
@@ -19,6 +21,7 @@ const SEPTEMBER = { year: 2026, month: 9 };
 test("the tiles say which half they are", () => {
   assert.equal(tileLabel("in-progress"), "In progress");
   assert.equal(tileLabel("broadcast"), "Broadcast");
+  assert.equal(tileLabel("tasks"), "Tasks in progress");
 });
 
 test("episodes with no broadcast date are counted, not hidden", () => {
@@ -117,4 +120,29 @@ test("a month that could not be read says so, and does not read as empty", () =>
   assert.match(note, /September 2026 could not be read/);
   assert.match(note, /nothing has been lost/);
   assert.match(monthUnreadableNote(null), /that month could not be read/);
+});
+
+test("open tasks are tallied per person, A to Z, and only for people who have some", () => {
+  const team = [
+    { uid: "z", name: "Zara" },
+    { uid: "a", name: "Asha" },
+    { uid: "idle", name: "Bina" },
+  ];
+  const tasks = [{ assigneeUid: "z" }, { assigneeUid: "a" }, { assigneeUid: "z" }];
+  assert.deepEqual(openTaskTallies(tasks, team), [
+    { uid: "a", name: "Asha", count: 1 },
+    { uid: "z", name: "Zara", count: 2 },
+  ]);
+});
+
+test("a task whose assignee has left still gets a chip, so the chips add up to the tile", () => {
+  const tallies = openTaskTallies([{ assigneeUid: "gone" }], []);
+  assert.deepEqual(tallies, [{ uid: "gone", name: "Not on the team", count: 1 }]);
+});
+
+test("the open-task caption names the person once one is chosen", () => {
+  assert.equal(openTasksCaption(23, null), "23 tasks in progress");
+  assert.equal(openTasksCaption(1, null), "1 task in progress");
+  assert.equal(openTasksCaption(4, "Rina"), "4 tasks pending for Rina");
+  assert.equal(openTasksCaption(1, "Rina"), "1 task pending for Rina");
 });

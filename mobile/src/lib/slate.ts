@@ -15,13 +15,19 @@
  * Pure: no Firebase, no React. Unit tested.
  */
 
+import { byName } from "./assign.ts";
 import { monthLong, type MonthSlot } from "./months.ts";
+import type { Task, TeamMember } from "./model";
 
 /** Which half of the slate is open. */
 export type SlateHalf = "in-progress" | "broadcast";
 
-export function tileLabel(half: SlateHalf): string {
-  return half === "in-progress" ? "In progress" : "Broadcast";
+/** What the screen can list: either half, or the tasks still open across them. */
+export type SlateView = SlateHalf | "tasks";
+
+export function tileLabel(view: SlateView): string {
+  if (view === "tasks") return "Tasks in progress";
+  return view === "in-progress" ? "In progress" : "Broadcast";
 }
 
 /**
@@ -136,4 +142,39 @@ export function listedSummary(
 export function monthUnreadableNote(month: MonthSlot | null): string {
   const where = month ? monthLong(month) : "that month";
   return `${where} could not be read — nothing has been lost. Tap the month again to retry.`;
+}
+
+/** One person's chip above the open tasks. */
+export interface OpenTaskTally {
+  uid: string;
+  name: string;
+  count: number;
+}
+
+/**
+ * Who has work open, and how much, A to Z.
+ *
+ * Built from the tasks rather than from the team, so a chip is never a way to
+ * reach an empty list. A task whose assignee is no longer on the team still gets
+ * a chip: the work is still open, and dropping it would make the chips add up
+ * to less than the tile above them.
+ */
+export function openTaskTallies(
+  tasks: readonly Pick<Task, "assigneeUid">[],
+  team: readonly Pick<TeamMember, "uid" | "name">[]
+): OpenTaskTally[] {
+  const names = new Map(team.map((member) => [member.uid, member.name]));
+  const counts = new Map<string, number>();
+  for (const { assigneeUid } of tasks) {
+    counts.set(assigneeUid, (counts.get(assigneeUid) ?? 0) + 1);
+  }
+  return [...counts]
+    .map(([uid, count]) => ({ uid, name: names.get(uid) || "Not on the team", count }))
+    .sort(byName);
+}
+
+/** "23 tasks in progress" · "4 tasks pending for Rina" */
+export function openTasksCaption(count: number, name: string | null): string {
+  const tasks = `${count} ${count === 1 ? "task" : "tasks"}`;
+  return name ? `${tasks} pending for ${name}` : `${tasks} in progress`;
 }
