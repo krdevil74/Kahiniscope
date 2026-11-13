@@ -41,6 +41,7 @@ function payment(overrides: Partial<Payment>): Payment {
     approvedAt: null,
     paidAt: null,
     settledFromAdvance: false,
+    workAmount: null,
     proofAttachedAt: null,
     proofExpiresAt: null,
     ...overrides,
@@ -183,22 +184,39 @@ test("an approval the balance covers is settled outright", () => {
   assert.deepEqual(settleFromBalance(600, 5000), {
     settled: true,
     spent: 600,
+    owed: 0,
     balanceAfter: 4400,
   });
 });
 
 test("a balance that exactly covers it is spent to nothing", () => {
-  assert.deepEqual(settleFromBalance(600, 600), { settled: true, spent: 600, balanceAfter: 0 });
+  assert.deepEqual(settleFromBalance(600, 600), { settled: true, spent: 600, owed: 0, balanceAfter: 0 });
 });
 
-test("all or nothing: a short balance is left alone rather than part-spent", () => {
-  // Splitting one approval across an advance and a later transfer would leave
-  // a payment record carrying two amounts and two dates.
-  assert.deepEqual(settleFromBalance(600, 400), {
+test("a short balance is spent to nothing and only the difference is owed", () => {
+  // ₹1,000 advanced, ₹1,500 of work: the admin transfers ₹500, not ₹1,500.
+  assert.deepEqual(settleFromBalance(1500, 1000), {
     settled: false,
-    spent: 0,
-    balanceAfter: 400,
+    spent: 1000,
+    owed: 500,
+    balanceAfter: 0,
   });
+});
+
+test("both halves of a split approval say what they were part of", () => {
+  const fromAdvance = payment({
+    status: "paid",
+    rate: 50,
+    quantity: 30,
+    estimatedAmount: 1000,
+    finalAmount: 1000,
+    settledFromAdvance: true,
+    workAmount: 1500,
+  });
+  assert.match(breakdownOf(fromAdvance).note ?? "", /₹1,000 of the ₹1,500 came off the advance/);
+
+  const rest = payment({ rate: 50, quantity: 30, estimatedAmount: 500, workAmount: 1500 });
+  assert.match(breakdownOf(rest).note ?? "", /₹1,000 of the ₹1,500 came off the advance; this is the rest/);
 });
 
 test("nothing to settle against, or nothing to settle", () => {

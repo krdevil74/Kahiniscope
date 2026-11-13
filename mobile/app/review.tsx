@@ -143,6 +143,8 @@ function ReviewCard({
       toast(
         approvalToast(member?.name ?? "them", money(result.estimatedAmount), {
           settledFromAdvance: result.settledFromAdvance,
+          spentFromAdvance: result.spentFromAdvance,
+          owed: result.owed,
           balanceAfter: result.balanceAfter,
         })
       );

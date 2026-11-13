@@ -108,9 +108,23 @@ export function approvedShort(taskType: string): string {
 export function approvedBody(
   name: string,
   taskType: string,
-  outcome: { settledFromAdvance: boolean; amount: number | null; balanceAfter: number }
+  outcome: {
+    settledFromAdvance: boolean;
+    amount: number | null;
+    /** Taken off the advance when it only covered part of the work. */
+    spentFromAdvance?: number;
+    balanceAfter: number;
+  }
 ): string {
   const opening = `${greet(name)}your ${taskType} has been approved.`;
+  const spent = outcome.spentFromAdvance ?? 0;
+  if (!outcome.settledFromAdvance && spent > 0 && outcome.amount !== null) {
+    return (
+      `${opening} ${money(spent)} of the ${money(outcome.amount)} has been taken off the ` +
+      `advance you were already paid, and the remaining ${money(outcome.amount - spent)} is ` +
+      `now pending — the final amount is set by the admin.`
+    );
+  }
   if (outcome.settledFromAdvance && outcome.amount !== null) {
     return (
       `${opening} ${money(outcome.amount)} has been taken off the advance you were ` +

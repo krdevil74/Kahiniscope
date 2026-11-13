@@ -78,6 +78,7 @@ export function toPayment(snap: QueryDocumentSnapshot<DocumentData>): Payment {
     approvedAt: toDate(d.approvedAt),
     paidAt: toDate(d.paidAt),
     settledFromAdvance: d.settledFromAdvance === true,
+    workAmount: amount(d.workAmount),
     // Absent on every payment written before screenshots existed, which reads
     // correctly as "there was never one".
     proofAttachedAt: toDate(d.proofAttachedAt),

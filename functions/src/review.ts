@@ -236,7 +236,14 @@ export const reviewTask = onCall<ReviewRequest>(
         { merge: true }
       );
 
-      tx.set(paymentRef, {
+      // A balance short of the work pays what it can and leaves the rest
+      // owed. That is two records, not one with two amounts on it: what came
+      // off the advance, paid now, and the difference, pending like any
+      // other payment. Both carry `workAmount` so either can say what it was
+      // part of.
+      const split = !settlement.settled && settlement.spent > 0;
+
+      const record = {
         taskId,
         uid: assigneeUid,
         // The id, not the reference the task carries. A payment is a flat
@@ -245,22 +252,38 @@ export const reviewTask = onCall<ReviewRequest>(
         // every payment row read "No episode".
         episodeId: episodeIdOf(data.episodeId),
         taskType: data.type ?? "",
-        status: settlement.settled ? "paid" : "pending",
         unit,
         quantity,
         rate: rateValue,
-        estimatedAmount,
-        finalAmount: settlement.settled ? estimatedAmount : null,
         recordingMinutes,
         wordCount,
         comment,
         approvedAt: FieldValue.serverTimestamp(),
         approvedBy: request.auth?.uid ?? null,
+        workAmount: split ? estimatedAmount : null,
+      };
+
+      if (split) {
+        tx.set(db.collection("payments").doc(), {
+          ...record,
+          status: "paid",
+          estimatedAmount: settlement.spent,
+          finalAmount: settlement.spent,
+          paidAt: FieldValue.serverTimestamp(),
+          settledFromAdvance: true,
+        });
+      }
+
+      tx.set(paymentRef, {
+        ...record,
+        status: settlement.settled ? "paid" : "pending",
+        estimatedAmount: split ? settlement.owed : estimatedAmount,
+        finalAmount: settlement.settled ? estimatedAmount : null,
         paidAt: settlement.settled ? FieldValue.serverTimestamp() : null,
         settledFromAdvance: settlement.settled,
       });
 
-      if (settlement.settled) {
+      if (settlement.spent > 0) {
         tx.set(userRef, { balance: settlement.balanceAfter }, { merge: true });
       }
 
@@ -273,6 +296,7 @@ export const reviewTask = onCall<ReviewRequest>(
       unit,
       estimatedAmount: outcome.estimatedAmount,
       settledFromAdvance: outcome.settlement.settled,
+      spentFromAdvance: outcome.settlement.spent,
       ownWork: assigneeUid === uid,
       by: uid,
     });
@@ -286,6 +310,7 @@ export const reviewTask = onCall<ReviewRequest>(
         body: approvedBody(outcome.name, String(data.type ?? "task"), {
           settledFromAdvance: outcome.settlement.settled,
           amount: outcome.estimatedAmount,
+          spentFromAdvance: outcome.settlement.spent,
           balanceAfter: outcome.settlement.balanceAfter,
         }),
       });
@@ -296,6 +321,8 @@ export const reviewTask = onCall<ReviewRequest>(
       paymentId: paymentRef.id,
       estimatedAmount: outcome.estimatedAmount,
       settledFromAdvance: outcome.settlement.settled,
+      spentFromAdvance: outcome.settlement.spent,
+      owed: outcome.settlement.owed,
       balanceAfter: outcome.settlement.balanceAfter,
     };
   }
