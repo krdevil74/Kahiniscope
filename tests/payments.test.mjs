@@ -911,9 +911,9 @@ test("approved work comes straight off the balance, and is paid on the spot", as
   assert.equal((await read("tasks", taskId)).status, "paid");
 });
 
-test("a balance that does not cover the work is left alone", async () => {
-  // Spend it down to something small, then approve something bigger.
+test("a balance that does not cover the work is spent, and only the rest is owed", async () => {
   const balance = await balanceOf(artistUser.uid);
+  assert.ok(balance > 0, "there has to be something left to part-spend");
   const taskId = await newTask("Script writing");
   await updateDoc(doc(artist.db, "tasks", taskId), { status: "submitted", submittedAt: Timestamp.now() });
 
@@ -924,10 +924,27 @@ test("a balance that does not cover the work is left alone", async () => {
     amount: balance + 1000,
   });
 
-  assert.equal(data.settledFromAdvance, false, "all or nothing: never part-spent");
-  assert.equal(await balanceOf(artistUser.uid), balance, "untouched");
-  assert.equal((await read("payments", data.paymentId)).status, "pending");
-  assert.equal((await read("tasks", taskId)).status, "approved");
+  assert.equal(data.settledFromAdvance, false);
+  assert.equal(data.spentFromAdvance, balance);
+  assert.equal(data.owed, 1000);
+  assert.equal(data.balanceAfter, 0);
+  assert.equal(await balanceOf(artistUser.uid), 0, "spent to nothing");
+
+  // The queue asks for the difference, not the whole figure.
+  const pending = await read("payments", data.paymentId);
+  assert.equal(pending.status, "pending");
+  assert.equal(pending.estimatedAmount, 1000);
+  assert.equal(pending.workAmount, balance + 1000);
+
+  // And what the advance covered is its own record, already paid.
+  const both = await getDocs(query(collection(owner.db, "payments"), where("taskId", "==", taskId)));
+  assert.equal(both.size, 2);
+  const fromAdvance = both.docs.map((d) => d.data()).find((p) => p.settledFromAdvance);
+  assert.equal(fromAdvance.status, "paid");
+  assert.equal(fromAdvance.finalAmount, balance);
+  assert.equal(fromAdvance.workAmount, balance + 1000);
+
+  assert.equal((await read("tasks", taskId)).status, "approved", "still owed, so not yet paid");
 });
 
 test("work with no figure behind it cannot be settled from an advance", async () => {

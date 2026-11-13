@@ -153,12 +153,16 @@ approve 5 min @ ₹80  ──► ₹400 ──────┤  paid on the spot,
                                 balance ₹4,600
 ```
 
-- **Settlement is all or nothing.** If the balance covers the approved amount,
-  the payment is created already `paid`, the task goes straight to `paid`, and
-  the balance drops. If it does not cover it, the balance is left alone and
-  the payment queues as normal. Splitting one approval across an advance and a
-  later transfer would leave a payment record carrying two amounts and two
-  dates, and nobody reading it a month later could say what was handed over.
+- **The advance pays what it can, and only the rest is owed.** If the balance
+  covers the approved amount, the payment is created already `paid`, the task
+  goes straight to `paid`, and the balance drops. If it covers only part —
+  ₹1,000 advanced against ₹1,500 of work — the balance is spent to nothing and
+  the approval is written as **two** records: ₹1,000 already `paid` and marked
+  `settledFromAdvance`, and ₹500 `pending` in the queue. The task stays
+  `approved` until that ₹500 is paid. Two records rather than one, because a
+  record carrying two amounts and two dates is one nobody can read a month
+  later; both carry `workAmount` (₹1,500) so either can say what it was part
+  of.
 - **Work with no figure behind it cannot be settled.** No rate and no typed
   amount means there is nothing to spend.
 - **The balance is server-owned.** It is not in any rule a client can satisfy
@@ -488,7 +492,7 @@ reopenable.
   payments and nobody else's.
 - **20 emulator tests** in all, including the advance path: money advanced
   and recorded, an approval coming straight off the balance and being paid on
-  the spot, a balance too small being left alone rather than part-spent, and
+  the spot, a balance too small being spent and only the difference queued, and
   work with no figure behind it spending nothing.
 - **5 of those 20** on the admin's own work: accepted without being handed in
   and still opening a payment at their own rate; a recording of theirs opening

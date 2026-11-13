@@ -45,6 +45,10 @@ export interface ApprovalOutcome {
   estimatedAmount: number | null;
   /** Paid on the spot out of money already advanced. */
   settledFromAdvance: boolean;
+  /** Taken off the advance — all of it, or as much as the balance covered. */
+  spentFromAdvance: number;
+  /** Still to be paid by transfer, after the advance. */
+  owed: number | null;
   balanceAfter: number;
 }
 
@@ -145,6 +149,9 @@ export function ownApprovalToast(type: string, outcome: ApprovalOutcome): string
   if (outcome.settledFromAdvance) {
     return `${type} approved — ${money(outcome.estimatedAmount)} taken off your advance`;
   }
+  if (outcome.spentFromAdvance > 0) {
+    return `${type} approved — ${money(outcome.spentFromAdvance)} taken off your advance, ${money(outcome.owed)} pending for you`;
+  }
   if (outcome.estimatedAmount !== null) {
     return `${type} approved — ${money(outcome.estimatedAmount)} pending for you`;
   }
@@ -168,13 +175,18 @@ export function advancedToast(name: string, amount: string, balance: string): st
   return `${amount} advanced to ${name} — balance ${balance}`;
 }
 
-/** Approving is two different events depending on whether it settled itself. */
+/**
+ * Approving is three different events: settled outright from the advance,
+ * part settled with the rest owed, or owed in full.
+ */
 export function approvalToast(
   name: string,
   amount: string,
-  outcome: { settledFromAdvance: boolean; balanceAfter: number }
+  outcome: { settledFromAdvance: boolean; spentFromAdvance?: number; owed?: number | null; balanceAfter: number }
 ): string {
-  return outcome.settledFromAdvance
-    ? `Approved — ${amount} taken off ${name}'s advance`
-    : `Approved — ${amount} pending for ${name}`;
+  if (outcome.settledFromAdvance) return `Approved — ${amount} taken off ${name}'s advance`;
+  if ((outcome.spentFromAdvance ?? 0) > 0) {
+    return `Approved — ${money(outcome.spentFromAdvance ?? 0)} taken off ${name}'s advance, ${money(outcome.owed ?? null)} pending`;
+  }
+  return `Approved — ${amount} pending for ${name}`;
 }

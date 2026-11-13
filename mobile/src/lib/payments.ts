@@ -82,6 +82,12 @@ export interface Payment {
    */
   settledFromAdvance: boolean;
   /**
+   * What the whole piece of work came to, on the two records an approval is
+   * split into when the advance covered only part of it — one paid from the
+   * advance, one pending for the rest. Null on every other payment.
+   */
+  workAmount: number | null;
+  /**
    * The screenshot of the transfer. Two dates rather than the image, because
    * the image is a separate document that is deleted after a month and this
    * record is kept for a year — see lib/payment-proof.ts. `proofAttachedAt`
@@ -208,25 +214,36 @@ export interface Settlement {
   settled: boolean;
   /** What was taken off the balance. Zero when nothing was. */
   spent: number;
+  /** What is still to be paid by transfer. Null when there was no figure to settle. */
+  owed: number | null;
   balanceAfter: number;
 }
 
 /**
- * Can this approval be paid out of money already advanced?
+ * How much of this approval is paid out of money already advanced?
  *
- * All or nothing, deliberately. Splitting one approval across an advance and
- * a later transfer would leave a payment record carrying two amounts and two
- * dates, and nobody reading it a month later could say what had actually been
- * handed over. A balance that does not cover the work simply stays where it
- * is, and the admin pays normally.
+ * As much as the balance covers. A balance short of the work is spent to
+ * nothing and only the difference is left to pay — making the admin transfer
+ * the whole amount while the advance sits there untouched is paying twice for
+ * the same work.
+ *
+ * What it does not do is put both halves on one payment record: a record
+ * carrying two amounts and two dates is one nobody can read a month later.
+ * The caller writes the advanced part and the owed part as two records, each
+ * with one amount and one date.
  */
 export function settleFromBalance(amount: number | null, balance: number): Settlement {
   const available = Number.isFinite(balance) && balance > 0 ? balance : 0;
   if (amount === null || !Number.isFinite(amount) || amount <= 0) {
-    return { settled: false, spent: 0, balanceAfter: available };
+    return { settled: false, spent: 0, owed: null, balanceAfter: available };
   }
-  if (available < amount) return { settled: false, spent: 0, balanceAfter: available };
-  return { settled: true, spent: amount, balanceAfter: available - amount };
+  const spent = Math.min(available, amount);
+  return {
+    settled: spent === amount,
+    spent,
+    owed: amount - spent,
+    balanceAfter: available - spent,
+  };
 }
 
 export interface EarningsSummary {
@@ -360,6 +377,7 @@ function plural(count: number, noun: string): string {
 export function breakdownOf(payment: Payment): Breakdown {
   const shown = amountToShow(payment);
   const total = money(shown);
+  const split = splitNote(payment);
 
   if (payment.rate === null || payment.quantity === null) {
     return {
@@ -367,7 +385,7 @@ export function breakdownOf(payment: Payment): Breakdown {
       quantity: null,
       working: null,
       total,
-      note: "No unit rate for this kind of work — the amount was set by the admin.",
+      note: split ?? "No unit rate for this kind of work — the amount was set by the admin.",
     };
   }
 
@@ -381,10 +399,25 @@ export function breakdownOf(payment: Payment): Breakdown {
     working: `${money(payment.rate)} × ${quantity}`,
     total,
     note:
-      payment.finalAmount !== null && payment.finalAmount !== payment.estimatedAmount
+      split ??
+      (payment.finalAmount !== null && payment.finalAmount !== payment.estimatedAmount
         ? `Estimated ${money(payment.estimatedAmount)}; the admin paid ${money(payment.finalAmount)}.`
-        : null,
+        : null),
   };
+}
+
+/**
+ * One half of an approval the advance only part covered. Without saying so,
+ * the working above it multiplies out to more than the total beside it.
+ */
+function splitNote(payment: Payment): string | null {
+  if (payment.workAmount === null) return null;
+  const whole = money(payment.workAmount);
+  if (payment.settledFromAdvance) {
+    return `${money(payment.finalAmount)} of the ${whole} came off the advance; the rest is a separate payment.`;
+  }
+  const fromAdvance = payment.workAmount - (payment.estimatedAmount ?? 0);
+  return `${money(fromAdvance)} of the ${whole} came off the advance; this is the rest.`;
 }
 
 // ---------------------------------------------------------------------------

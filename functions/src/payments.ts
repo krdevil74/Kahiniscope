@@ -119,19 +119,27 @@ export function quantityFor(unit: PayUnit, recordingMinutes: number | null): num
 // ---------------------------------------------------------------------------
 
 export interface Settlement {
+  /** Whether the balance covered it outright. */
   settled: boolean;
+  /** What was taken off the balance. Zero when nothing was. */
   spent: number;
+  /** What is still to be paid by transfer. Null when there was no figure to settle. */
+  owed: number | null;
   balanceAfter: number;
 }
 
 /**
- * Can this approval be paid out of money already advanced?
+ * How much of this approval is paid out of money already advanced?
  *
- * All or nothing, deliberately. Splitting one approval across an advance and
- * a later transfer would leave a payment record carrying two amounts and two
- * dates, and nobody reading it a month later could say what had actually been
- * handed over. A balance that does not cover the work stays where it is and
- * the admin pays normally.
+ * As much as the balance covers. A balance short of the work is spent to
+ * nothing and only the difference is left to pay — making the admin transfer
+ * the whole amount while the advance sits there untouched is paying twice for
+ * the same work.
+ *
+ * What it does not do is put both halves on one payment record: a record
+ * carrying two amounts and two dates is one nobody can read a month later.
+ * The caller writes the advanced part and the owed part as two records, each
+ * with one amount and one date.
  *
  * The same rule is in mobile/src/lib/payments.ts, tested against the same
  * examples. This one is the one that counts: it decides what is written.
@@ -139,8 +147,13 @@ export interface Settlement {
 export function settleFromBalance(amount: number | null, balance: number): Settlement {
   const available = Number.isFinite(balance) && balance > 0 ? balance : 0;
   if (amount === null || !Number.isFinite(amount) || amount <= 0) {
-    return { settled: false, spent: 0, balanceAfter: available };
+    return { settled: false, spent: 0, owed: null, balanceAfter: available };
   }
-  if (available < amount) return { settled: false, spent: 0, balanceAfter: available };
-  return { settled: true, spent: amount, balanceAfter: available - amount };
+  const spent = Math.min(available, amount);
+  return {
+    settled: spent === amount,
+    spent,
+    owed: amount - spent,
+    balanceAfter: available - spent,
+  };
 }

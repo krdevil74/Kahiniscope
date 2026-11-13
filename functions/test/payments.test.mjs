@@ -84,17 +84,21 @@ test("audio is measured in minutes, a cover is one of itself, a typed figure in 
   assert.equal(needsRecordingTime("cover"), false);
 });
 
-test("an advance is all or nothing against an approval", () => {
-  assert.deepEqual(settleFromBalance(600, 5000), { settled: true, spent: 600, balanceAfter: 4400 });
-  assert.deepEqual(settleFromBalance(600, 600), { settled: true, spent: 600, balanceAfter: 0 });
-  // Part-spending would leave a payment carrying two amounts and two dates.
-  assert.deepEqual(settleFromBalance(600, 400), { settled: false, spent: 0, balanceAfter: 400 });
+test("an advance that covers the approval settles it outright", () => {
+  assert.deepEqual(settleFromBalance(600, 5000), { settled: true, spent: 600, owed: 0, balanceAfter: 4400 });
+  assert.deepEqual(settleFromBalance(600, 600), { settled: true, spent: 600, owed: 0, balanceAfter: 0 });
+});
+
+test("a short advance is spent to nothing and only the difference is owed", () => {
+  assert.deepEqual(settleFromBalance(1500, 1000), { settled: false, spent: 1000, owed: 500, balanceAfter: 0 });
 });
 
 test("nothing to settle, or nothing to settle against", () => {
   assert.equal(settleFromBalance(null, 5000).settled, false);
   assert.equal(settleFromBalance(0, 5000).settled, false);
   assert.equal(settleFromBalance(600, 0).settled, false);
+  assert.equal(settleFromBalance(600, 0).owed, 600);
+  assert.equal(settleFromBalance(null, 5000).owed, null);
   assert.equal(settleFromBalance(600, Number.NaN).balanceAfter, 0);
   assert.equal(settleFromBalance(600, -500).settled, false);
 });

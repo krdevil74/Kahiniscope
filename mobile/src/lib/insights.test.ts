@@ -23,6 +23,7 @@ function paid(overrides: Partial<Payment>): Payment {
     approvedAt: null,
     paidAt: new Date(2026, 7, 10),
     settledFromAdvance: false,
+    workAmount: null,
     proofAttachedAt: null,
     proofExpiresAt: null,
     ...overrides,

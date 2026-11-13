@@ -114,6 +114,17 @@ test("an approval that is not settled says plainly that the figure can move", ()
   assert.match(body, /can differ depending on what the work needed/);
 });
 
+test("an approval the advance only part covers says what is still pending", () => {
+  const body = approvedBody("Rizu Ahmed", "Voice recording", {
+    settledFromAdvance: false,
+    amount: 1500,
+    spentFromAdvance: 1000,
+    balanceAfter: 0,
+  });
+  assert.match(body, /₹1,000 of the ₹1,500 has been taken off the advance/);
+  assert.match(body, /remaining ₹500 is now pending/);
+});
+
 test("an approval with no figure behind it promises nothing", () => {
   const body = approvedBody("Rizu", "Editing", {
     settledFromAdvance: false,
